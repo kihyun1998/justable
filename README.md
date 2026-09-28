@@ -87,8 +87,14 @@ grid that relied on it being always on — before this prop existed — passes `
 ```bash
 pnpm install
 pnpm test
-pnpm build   # dist/: ESM, type declarations, style.css
+pnpm build     # dist/: ESM, type declarations, style.css
+pnpm example   # example/ in a browser, against src/ — an edit to the engine reloads it
 ```
+
+`example/` is a file list of 5,000 rows and a folder list beside it, wired the way a consumer
+would: sorting, column resize and auto-fit, hiding columns, keyboard movement and type-ahead,
+multi-selection, and the colour variables bound for a light and a dark theme. It uses no Tailwind of
+its own and is not part of the package.
 
 ## License
 

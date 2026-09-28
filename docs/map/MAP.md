@@ -134,7 +134,8 @@ The invariants: [drawn columns are tracks are cells](invariant/drawn-columns-are
 **What an absent note means.** A new file under `src/` either belongs to a territory above — add it
 to that note's `## Code` — or it is a new thing the table does, and then a note is owed in the same
 change, written from the code as it then stands. There is no correct state in which a file under
-`src/` is named by no note. Outside `src/`, a new published surface (an export path, a second
+`src/` is named by no note. `example/` belongs to [verification gates](territory/verification-gates.md).
+Outside `src/`, a new published surface (an export path, a second
 stylesheet, a CI workflow) is owed to [package and release](territory/package-and-release.md) or
 [verification gates](territory/verification-gates.md).
 

@@ -1,11 +1,38 @@
 {
   "map_dir": "docs/map",
-  "path_roots": ["."],
-  "source_globs": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.css", "*.json", "*.ts"],
-  "comment_globs": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.css"],
-  "comment_exts": [".ts", ".tsx", ".css", ".json"],
+  "path_roots": [
+    "."
+  ],
+  "source_globs": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.css",
+    "*.json",
+    "*.ts",
+    "example/*.ts",
+    "example/*.tsx",
+    "example/*.json"
+  ],
+  "comment_globs": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.css"
+  ],
+  "comment_exts": [
+    ".ts",
+    ".tsx",
+    ".css",
+    ".json"
+  ],
   "cited_path_pattern": "`(docs/[A-Za-z0-9_./-]+\\.md)`",
-  "command_words": ["grep", "ls", "rg", "pnpm", "git", "npm"],
+  "command_words": [
+    "grep",
+    "ls",
+    "rg",
+    "pnpm",
+    "git",
+    "npm"
+  ],
   "kinds": {
     "territory": {
       "match": "territory/",
@@ -46,5 +73,9 @@
       "link_pattern": "\\(\\.\\./invariant/([a-z0-9-]+\\.md)\\)"
     }
   },
-  "skip_dirs": [".git", "node_modules", "dist"]
+  "skip_dirs": [
+    ".git",
+    "node_modules",
+    "dist"
+  ]
 }

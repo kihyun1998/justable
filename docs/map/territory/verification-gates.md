@@ -46,12 +46,22 @@ prefixed. There is no CI; every gate is run by hand.
   here and an install there.
 - **Class lists are checked as tokens, not regexes.** `TableRow.test.tsx` splits `TABLE_GRID` rather
   than matching it: a word-boundary escape once lost its backslash on the way into a file.
+- **`example/` is where layout is seen in this repository.** `pnpm example` serves a consumer of the
+  engine's source in a browser: no Tailwind and no preflight of its own, so it shows what a page
+  without them gets. It found the header's sort buttons drawn with a browser's button styles, which
+  PenTerm's preflight had always hidden ([header row](header-row.md)). It is not a gate: nothing runs
+  it, and its checks so far were a headless Chrome script outside the repository. `pnpm typecheck`
+  covers it (`example/tsconfig.json`).
 - **`src/lint` is excluded from the build**, so the lint ships in no package and runs only under
   `pnpm test`.
 
 ## Code
 
 - `vitest.config.ts`
+- `example/vite.config.ts`
+- `example/FileTable.tsx` — `FileTable`
+- `example/FolderList.tsx` — `FolderList`
+- `example/tsconfig.json`
 - `package.json`
 - `src/lint/the-engine-reaches-nothing-outside-itself.test.ts` — `sourceFiles`, `importViolations`, `staysInside`, `colourViolations`, `EXTERNAL`, `ENGINE`
 - `src/components/prefix.test.tsx` — `unprefixed`
@@ -93,3 +103,6 @@ prefixed. There is no CI; every gate is run by hand.
   and a specifier resolving to another drive (an absolute `path.relative`). Neither shape exists in
   the tree.
 - **No CI.** Nothing runs any of this unless someone does.
+- **The example's browser checks are not in the repository.** Track alignment, windowing, sorting,
+  resize, auto-fit, type-ahead and the theme were measured in headless Chrome on 2026-09-28 by a
+  script kept outside; nothing re-runs them.
