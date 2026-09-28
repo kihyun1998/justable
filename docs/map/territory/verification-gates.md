@@ -63,7 +63,10 @@ prefixed. There is no CI; every gate is run by hand.
   check passed with the space refused. The edge-scroll checks run on a 700 px page, so the table
   overflows before the name column reaches its maximum; they first assert that the grid scrolled, and
   read width and scroll after the release, once the loop has stopped. Proven failing: removing the
-  scroll term, removing the release's last read, and unwiring the example's loop.
+  scroll term, removing the release's last read, and unwiring the example's loop. A further check
+  scrolls to the end and drags a border 20 px left: the column must shrink by 20. It fails when the
+  grid never holds its content's width; it does not see the hold rising during a drag, which only the
+  jsdom test pins.
 - **`src/lint` is excluded from the build**, so the lint ships in no package and runs only under
   `pnpm test`.
 

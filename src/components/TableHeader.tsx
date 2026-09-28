@@ -60,7 +60,7 @@ export function TableHeader<K extends string>({
   className,
 }: TableHeaderProps<K>) {
   const { resizing, begin } = useColumnResize(onResize, onResizeDrag);
-  const scroller = useContext(GridScrollerContext);
+  const grid = useContext(GridScrollerContext);
 
   const startResize = (column: HeaderColumn<K>) => (e: React.MouseEvent) => {
     // Suppressed for every button before `refusePress` decides, deliberately:
@@ -68,7 +68,7 @@ export function TableHeader<K extends string>({
     e.preventDefault();
     e.stopPropagation();
     if (refusePress(e)) return;
-    begin(column.key, column.width, e.clientX, scale, scroller?.current ?? null);
+    begin(column.key, column.width, e.clientX, scale, grid?.scrollerRef.current ?? null, grid?.holdWidth);
   };
 
   return (

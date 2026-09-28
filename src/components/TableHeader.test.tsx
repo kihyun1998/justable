@@ -113,7 +113,11 @@ describe('resizing inside a grid that scrolls', () => {
     const grid = container.firstElementChild as HTMLElement;
     const header = grid.querySelector('[data-table-header]') as HTMLElement;
     const scroller = grid.querySelectorAll(':scope > [role="rowgroup"]')[1] as HTMLElement;
-    return { header, scroller, unmount };
+    // jsdom lays nothing out: the scroller's content and view widths are set by hand.
+    const box = { content: 1000, view: 100 };
+    Object.defineProperty(scroller, 'scrollWidth', { get: () => box.content });
+    Object.defineProperty(scroller, 'clientWidth', { get: () => box.view });
+    return { header, scroller, box, unmount };
   }
 
   const scrollTo = (scroller: HTMLElement, left: number) =>
@@ -159,6 +163,32 @@ describe('resizing inside a grid that scrolls', () => {
     scroller.scrollLeft = 16;
     move(10);
     expect(onResize).toHaveBeenLastCalledWith('a', 126);
+  });
+
+  it('⚠️ during a drag the content keeps its widest width, so a browser has no scroll to pull back', () => {
+    const { header, scroller, box } = renderInGrid();
+    const canvas = scroller.querySelector('[role="presentation"]') as HTMLElement;
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    expect(canvas.style.minWidth).toBe('1000px');
+    box.content = 1200;
+    move(20);
+    expect(canvas.style.minWidth).toBe('1200px');
+    box.content = 900;
+    move(-20);
+    expect(canvas.style.minWidth).toBe('1200px');
+    act(() => {
+      fireEvent.mouseUp(document);
+    });
+    expect(canvas.style.minWidth).toBe('');
+  });
+
+  it('scrolled to the end, a loop scrolling left still counts', () => {
+    const onResize = vi.fn();
+    const { header, scroller } = renderInGrid({ onResize });
+    scroller.scrollLeft = 900;
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    scrollTo(scroller, 880);
+    expect(onResize).toHaveBeenLastCalledWith('a', 80);
   });
 
   it('a scroll after the release reports nothing', () => {

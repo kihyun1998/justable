@@ -181,6 +181,32 @@ try {
     w1 > pointerOnly + 1 && Math.abs(w1 - expected) <= 2,
     { w0, w1, pointerOnly, expected, scrollLeft: s1.left },
   );
+
+  // Scrolled to the end, a border dragged left: the browser pulls the scroll back as the content
+  // narrows, and that must not shrink the column further.
+  await narrow.evaluate(() => {
+    const s = [...document.querySelectorAll('[role="grid"] div')].find(
+      (d) => getComputedStyle(d).overflowX === 'auto',
+    );
+    s.scrollLeft = s.scrollWidth;
+  });
+  await new Promise((r) => setTimeout(r, 100));
+  const pinned = await scrollerOf();
+  const wp = await nameWidth();
+  const pb = await (await narrow.$('[data-table-resize="name"]')).boundingBox();
+  await narrow.mouse.move(pb.x + pb.width / 2, pb.y + pb.height / 2);
+  await narrow.mouse.down();
+  await narrow.mouse.move(pb.x + pb.width / 2 - 20, pb.y + pb.height / 2, { steps: 4 });
+  await new Promise((r) => setTimeout(r, 200));
+  await narrow.mouse.up();
+  const wq = await nameWidth();
+  const after2 = await scrollerOf();
+  check('scrolled to the end, the scroll was pinned there', pinned.left > 0, { scrollLeft: pinned.left });
+  check(
+    'and a border dragged 20 px left shrinks its column by 20',
+    Math.abs(wp - 20 - wq) <= 1 && after2.left > 0,
+    { before: wp, after: wq, scrollLeft: after2.left },
+  );
   await narrow.close();
 
   check('no page errors', errors.length === 0, errors);

@@ -3,13 +3,13 @@
  * rows the viewport can see. One focusable container; rows carry no `tabIndex`, and the focused row
  * is named by `aria-activedescendant`.
  */
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 
 import type { TableKeyboardLink } from '../hooks/useTableKeyboard.js';
 import { classNames } from '../lib/classNames.js';
 import { UNMEASURED_ROWS, scrollToReveal, visibleRange } from '../lib/rowWindow.js';
-import { GridScrollerContext } from './gridScroller.js';
+import { type GridScroller, GridScrollerContext } from './gridScroller.js';
 
 /** Where a data row sits. */
 export interface RowPlace {
@@ -164,6 +164,22 @@ export function TableGrid({
     }
   }
 
+  // The content never narrows during a border drag: `docs/map/territory/column-resize.md`.
+  const gridScroller = useMemo<GridScroller>(
+    () => ({
+      scrollerRef,
+      holdWidth: (on) => {
+        const canvas = canvasRef.current;
+        const el = scrollerRef.current;
+        if (!canvas || !el) return;
+        canvas.style.minWidth = on
+          ? `${Math.max(Number.parseFloat(canvas.style.minWidth) || 0, el.scrollWidth)}px`
+          : '';
+      },
+    }),
+    [],
+  );
+
   const scroller = (
     <div
       role="rowgroup"
@@ -226,7 +242,7 @@ export function TableGrid({
           `docs/map/territory/header-lane.md`. */}
       <div role="rowgroup" ref={laneRef} className="justable:shrink-0 justable:[overflow-x:clip]">
         <div ref={laneInnerRef}>
-          <GridScrollerContext.Provider value={scrollerRef}>{header}</GridScrollerContext.Provider>
+          <GridScrollerContext.Provider value={gridScroller}>{header}</GridScrollerContext.Provider>
         </div>
       </div>
       {wrapScroller ? wrapScroller(scroller) : scroller}

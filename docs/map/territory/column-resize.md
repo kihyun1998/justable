@@ -47,9 +47,26 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   consumer each move and the scroller, then `null` at the end — at the release and when the header
   unmounts mid-drag, so the consumer's loop always stops. It did not cover vertical scrolling during a
   drag, nor what the loop's zone and speed should be for any consumer.
-- **The header reaches the scroller through a context `TableGrid` provides** (`GridScrollerContext`),
-  since the header is handed to the grid as an element. A header drawn outside a grid gets no
-  scroller: `Δscroll` stays 0 and `onResizeDrag` carries `scroller: null`.
+- **During a drag the grid's content keeps its widest width**, and lets go at the release — the
+  maintainer's call, 2026-09-29, over leaving the border where it is while the content slides. Without
+  the hold, a column shrunk while the grid is scrolled to its right end made the content narrower, the
+  browser pulled `scrollLeft` back to fit, `Δscroll` counted that pull, and the column shrank again:
+  measured, a 20 px drag shrank it 245 px. Scrolled to the end, no width keeps the border under the
+  pointer, since the content's right edge is pinned to the view. The alternative needed the scroll's
+  end, and Chrome's is not `scrollWidth − clientWidth` under `scrollbar-gutter: stable` with a
+  vertical scrollbar: measured 140 against 155, the scrollbar's 15 px. So the drag leaves blank space
+  on the right, and the content slides once, at the release. The hold is a `min-width` on the rows'
+  canvas, raised on every read of the drag.
+- **The header reaches the grid through a context `TableGrid` provides** (`GridScrollerContext`: the
+  scroller and the width hold), since the header is handed to the grid as an element. A header drawn
+  outside a grid gets neither: `Δscroll` stays 0, nothing is held, and `onResizeDrag` carries
+  `scroller: null`.
+- **The example's loop** (`example/edgeScroll.ts`) is time-based, eased, and reaches its top speed at
+  the edge rather than past it, measuring the edge inside the vertical scrollbar. Its first version
+  was faster to the left: the grid's right edge was the window's, so the pointer could go far past the
+  left edge and not the right, and the right edge counted the scrollbar as view. Measured after the
+  change, holding a border at each visible edge: 779 px/s right, 803 px/s left, for a 1000 px/s
+  target.
 - **A drag cannot outlive its component or another drag.** `begin` detaches any running drag first;
   unmounting detaches the `document` listeners, so a header gone mid-drag writes nothing more.
 

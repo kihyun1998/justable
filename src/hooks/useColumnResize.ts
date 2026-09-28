@@ -36,10 +36,12 @@ export function useColumnResize<K extends string>(
     startX: number,
     scale = 1,
     scroller: HTMLElement | null = null,
+    /** Holds the scroller's content at its widest for the drag, then lets it go. */
+    holdWidth?: (on: boolean) => void,
   ) => {
     detach.current?.();
     setResizing(key);
-    const startScroll = scroller?.scrollLeft ?? 0;
+    let seen = scroller?.scrollLeft ?? 0;
     let x = startX;
     let scrolled = 0;
     // Only the pointer is divided by the scale: `docs/map/territory/column-resize.md`.
@@ -47,7 +49,10 @@ export function useColumnResize<K extends string>(
     // Read from the element, not only on its event, which arrives a frame late:
     // `docs/map/territory/column-resize.md`.
     const readScroll = () => {
-      scrolled = (scroller?.scrollLeft ?? 0) - startScroll;
+      holdWidth?.(true);
+      if (!scroller) return;
+      scrolled += scroller.scrollLeft - seen;
+      seen = scroller.scrollLeft;
     };
     const onMove = (ev: MouseEvent) => {
       x = ev.clientX;
@@ -65,6 +70,7 @@ export function useColumnResize<K extends string>(
       document.removeEventListener('mouseup', onUp);
       scroller?.removeEventListener('scroll', onScroll);
       detach.current = null;
+      holdWidth?.(false);
       onDrag?.(null);
     };
     const onUp = () => {
@@ -75,6 +81,7 @@ export function useColumnResize<K extends string>(
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
     scroller?.addEventListener('scroll', onScroll);
+    holdWidth?.(true);
     detach.current = stop;
   };
 
