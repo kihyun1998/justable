@@ -21,8 +21,13 @@ prefixed. There is no CI; every gate is run by hand.
 - **The lint finds the engine from its own file, not from a repo root** (`ENGINE` is `src/`), so it
   travelled into this package unchanged. It skips `src/lint` and every test file, and it **fails
   when it finds five or fewer sources** — a scope that matched nothing is not a pass.
-- **The import rule**: every specifier is relative or one of `EXTERNAL` (React, React DOM,
-  the JSX runtime, `lucide-react`). Type-only imports count.
+- **The import rule**: every specifier is one of `EXTERNAL` (React, React DOM, the JSX runtime,
+  `lucide-react`) or a relative path that, **resolved from the importing file, lands under `src/`**
+  (`staysInside`). Judged by where it lands, not how it is spelled: `../../src/types.js` from
+  `src/lib/` passes, and `../../src-other/x.js` fails although it shares the prefix — so the test is
+  `path.relative`, never a string prefix or a count of `..`. Type-only imports count. The rule's own
+  cases are pinned in the lint file on specifiers planted against a notional `src/lib/` importer
+  (#2).
 - **The colour rule** is [colour variables](colour-variables.md)' enforcement: every class-looking
   token in a string literal is stripped of its variants, and a colour-bearing root whose value is not
   `(--table-…)` fails. A literal `hover-ink` also fails — PenTerm's hover class, which the header
@@ -48,7 +53,7 @@ prefixed. There is no CI; every gate is run by hand.
 
 - `vitest.config.ts`
 - `package.json`
-- `src/lint/the-engine-reaches-nothing-outside-itself.test.ts` — `sourceFiles`, `importViolations`, `colourViolations`, `EXTERNAL`, `ENGINE`
+- `src/lint/the-engine-reaches-nothing-outside-itself.test.ts` — `sourceFiles`, `importViolations`, `staysInside`, `colourViolations`, `EXTERNAL`, `ENGINE`
 - `src/components/prefix.test.tsx` — `unprefixed`
 - `src/components/TableGrid.test.tsx`
 - `src/components/TableHeader.test.tsx`
@@ -81,4 +86,9 @@ prefixed. There is no CI; every gate is run by hand.
   grid with `fill={false}` and `disabled`, so the dragging line's class and the `fill` class are
   never checked.
 - **The lint reads `.ts` and `.tsx` only**; `src/style.css` is outside both rules.
+- **The import pattern also matches import-shaped text in comments.** A comment quoting
+  `from '../../x'` is judged as an import. Nothing in the tree does this today.
+- **Two branches of `staysInside` are unexercised**: an inner directory whose name starts with `..`,
+  and a specifier resolving to another drive (an absolute `path.relative`). Neither shape exists in
+  the tree.
 - **No CI.** Nothing runs any of this unless someone does.

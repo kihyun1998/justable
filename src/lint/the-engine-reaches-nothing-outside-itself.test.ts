@@ -26,12 +26,18 @@ function sourceFiles(dir: string): string[] {
 
 const EXTERNAL = new Set(['react', 'react-dom', 'react/jsx-runtime', 'lucide-react']);
 
-function importViolations(source: string): string[] {
+/** Whether a relative specifier, resolved from `file`, lands under the engine's directory. */
+function staysInside(specifier: string, file: string): boolean {
+  const to = path.relative(ENGINE, path.resolve(path.dirname(file), specifier));
+  return to !== '..' && !to.startsWith(`..${path.sep}`) && !path.isAbsolute(to);
+}
+
+function importViolations(source: string, file: string): string[] {
   const specifiers = [...source.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)].map(
     (m) => m[1]!,
   );
   return specifiers.filter(
-    (s) => !(s.startsWith('.') || EXTERNAL.has(s)),
+    (s) => !(EXTERNAL.has(s) || (s.startsWith('.') && staysInside(s, file))),
   );
 }
 
@@ -83,11 +89,34 @@ describe('lint: the table engine reaches nothing outside itself', () => {
 
   it('imports only itself, React, React DOM and the icon set', () => {
     const found = files.flatMap((file) =>
-      importViolations(fs.readFileSync(file, 'utf-8')).map(
+      importViolations(fs.readFileSync(file, 'utf-8'), file).map(
         (s) => `${path.relative(ENGINE, file)}: ${s}`,
       ),
     );
     expect(found).toEqual([]);
+  });
+
+  describe('the import rule, on planted specifiers', () => {
+    /** A source file in `src/lib/`, as the importer the specifiers resolve from. */
+    const FROM = path.join(ENGINE, 'lib', 'planted.ts');
+    const violations = (specifier: string) =>
+      importViolations(`import { x } from '${specifier}';`, FROM);
+
+    it('refuses the old consumer alias, an app path, and a path leaving src/', () => {
+      for (const s of ['@/frameworks/table/lib/x.js', '@/shared/lib/utils', '../../outside.js']) {
+        expect(violations(s), s).toEqual([s]);
+      }
+    });
+
+    it('refuses a path that only shares the prefix of src/', () => {
+      expect(violations('../../src-other/x.js')).toEqual(['../../src-other/x.js']);
+    });
+
+    it('allows a relative path by where it lands, not how it is spelled', () => {
+      for (const s of ['./rowWindow.js', '../types.js', '../../src/types.js', 'react']) {
+        expect(violations(s), s).toEqual([]);
+      }
+    });
   });
 
   it('paints colour only through `--table-*` variables', () => {
