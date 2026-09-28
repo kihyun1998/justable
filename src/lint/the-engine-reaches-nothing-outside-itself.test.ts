@@ -28,15 +28,12 @@ function sourceFiles(dir: string): string[] {
 
 const EXTERNAL = new Set(['react', 'react-dom', 'react/jsx-runtime', 'lucide-react']);
 
-/** The engine's own alias, while it still lives in PenTerm's tree. */
-const OWN_ALIAS = '@/frameworks/table/';
-
 function importViolations(source: string): string[] {
   const specifiers = [...source.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)].map(
     (m) => m[1]!,
   );
   return specifiers.filter(
-    (s) => !(s.startsWith('.') || s.startsWith(OWN_ALIAS) || EXTERNAL.has(s)),
+    (s) => !(s.startsWith('.') || EXTERNAL.has(s)),
   );
 }
 

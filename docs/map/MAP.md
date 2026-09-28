@@ -15,10 +15,10 @@ Written in English, as the README and `CLAUDE.md` are: an agent reads this at th
 ## The failure that justifies this layer
 
 The engine was moved out of PenTerm in one commit (`6236425`), and its reasoning did not come with
-it. Two source comments cite map notes by path — `rowWindow.ts` names `docs/map/territory/table.md`,
-`tableKeyboard.ts` names `docs/map/territory/table-engine.md` — and neither exists in this
-repository; the second is PenTerm's, and the first was never a file in either repository — the path
-was wrong from the commit that wrote it (`penterm 1b3bc40a3`). Every
+it. Two source comments arrived citing map notes by path — `rowWindow.ts` named `table.md`,
+`tableKeyboard.ts` named `table-engine.md` — and neither existed in this repository; the second was
+PenTerm's, and the first was never a file in either repository — the path was wrong from the commit
+that wrote it (`penterm 1b3bc40a3`). Both now name the notes here. Every
 measurement that fixes a constant here (`BLOCK_ROWS`, `UNMEASURED_ROWS`, the `right: 0` on a placed
 row, the lane's `clip`) lived in a consumer's repository, where the next person to change the engine
 would not look.
@@ -66,9 +66,11 @@ What they showed on the day this was written, and what does not rot with the num
   share one function: [grid scaffold](territory/grid-scaffold.md),
   [row windowing](territory/row-windowing.md) and [header lane](territory/header-lane.md). The
   function they share is `measureBox`.
-- **M4 — the stale pointers are in source, not prose**: the two comment paths above. The lint's
-  `OWN_ALIAS` ("while it still lives in PenTerm's tree") is the one stale prediction — see
-  [verification gates](territory/verification-gates.md).
+- **M4 — the stale pointers were in source, not prose**: the two comment paths above, and test
+  headers citing PenTerm's files by path. The one stale prediction was the lint's alias for PenTerm's
+  tree ("while it still lives in PenTerm's tree"), which stayed after the move and permitted an import
+  that could never build here. The worst find was a figure rather than a pointer — see
+  [row windowing](territory/row-windowing.md#known-holes--open).
 - **M5 — nothing is open**, and nothing records deliberate absence except PenTerm's note's
   `## Known holes / open`, whose engine-side entries are carried into the notes here as
   observations.

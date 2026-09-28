@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The windowed grid's semantics, against rows that are not the Explorer's. jsdom has no layout, so
- * the viewport is never measured here and the window is the unmeasured cap.
+ * the window is the unmeasured cap unless a case stubs the viewport's height.
  */
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';

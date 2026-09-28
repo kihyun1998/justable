@@ -1,6 +1,6 @@
 /**
  * Where a key moves the keyboard's row: movement keys and type-ahead, as pure functions. Why ←/→ do
- * nothing and how type-ahead walks: `docs/map/territory/table-engine.md` § Design model.
+ * nothing and how type-ahead walks: `docs/map/territory/keyboard-movement.md` § Design model.
  */
 
 /** How long a type-ahead query stays open, in ms. */

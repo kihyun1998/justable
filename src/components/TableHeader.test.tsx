@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The engine's header on its own columns. The Explorer's composed header — labels, hiding — is
- * `blocks/explorer/components/ExplorerTableHeader.aria.test.tsx`.
+ * The engine's header on its own columns.
  */
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';

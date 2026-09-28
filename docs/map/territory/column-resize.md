@@ -63,5 +63,3 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   recorded nowhere here (PenTerm is a desktop app).
 - **Not keyboard-operable, and Escape does nothing mid-drag.** Decided for PenTerm by its ADR-0099
   and ADR-0100; undecided for any other consumer.
-- **`useColumnResize`'s header comment says "Pointer events"** while the code uses mouse events —
-  it means pointer-driven, not the Pointer Events API.

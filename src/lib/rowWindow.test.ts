@@ -39,8 +39,8 @@ describe('visibleRange', () => {
 
   /**
    * ⚠️ **The window moves in blocks, and this case is the reason.** Recomputing on every crossed
-   * row makes every scroll frame a React render — measured, that cost 51–58ms p95 against an 18ms
-   * baseline. Snapping means a one-row scroll usually changes nothing at all.
+   * row makes every scroll frame a React render; snapping means a one-row scroll usually changes
+   * nothing at all.
    */
   it('a one-row scroll inside a block does not move the window', () => {
     const a = visibleRange({ scrollTop: 0, viewportHeight: 200, rowHeight: R, total: 5000 });

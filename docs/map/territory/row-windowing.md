@@ -91,8 +91,8 @@ followed), with the `left: 0` trap found against it.
 ## Known holes / open
 
 - **The frame-time case for blocks and for separate state is unmeasured, and the number that claims
-  otherwise is withdrawn.** "p95 18 ms → 51–58 ms" appears in `rowWindow.test.ts` and in PenTerm's
-  note, attributed once to measuring in the scroll handler and once to re-rendering on every crossed
+  otherwise is withdrawn.** "p95 18 ms → 51–58 ms" is in PenTerm's note, and was in
+  `rowWindow.test.ts` until this map found it, attributed once to measuring in the scroll handler and once to re-rendering on every crossed
   row. Both come from `penterm 5bf00320d`, whose own message says *"What is not claimed is a
   frame-time number"*: five runs of one build gave p95 of 17.7, 56.6, 29.6, 18.9 and 43.3 ms. What
   that commit does claim is the draw-time effect — 3,003 ms to 47 ms. Neither the value 8 nor the

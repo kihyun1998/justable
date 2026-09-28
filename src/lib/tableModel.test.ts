@@ -1,6 +1,6 @@
 /**
  * The model against a spec that is not the Explorer's, so nothing here holds only because of one
- * consumer's columns. The Explorer's own rules are `blocks/explorer/lib/explorerTable.test.ts`.
+ * consumer's columns.
  */
 import { describe, expect, it } from 'vitest';
 

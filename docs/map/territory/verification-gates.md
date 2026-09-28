@@ -21,7 +21,7 @@ prefixed. There is no CI; every gate is run by hand.
 - **The lint finds the engine from its own file, not from a repo root** (`ENGINE` is `src/`), so it
   travelled into this package unchanged. It skips `src/lint` and every test file, and it **fails
   when it finds five or fewer sources** — a scope that matched nothing is not a pass.
-- **The import rule**: every specifier is relative, `OWN_ALIAS`, or one of `EXTERNAL` (React, React DOM,
+- **The import rule**: every specifier is relative or one of `EXTERNAL` (React, React DOM,
   the JSX runtime, `lucide-react`). Type-only imports count.
 - **The colour rule** is [colour variables](colour-variables.md)' enforcement: every class-looking
   token in a string literal is stripped of its variants, and a colour-bearing root whose value is not
@@ -36,7 +36,7 @@ prefixed. There is no CI; every gate is run by hand.
 
 - `vitest.config.ts`
 - `package.json`
-- `src/lint/the-engine-reaches-nothing-outside-itself.test.ts` — `sourceFiles`, `importViolations`, `colourViolations`, `OWN_ALIAS`, `EXTERNAL`, `ENGINE`
+- `src/lint/the-engine-reaches-nothing-outside-itself.test.ts` — `sourceFiles`, `importViolations`, `colourViolations`, `EXTERNAL`, `ENGINE`
 - `src/components/prefix.test.tsx` — `unprefixed`
 - `src/components/TableGrid.test.tsx`
 - `src/components/TableHeader.test.tsx`
@@ -65,9 +65,6 @@ prefixed. There is no CI; every gate is run by hand.
 
 ## Known holes / open
 
-- **`OWN_ALIAS` (`@/frameworks/table/`) is PenTerm's path alias**, and its comment says the engine
-  "still lives in PenTerm's tree". It no longer does; nothing here resolves that alias, so the rule
-  now permits a specifier that could never build.
 - **The prefix test sees only the branches its renders take.** It renders the header at rest and the
   grid with `fill={false}` and `disabled`, so the dragging line's class and the `fill` class are
   never checked.

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 /**
  * A column-border drag: mousedown arms it, `document` mousemove reports the width, mouseup ends it.
- * Pointer events, not HTML5 drag — Tauri's drag-drop handling swallows the latter.
+ * Mouse events, not HTML5 drag — Tauri's drag-drop handling swallows the latter.
  */
 export function useColumnResize<K extends string>(onResize: (key: K, px: number) => void) {
   /** The border being dragged, for display only. */

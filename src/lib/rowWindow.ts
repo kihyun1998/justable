@@ -1,6 +1,6 @@
 /**
  * Which rows a windowed list draws, and where to scroll to bring one into view. Measurements and the
- * block size's reasoning: `docs/map/territory/table.md` § Design model.
+ * block size's reasoning: `docs/map/territory/row-windowing.md` § Design model.
  */
 import type { RowWindow } from '../types.js';
 
