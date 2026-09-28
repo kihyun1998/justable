@@ -16,8 +16,12 @@ today.
 - **Two export paths, nothing else reachable.** `.` → `dist/index.js` with `dist/index.d.ts`, and
   `./style.css` → `dist/style.css`. `files` ships `dist` only. `sideEffects` names `*.css`, so a
   bundler keeps the stylesheet import that tree-shaking would otherwise drop.
-- **`src/index.ts` is the public surface**, and the one list of it. `README.md` § Exports is a
-  hand-written summary of it, not a second roster to keep in step name by name.
+- **`src/index.ts` is the public surface**, and the one list of it. `README.md` § Exports names
+  every export and must be changed with it — nothing checks the two agree.
+- **The surface is what a consumer needs** — the maintainer's call, 2026-09-28, #5. Removed then,
+  with no registry release yet and PenTerm the one consumer: `nextFocusIndex`, `classNames` (used by
+  no consumer), and the type-ahead pieces once `useTypeAhead` replaced PenTerm's copy of them. The
+  windowing functions stay public: PenTerm's folder tree windows with them.
 - **React, React DOM and `lucide-react` are peers**, so the consumer's single copy is used — one
   React, not two.
 - **The build is two steps**: `tsc -p tsconfig.build.json` emits JS and declarations from `src/`,
@@ -56,8 +60,6 @@ today.
 
 ## Known holes / open
 
-- **`README.md` § Exports omits most of the exported types** (`RowWindow`, the props types, the
-  keyboard and window input types). It names the values and four types; `src/index.ts` exports more.
 - **No release process is written down** — versioning, changelog, who publishes. The version is
   `0.1.0` and nothing records what would move it.
 - **TypeScript is pinned to `~7.0.2`**, the Go-native compiler; which declaration output a consumer on

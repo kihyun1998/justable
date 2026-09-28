@@ -59,13 +59,16 @@ Row colours — hover, selection, focus — are yours: pass them as row classes.
 ## Exports
 
 - **Model**: `createTableModel(spec)` binds widths, hiding, the grid template and the sort cycle to
-  a `ColumnSpec[]`. Types: `ColumnSpec`, `ColumnLayout`, `TableSort`, `HeaderColumn`.
-- **Components**: `TableGrid` (the windowed grid), `TableHeader`, `TableRow`, `TableRuler`.
+  a `ColumnSpec[]`. Types: `TableModel`, `ColumnSpec`, `ColumnLayout`, `TableSort`, `HeaderColumn`.
+- **Components**: `TableGrid` (the windowed grid), `TableHeader`, `TableRow`, `TableRuler`, with
+  `TableGridProps`, `RowPlace`, `TableHeaderProps`, `TableRowProps`, `TableRulerProps`.
 - **Hooks**: `useTableKeyboard` (movement and type-ahead; you call its `step` from your own key
-  handler and decide what a move selects), `useColumnResize`, `useColumnAutoFit`.
-- **Functions**: `visibleRange`, `scrollToReveal`, `nextFocusIndex`, `typeAheadIndex`,
-  `typeAheadStep`, `classNames`; constants `BLOCK_ROWS`, `UNMEASURED_ROWS`, `TYPE_AHEAD_MS`,
-  `TABLE_GRID`, `TABLE_CELL`.
+  handler and decide what a move selects), with `TableKeyEvent`, `TableKeyStep`,
+  `TableKeyboardLink`; `useTypeAhead` (type-ahead alone, for a list whose movement is your own — call
+  its `end()` when you move the row), with `TypeAheadAnswer`; `useColumnResize`; `useColumnAutoFit`.
+- **Windowing**, for any list of equal-height rows: `visibleRange`, `scrollToReveal`, `BLOCK_ROWS`,
+  `UNMEASURED_ROWS`, with `RowWindow`, `VisibleRangeInput`, `RevealInput`.
+- **Classes**: `TABLE_GRID` and `TABLE_CELL`, a row's grid and a cell's padding.
 
 `TableHeader` takes a required `refusePress(event)`: the engine has no rule of its own about which
 press starts a column resize. `(e) => e.button !== 0` is the simplest.

@@ -64,16 +64,34 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   letter **narrows**, searching from the current row itself, so `c` then `h` stays on `cherry`.
   Matching is a case-insensitive prefix over `names`, which must be in screen order or the hit lands
   on the wrong row.
+- **A miss ends the query** — the maintainer's call, 2026-09-28, #5. Keeping it meant one typo
+  left type-ahead matching nothing until a pause, since the query only grows. Shown beside
+  react-aria's `useTypeSelect`, which clears on a miss. The event of a miss is still left alone.
+- **Type-ahead is its own hook, `useTypeAhead`** — the maintainer's call, 2026-09-28, #5, over a
+  pure reducer and over leaving it as exported pieces. The rules now depend on other keys (a move
+  ends the query, a space only extends a running one), and pieces cannot carry that: PenTerm's folder
+  sidebar had copied them and missed both rules from #1. `useTableKeyboard` is built on it and calls
+  `end()` on its own moves; **a list with movement of its own must call `end()` itself**, because
+  the hook cannot see that list's moves. react-aria also keeps type-ahead as a separate hook reused
+  across collections, and keeps it off its public surface; here it is public because a consumer's
+  tree needs it. The pure pieces (`typeAheadStep`, `typeAheadIndex`, `nextFocusIndex`) are internal.
 - **The clock is injectable** (`now`), which is how the tests cross the 700 ms window.
 
 ## Code
 
+- `src/hooks/useTypeAhead.ts` — `useTypeAhead`, `TypeAheadAnswer`
 - `src/lib/tableKeyboard.ts` — `nextFocusIndex`, `typeAheadIndex`, `typeAheadStep`, `TYPE_AHEAD_MS`, `FALLBACK_PAGE`, `FocusMoveInput`, `TypeAheadStep`
 - `src/hooks/useTableKeyboard.ts` — `useTableKeyboard`, `TableKeyboardLink`, `TableKeyEvent`, `TableKeyStep`
 
 ## Reference behaviour
 
-**None.** in this repository. The W3C APG grid pattern is what the ←/→ refusal is measured against;
+- react-aria `useTypeSelect`, read as source at react-spectrum `16eead67e8`,
+  `packages/react-aria/src/selection/useTypeSelect.ts`, for #5: a separate hook reused by list,
+  grid and tree; a space extends a running search (as here); a miss clears the search (now as here);
+  no walk on a repeated letter and a 1000 ms window (both differ here, by the rules above); a move
+  does not end the search (differs, by #1's call).
+
+**None.** otherwise in this repository. The W3C APG grid pattern is what the ←/→ refusal is measured against;
 PenTerm's `explorer-block.md` § Reference behavior records that reading. Windows Explorer is said
 to walk repeated letters the same way (carried from a test comment); no source is pinned, so that is
 unchecked.

@@ -1,11 +1,7 @@
 import { useRef } from 'react';
 
-import {
-  TYPE_AHEAD_MS,
-  nextFocusIndex,
-  typeAheadIndex,
-  typeAheadStep,
-} from '../lib/tableKeyboard.js';
+import { nextFocusIndex } from '../lib/tableKeyboard.js';
+import { useTypeAhead } from './useTypeAhead.js';
 
 /** What the grid tells the hook: how many whole rows its viewport shows. */
 export interface TableKeyboardLink {
@@ -33,7 +29,7 @@ export type TableKeyStep = { by: 'move'; to: number } | { by: 'typeAhead'; to: n
  */
 export function useTableKeyboard({ now = Date.now }: { now?: () => number } = {}) {
   const link = useRef<TableKeyboardLink>({ rowsPerPage: 0 }).current;
-  const typeAhead = useRef({ query: '', at: 0 });
+  const typeAhead = useTypeAhead({ now });
 
   /** Answers a key, and claims the event when it moves the row; `null` for a key not the table's. */
   const step = (
@@ -48,33 +44,13 @@ export function useTableKeyboard({ now = Date.now }: { now?: () => number } = {}
     });
     if (moved !== null) {
       // A move ends any running query: `docs/map/territory/keyboard-movement.md`.
-      typeAhead.current = { query: '', at: 0 };
+      typeAhead.end();
       event.preventDefault();
       return { by: 'move', to: moved };
     }
 
-    const at = now();
-    const running =
-      typeAhead.current.query !== '' && at - typeAhead.current.at <= TYPE_AHEAD_MS;
-    // One printable character without a chord modifier. A space only extends a running query:
-    // `docs/map/territory/keyboard-movement.md`.
-    if (
-      event.key.length === 1 &&
-      (event.key !== ' ' || running) &&
-      !event.ctrlKey &&
-      !event.metaKey &&
-      !event.altKey
-    ) {
-      const { query, walk } = typeAheadStep(typeAhead.current.query, event.key, !running);
-      typeAhead.current = { query, at };
-      // Walking searches after the row, narrowing from the row itself:
-      // `docs/map/territory/keyboard-movement.md`.
-      const hit = typeAheadIndex(query, names, walk ? focus : focus === null ? null : focus - 1);
-      if (hit !== null) event.preventDefault();
-      return { by: 'typeAhead', to: hit };
-    }
-
-    return null;
+    const answer = typeAhead.step(event, { focus, names });
+    return answer === null ? null : { by: 'typeAhead', to: answer.to };
   };
 
   return { step, link };

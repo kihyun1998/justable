@@ -15,16 +15,7 @@ export {
   type RevealInput,
   type VisibleRangeInput,
 } from './lib/rowWindow.js';
-export {
-  TYPE_AHEAD_MS,
-  nextFocusIndex,
-  typeAheadIndex,
-  typeAheadStep,
-  type FocusMoveInput,
-  type TypeAheadStep,
-} from './lib/tableKeyboard.js';
 export { TABLE_CELL, TABLE_GRID } from './lib/tableClasses.js';
-export { classNames } from './lib/classNames.js';
 
 export { useColumnAutoFit } from './hooks/useColumnAutoFit.js';
 export { useColumnResize } from './hooks/useColumnResize.js';
@@ -34,6 +25,7 @@ export {
   type TableKeyStep,
   type TableKeyboardLink,
 } from './hooks/useTableKeyboard.js';
+export { useTypeAhead, type TypeAheadAnswer } from './hooks/useTypeAhead.js';
 
 export { TableGrid, type RowPlace, type TableGridProps } from './components/TableGrid.js';
 export { TableHeader, type TableHeaderProps } from './components/TableHeader.js';

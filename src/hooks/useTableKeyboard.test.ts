@@ -108,6 +108,14 @@ describe('type-ahead', () => {
     expect(step(key('d'), 3)).toEqual({ by: 'typeAhead', to: 4 });
   });
 
+  it('a miss clears the query, so the next letter starts over', () => {
+    const { step } = setup();
+    expect(step(key('c'), null)).toEqual({ by: 'typeAhead', to: 2 });
+    expect(step(key('x'), 2)).toEqual({ by: 'typeAhead', to: null });
+    // "d" alone lands on date; "cxd" would match nothing.
+    expect(step(key('d'), 2)).toEqual({ by: 'typeAhead', to: 4 });
+  });
+
   it('within the window the query extends instead', () => {
     const { step, advance } = setup();
     step(key('c'), null);

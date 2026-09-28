@@ -60,6 +60,7 @@ prefixed. There is no CI; every gate is run by hand.
 - `src/components/TableRow.test.tsx`
 - `src/components/TableRuler.test.tsx`
 - `src/hooks/useTableKeyboard.test.ts`
+- `src/hooks/useTypeAhead.test.ts`
 - `src/lib/tableModel.test.ts`
 - `src/lib/rowWindow.test.ts`
 - `src/lib/tableKeyboard.test.ts`
