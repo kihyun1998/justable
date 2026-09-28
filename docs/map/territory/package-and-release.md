@@ -61,6 +61,6 @@ today.
 ## Known holes / open
 
 - **No release process is written down** — versioning, changelog, who publishes. The version is
-  `0.1.0` and nothing records what would move it.
+  `0.1.0` and nothing records what would move it. Tracked: #7.
 - **TypeScript is pinned to `~7.0.2`**, the Go-native compiler; which declaration output a consumer on
   TypeScript 5 can read has not been checked.

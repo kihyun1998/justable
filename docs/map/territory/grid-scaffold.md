@@ -33,13 +33,22 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   ARIA has. State messages ("empty", "loading") are the consumer's siblings of the grid, and
   `showRows={false}` draws no data rows while leaving the leading rows.
 - **Leading rows are never windowed** and each is told its `aria-rowindex` (from 2).
+- **`colCount` is the consumer's to pass** — the maintainer's call, 2026-09-28, over a runtime check
+  of the header's `columnheader`s and over taking `columns` instead. The grid receives the header as
+  an element and cannot count it; `visibleColumns(layout).length` is the value, and the README says
+  so.
 - **`aria-multiselectable` is the consumer's to declare** (`multiselectable`, off by default). The
   engine has no selection model, so it cannot know; the attribute is left out entirely rather than
   rendered as `"false"`, which is ARIA's default anyway. It was unconditional until #4, which made a
   consumer's selection-free table announce multi-selection.
 - **A disabled grid is dead to every gesture by one class**, `pointer-events-none` with
   `opacity-50`, plus `aria-disabled` — rather than a condition in each handler, which a handler added
-  later would forget. The container keeps its `tabIndex`, so it can still take focus and keys.
+  later would forget. **The container keeps its focus** — the maintainer's call, 2026-09-28, over
+  dropping it to `tabIndex={-1}`. Shown: the W3C APG, read at w3c/aria-practices `3f094fde1c`
+  (`content/practices/keyboard-interface/keyboard-interface-practice.html`, "Focusability of
+  disabled controls"), which keeps `aria-disabled` elements focusable because screen reader users
+  discover by moving focus. Keys are the consumer's: it decides whether to act on `step` while the
+  grid is disabled, and the README says so.
 - **`fill` chooses between taking the remaining height (`flex-1`) and shrinking to the header
   (`shrink-0`).**
 - **A floor click is a press on the scroller itself** (`target === currentTarget`), never one that
@@ -80,7 +89,5 @@ APG grid pattern and VS Code's list (one focusable container) as what this shape
 
 ## Known holes / open
 
-- **A disabled grid still takes focus and keys.** `pointer-events-none` stops pointers only; whether
-  keys should also stop is decided nowhere.
-- **`colCount` is not derived.** A consumer that passes a count different from its drawn columns
-  gets a wrong `aria-colcount` and no error.
+- **Nothing checks `colCount`.** A consumer passing a count other than its drawn columns gets a wrong
+  `aria-colcount` and no error; the README says what to pass.

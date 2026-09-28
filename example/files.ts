@@ -6,10 +6,13 @@ export interface FileEntry {
   modified: Date;
 }
 
-/** Names with a space inside, sharing a prefix with others, and in both letter cases. */
+/**
+ * Names with a space inside, sharing a prefix with others, and in both letter cases. `news.txt` comes
+ * first, so "new" lands on it and only a space kept in the query reaches `new folder`.
+ */
 const FIXED: readonly string[] = [
-  'new folder',
   'news.txt',
+  'new folder',
   'New Year plan.md',
   'notes',
   'Cherry.png',

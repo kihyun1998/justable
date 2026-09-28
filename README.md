@@ -73,6 +73,14 @@ Row colours — hover, selection, focus — are yours: pass them as row classes.
 `TableHeader` takes a required `refusePress(event)`: the engine has no rule of its own about which
 press starts a column resize. `(e) => e.button !== 0` is the simplest.
 
+`TableGrid` takes `colCount`, the number of drawn columns, for `aria-colcount`: pass
+`model.visibleColumns(layout).length`. The grid receives the header as an element and cannot count
+it.
+
+A `disabled` grid stops pointer input and says `aria-disabled`, but keeps its focus, so a screen
+reader user can still find it. Whether keys do anything is yours: don't act on `step`'s answer while
+it is disabled.
+
 The engine marks its parts with data attributes you can select by, in your own styles or checks,
 and they are kept stable: `data-table` on the grid root, `data-table-header` on the header row,
 `data-table-resize="<key>"` on each column's resize handle, and `data-table-ruler="<key>"` on an
@@ -89,6 +97,7 @@ pnpm install
 pnpm test
 pnpm build     # dist/: ESM, type declarations, style.css
 pnpm example   # example/ in a browser, against src/ — an edit to the engine reloads it
+pnpm check:example   # the example driven in an installed Chrome or Edge (CHROME_PATH to choose)
 ```
 
 `example/` is a file list of 5,000 rows and a folder list beside it, wired the way a consumer

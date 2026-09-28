@@ -26,7 +26,8 @@
     "build": "tsc -p tsconfig.build.json && tailwindcss -i src/style.css -o dist/style.css",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p example/tsconfig.json",
     "test": "vitest run",
-    "example": "vite --config example/vite.config.ts"
+    "example": "vite --config example/vite.config.ts",
+    "check:example": "node example/check.mjs"
   },
   "peerDependencies": {
     "lucide-react": ">=0.500.0",
@@ -43,6 +44,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "^29.1.1",
     "lucide-react": "^0.577.0",
+    "puppeteer-core": "^23.11.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwindcss": "~4.2.1",

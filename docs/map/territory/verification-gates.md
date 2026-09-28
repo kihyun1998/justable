@@ -49,9 +49,17 @@ prefixed. There is no CI; every gate is run by hand.
 - **`example/` is where layout is seen in this repository.** `pnpm example` serves a consumer of the
   engine's source in a browser: no Tailwind and no preflight of its own, so it shows what a page
   without them gets. It found the header's sort buttons drawn with a browser's button styles, which
-  PenTerm's preflight had always hidden ([header row](header-row.md)). It is not a gate: nothing runs
-  it, and its checks so far were a headless Chrome script outside the repository. `pnpm typecheck`
-  covers it (`example/tsconfig.json`).
+  PenTerm's preflight had always hidden ([header row](header-row.md)). `pnpm typecheck` covers it
+  (`example/tsconfig.json`).
+- **`pnpm check:example` is the layout gate** — the maintainer's call, 2026-09-28, to keep it in the
+  repository. It serves the example with Vite, drives it in an installed Chrome or Edge, and checks
+  what jsdom cannot: header and row tracks equal (at load, after a drag, after auto-fit), the sort
+  button free of browser button styles, windowing, the sort cycle, type-ahead through a space, Space
+  after a move, and the theme through the colour variables. It **exits 1 when no browser is found**,
+  since a run that inspected nothing is not a pass. Proven failing: removing the button reset,
+  dropping a placed row's `right: 0`, and refusing the space mid-query each fail it. The type-ahead
+  check first asserts that "new" lands on `news.txt` — without that, `new folder` came first and the
+  check passed with the space refused.
 - **`src/lint` is excluded from the build**, so the lint ships in no package and runs only under
   `pnpm test`.
 
@@ -62,6 +70,7 @@ prefixed. There is no CI; every gate is run by hand.
 - `example/FileTable.tsx` — `FileTable`
 - `example/FolderList.tsx` — `FolderList`
 - `example/tsconfig.json`
+- `example/check.mjs`
 - `package.json`
 - `src/lint/the-engine-reaches-nothing-outside-itself.test.ts` — `sourceFiles`, `importViolations`, `staysInside`, `colourViolations`, `EXTERNAL`, `ENGINE`
 - `src/components/prefix.test.tsx` — `unprefixed`
@@ -102,7 +111,6 @@ prefixed. There is no CI; every gate is run by hand.
 - **Two branches of `staysInside` are unexercised**: an inner directory whose name starts with `..`,
   and a specifier resolving to another drive (an absolute `path.relative`). Neither shape exists in
   the tree.
-- **No CI.** Nothing runs any of this unless someone does.
-- **The example's browser checks are not in the repository.** Track alignment, windowing, sorting,
-  resize, auto-fit, type-ahead and the theme were measured in headless Chrome on 2026-09-28 by a
-  script kept outside; nothing re-runs them.
+- **No CI.** Nothing runs any of this unless someone does. Tracked: #6.
+- **`check:example` needs an installed browser**, and nothing runs it — there is no CI. Its "no
+  browser" exit has not been exercised on a machine without one.
