@@ -1,0 +1,7 @@
+/* justable's stylesheet: its utilities only, every class prefixed `justable:` so none collides with
+   a consumer's own Tailwind. The layer order is declared first because cascade layers rank in the
+   order they are first seen — imported ahead of a consumer's Tailwind, a sheet declaring only
+   `theme` and `utilities` would put the consumer's `components` above every utility. */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme' layer(theme) prefix(justable);
+@import 'tailwindcss/utilities' layer(utilities) prefix(justable);
