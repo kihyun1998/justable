@@ -33,8 +33,10 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   ARIA has. State messages ("empty", "loading") are the consumer's siblings of the grid, and
   `showRows={false}` draws no data rows while leaving the leading rows.
 - **Leading rows are never windowed** and each is told its `aria-rowindex` (from 2).
-- **`aria-multiselectable` is always set.** The grid declares it whatever the consumer's selection
-  model is.
+- **`aria-multiselectable` is the consumer's to declare** (`multiselectable`, off by default). The
+  engine has no selection model, so it cannot know; the attribute is left out entirely rather than
+  rendered as `"false"`, which is ARIA's default anyway. It was unconditional until #4, which made a
+  consumer's selection-free table announce multi-selection.
 - **A disabled grid is dead to every gesture by one class**, `pointer-events-none` with
   `opacity-50`, plus `aria-disabled` — rather than a condition in each handler, which a handler added
   later would forget. The container keeps its `tabIndex`, so it can still take focus and keys.
@@ -49,7 +51,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 ## Code
 
-- `src/components/TableGrid.tsx` — `TableGrid`, `TableGridProps`, `RowPlace`, `rowIdPrefix`, `firstDataRow`, `leadingRows`, `onFloorClick`, `wrapScroller`, `scrollerProps`
+- `src/components/TableGrid.tsx` — `TableGrid`, `TableGridProps`, `RowPlace`, `multiselectable`, `rowIdPrefix`, `firstDataRow`, `leadingRows`, `onFloorClick`, `wrapScroller`, `scrollerProps`
 
 ## Reference behaviour
 
@@ -78,8 +80,6 @@ APG grid pattern and VS Code's list (one focusable container) as what this shape
 
 ## Known holes / open
 
-- **`aria-multiselectable` is unconditional.** A consumer with single selection announces multiple;
-  there is no prop to say otherwise.
 - **A disabled grid still takes focus and keys.** `pointer-events-none` stops pointers only; whether
   keys should also stop is decided nowhere.
 - **`colCount` is not derived.** A consumer that passes a count different from its drawn columns

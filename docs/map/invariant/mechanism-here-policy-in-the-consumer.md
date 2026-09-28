@@ -35,7 +35,8 @@ consumer's policy that the consumer cannot see.
   does, height and type.
 - [Table row](../territory/table-row.md) — row colours and every row handler.
 - [Auto-fit](../territory/auto-fit.md) — the renderer, the classes, and the clamp.
-- [Grid scaffold](../territory/grid-scaffold.md) — the label, the floor click, the scroller wrapper.
+- [Grid scaffold](../territory/grid-scaffold.md) — the label, the floor click, the scroller wrapper,
+  and whether the grid is multi-selectable.
 - [Verification gates](../territory/verification-gates.md) — the import rule is the mechanical half.
 
 ## What a violation looks like

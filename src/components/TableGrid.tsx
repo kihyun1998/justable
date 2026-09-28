@@ -43,6 +43,8 @@ export interface TableGridProps {
   rowIdPrefix: string;
   /** Dead to every pointer gesture. */
   disabled?: boolean;
+  /** Whether the consumer lets several rows be selected at once; the engine selects nothing. */
+  multiselectable?: boolean;
   /** A row's height in `rem`, used only before a real row has been measured. */
   rowHeightRem: number;
   /** `useTableKeyboard`'s link; the grid writes the rows a page moves by into it. */
@@ -68,6 +70,7 @@ export function TableGrid({
   focus,
   rowIdPrefix,
   disabled = false,
+  multiselectable = false,
   rowHeightRem,
   keyboard,
   onFloorClick,
@@ -214,7 +217,7 @@ export function TableGrid({
           ? rowId(focus)
           : undefined
       }
-      aria-multiselectable
+      aria-multiselectable={multiselectable || undefined}
       aria-rowcount={firstDataRow - 1 + total}
       aria-colcount={colCount}
     >

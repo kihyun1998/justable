@@ -48,12 +48,19 @@ function renderGrid(over: Partial<TableGridProps> & { rows?: readonly string[] }
 const dataRows = (grid: HTMLElement) => [...grid.querySelectorAll('[data-row]')];
 
 describe('TableGrid', () => {
-  it('is a named, focusable, multi-selectable grid', () => {
+  it('is a named, focusable grid', () => {
     const grid = renderGrid();
     expect(grid.getAttribute('aria-label')).toBe('Things');
     expect(grid.tabIndex).toBe(0);
-    expect(grid.getAttribute('aria-multiselectable')).toBe('true');
     expect(grid.getAttribute('aria-colcount')).toBe('2');
+  });
+
+  it('⚠️ says it is multi-selectable only when the consumer says so', () => {
+    expect(renderGrid().hasAttribute('aria-multiselectable')).toBe(false);
+    cleanup();
+    expect(renderGrid({ multiselectable: false }).hasAttribute('aria-multiselectable')).toBe(false);
+    cleanup();
+    expect(renderGrid({ multiselectable: true }).getAttribute('aria-multiselectable')).toBe('true');
   });
 
   it('numbers data rows from 2, after the header', () => {
