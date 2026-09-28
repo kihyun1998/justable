@@ -1,0 +1,50 @@
+{
+  "map_dir": "docs/map",
+  "path_roots": ["."],
+  "source_globs": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.css", "*.json", "*.ts"],
+  "comment_globs": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.css"],
+  "comment_exts": [".ts", ".tsx", ".css", ".json"],
+  "cited_path_pattern": "`(docs/[A-Za-z0-9_./-]+\\.md)`",
+  "command_words": ["grep", "ls", "rg", "pnpm", "git", "npm"],
+  "kinds": {
+    "territory": {
+      "match": "territory/",
+      "sections": [
+        "## What it is",
+        "## Governing decisions",
+        "## Design model",
+        "## Code",
+        "## Reference behaviour",
+        "## Cross-cutting invariants",
+        "## Blast radius",
+        "## Known holes / open"
+      ]
+    },
+    "invariant": {
+      "match": "invariant/",
+      "sections": [
+        "## The fact",
+        "## Why it is cross-cutting",
+        "## Territories it holds in",
+        "## What a violation looks like",
+        "## Discovery history",
+        "## Where it will recur"
+      ]
+    }
+  },
+  "owned_value_patterns": [],
+  "reciprocity": {
+    "both_ways": false,
+    "from": {
+      "dir": "invariant",
+      "section": "## Territories it holds in",
+      "link_pattern": "\\(\\.\\./territory/([a-z0-9-]+\\.md)\\)"
+    },
+    "to": {
+      "dir": "territory",
+      "section": "## Cross-cutting invariants",
+      "link_pattern": "\\(\\.\\./invariant/([a-z0-9-]+\\.md)\\)"
+    }
+  },
+  "skip_dirs": [".git", "node_modules", "dist"]
+}
