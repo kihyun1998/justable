@@ -51,8 +51,8 @@ export function useTableKeyboard({ now = Date.now }: { now?: () => number } = {}
       return { by: 'move', to: moved };
     }
 
-    // One printable character without a chord modifier; named keys are all longer. A space is left
-    // to the consumer — it is the keyboard's click in a list.
+    // One printable character without a chord modifier. Space is deliberately not type-ahead:
+    // `docs/map/territory/keyboard-movement.md`.
     if (
       event.key.length === 1 &&
       event.key !== ' ' &&
@@ -67,7 +67,8 @@ export function useTableKeyboard({ now = Date.now }: { now?: () => number } = {}
         at - typeAhead.current.at > TYPE_AHEAD_MS,
       );
       typeAhead.current = { query, at };
-      // Walking searches after the row; narrowing from the row itself.
+      // Walking searches after the row, narrowing from the row itself:
+      // `docs/map/territory/keyboard-movement.md`.
       const hit = typeAheadIndex(query, names, walk ? focus : focus === null ? null : focus - 1);
       if (hit !== null) event.preventDefault();
       return { by: 'typeAhead', to: hit };

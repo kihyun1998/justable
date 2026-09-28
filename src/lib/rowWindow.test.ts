@@ -1,17 +1,14 @@
 /**
- * Which rows are worth drawing, and where to scroll to reveal one.
- *
- * The arithmetic lives on its own because it is the half that can be wrong *quietly*: an off-by-one
- * shows up as a row missing at the edge of the viewport, which looks like a rendering glitch rather
- * than a bug in a number.
+ * Which rows are worth drawing, and where to scroll to reveal one. Why this arithmetic is tested
+ * apart: `docs/map/territory/verification-gates.md`.
  */
 import { describe, expect, it } from 'vitest';
 
 import { BLOCK_ROWS, scrollToReveal, visibleRange } from './rowWindow.js';
 
 /**
- * The largest step a consumer's drag edge-scroll moves in one frame, in px. PenTerm's is 48, and its
- * own suite checks its constant against this function.
+ * The largest step a consumer's drag edge-scroll moves in one frame, in px:
+ * `docs/map/territory/row-windowing.md`.
  */
 const EDGE_SCROLL_MAX_STEP = 48;
 
@@ -100,8 +97,7 @@ describe('visibleRange', () => {
 
   /**
    * A drag's edge scroll moves the scroller and hit-tests the same frame, before a re-render moves the
-   * window (47, the-explorer-sees-one-folder-at-a-time 11). The row under either edge after one step, up
-   * or down, must already be drawn.
+   * window. The row under either edge after one step, up or down, must already be drawn.
    */
   it('one edge-scroll step either way never uncovers an undrawn row at an edge', () => {
     for (const rowHeight of [R, 24]) {
@@ -153,11 +149,8 @@ describe('visibleRange', () => {
   });
 
   /**
-   * ⚠️ **The guard that matters most.** `rowHeight` is measured from the DOM, and a measurement can
-   * arrive as 0 — before first paint, or in a pane whose size is still zero. Dividing by it then
-   * yields `Infinity`, and a range of `0..Infinity` renders every row of a 5000-entry folder, which
-   * is precisely the three-second freeze this ticket exists to remove. Failing safe means drawing
-   * *few*, not *all*.
+   * ⚠️ **The guard that matters most.** A measured row height can arrive as 0, and dividing by it
+   * must never ask for every row: `docs/map/invariant/zero-is-no-measurement.md`.
    */
   it('a zero or nonsense row height does not ask for every row', () => {
     for (const rowHeight of [0, -1, Number.NaN]) {
@@ -174,9 +167,8 @@ describe('visibleRange', () => {
   });
 
   /**
-   * The window is bounded by the viewport, not by the folder. This is the whole point of the
-   * ticket, expressed as an assertion: the same viewport asks for the same handful of rows whether
-   * the folder holds ten entries or five thousand.
+   * The window is bounded by the viewport, not by the list: the same viewport asks for the same
+   * handful of rows whether the list holds ten entries or five thousand.
    */
   it('the window does not grow with the folder', () => {
     const small = visibleRange({ scrollTop: 0, viewportHeight: 200, rowHeight: R, total: 50 });
@@ -202,8 +194,7 @@ describe('scrollToReveal', () => {
   });
 
   /**
-   * ⚠️ **A row straddling an edge is not "on screen".** Half a row is not readable, and the
-   * arrow key that just landed there has to show what it landed on.
+   * ⚠️ **A row straddling an edge is not "on screen"**: `docs/map/territory/row-windowing.md`.
    */
   it('a row only half visible at the bottom is brought fully in', () => {
     // 200 / 28 = 7.14 rows, so row 7 is cut off at scrollTop 0.

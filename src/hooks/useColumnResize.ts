@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 /**
  * A column-border drag: mousedown arms it, `document` mousemove reports the width, mouseup ends it.
- * Mouse events, not HTML5 drag — Tauri's drag-drop handling swallows the latter.
+ * Not HTML5 drag, deliberately: `docs/map/territory/column-resize.md`.
  */
 export function useColumnResize<K extends string>(onResize: (key: K, px: number) => void) {
   /** The border being dragged, for display only. */
@@ -10,7 +10,6 @@ export function useColumnResize<K extends string>(onResize: (key: K, px: number)
   /** Removes the running drag's `document` listeners; `null` while none runs. */
   const detach = useRef<(() => void) | null>(null);
 
-  // A drag outliving its component would keep writing widths.
   useEffect(
     () => () => {
       detach.current?.();

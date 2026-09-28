@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The keyboard hook against a plain list of names — no Explorer, no DOM beyond the hook.
+ * The keyboard hook against a plain list of names, with no DOM beyond the hook.
  */
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';

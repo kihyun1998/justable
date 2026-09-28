@@ -7,9 +7,9 @@ export interface TableRulerProps<Row, K extends string> {
   ref?: Ref<HTMLDivElement>;
   /** The column being measured. */
   column: K;
-  /** Every row, not the drawn window — a fit must not depend on the scroll position. */
+  /** Every row, not the drawn window. */
   rows: readonly Row[];
-  /** The same content the real cell draws, so the two cannot measure apart. */
+  /** The same content the real cell draws. */
   cell: (row: Row, key: K) => ReactNode;
   cellClassName?: (key: K) => string | undefined;
   /** Inherited type the real cells get from their row. */

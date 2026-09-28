@@ -30,9 +30,8 @@ export interface TableHeaderProps<K extends string> {
 }
 
 /**
- * The hover fill: a layer behind the content that fades in under a pointer on a hover-capable
- * device (Tailwind wraps `hover:` in `@media (hover: hover)`, so a tap leaves nothing stuck), never
- * on a disabled button.
+ * The hover fill: a layer behind the content, shown under a hover-capable pointer and never on a
+ * disabled button. Why a layer: `docs/map/territory/header-row.md`.
  */
 const HOVER_LAYER = classNames(
   "justable:after:pointer-events-none justable:after:absolute justable:after:inset-0 justable:after:-z-1 justable:after:rounded-[inherit] justable:after:content-['']",
@@ -55,7 +54,8 @@ export function TableHeader<K extends string>({
   const { resizing, begin } = useColumnResize(onResize);
 
   const startResize = (column: HeaderColumn<K>) => (e: React.MouseEvent) => {
-    // Suppressed for every button, so a wheel press here never starts autoscroll; only the drag is refused.
+    // Suppressed for every button before `refusePress` decides, deliberately:
+    // `docs/map/territory/column-resize.md`.
     e.preventDefault();
     e.stopPropagation();
     if (refusePress(e)) return;
@@ -66,7 +66,7 @@ export function TableHeader<K extends string>({
     <div
       role="row"
       aria-rowindex={1}
-      // `relative z-20` stacks the handles (`z-10`) with the row; the surface keeps rows from showing through.
+      // `relative z-20` over its own surface: `docs/map/territory/header-row.md`.
       className={classNames(
         TABLE_GRID,
         'justable:relative justable:z-20 justable:flex-none justable:border-b justable:border-(--table-border) justable:bg-(--table-header-bg)',
@@ -80,14 +80,13 @@ export function TableHeader<K extends string>({
           key={column.key}
           role="columnheader"
           aria-colindex={i + 1}
-          // Only the sorted column carries it.
           aria-sort={
             sort?.key === column.key ? (sort.desc ? 'descending' : 'ascending') : undefined
           }
-          // `self-stretch`: the grid centres items, and the handle and target need the full height.
+          // `self-stretch` is deliberate: `docs/map/territory/header-row.md`.
           className="justable:relative justable:flex justable:min-w-0 justable:items-center justable:self-stretch"
         >
-          {/* The handle straddles this column's right border — the border belongs to the column on its left. */}
+          {/* The handle straddles this column's right border. */}
           <div
             data-table-resize={column.key}
             role="separator"
@@ -97,7 +96,7 @@ export function TableHeader<K extends string>({
             onDoubleClick={onAutoFit ? () => onAutoFit(column.key) : undefined}
             className="justable:group justable:absolute justable:-right-1.5 justable:top-0 justable:z-10 justable:h-full justable:w-3 justable:cursor-col-resize"
           >
-            {/* The drawn line: revealed by colour, never width, and short of both edges. */}
+            {/* The drawn line; how it shows: `docs/map/territory/column-resize.md`. */}
             <span
               aria-hidden
               className={classNames(
@@ -109,7 +108,7 @@ export function TableHeader<K extends string>({
               )}
             />
           </div>
-          {/* The whole cell is the sort target; rank comes from weight, never from dimmed ink. */}
+          {/* The whole cell is the sort target. */}
           <button
             type="button"
             onClick={() => onSort(column.key)}

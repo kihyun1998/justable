@@ -41,7 +41,7 @@ export interface TableGridProps {
   focus: number | null;
   /** Prefix for row ids; unique per grid. */
   rowIdPrefix: string;
-  /** Dead to every gesture, by one CSS line rather than a condition per handler. */
+  /** Dead to every pointer gesture. */
   disabled?: boolean;
   /** A row's height in `rem`, used only before a real row has been measured. */
   rowHeightRem: number;
@@ -78,11 +78,11 @@ export function TableGrid({
   const canvasRef = useRef<HTMLDivElement>(null);
   const laneRef = useRef<HTMLDivElement>(null);
   const laneInnerRef = useRef<HTMLDivElement>(null);
-  // Read through a ref, so the once-attached observer's closure never holds a stale value.
+  // Read through a ref by the observer attached once: `docs/map/territory/row-windowing.md`.
   const rowHeightRemRef = useRef(rowHeightRem);
   rowHeightRemRef.current = rowHeightRem;
 
-  // Scroll and size are separate state: measuring inside the scroll handler forces layout every frame.
+  // Scroll and size are separate state, deliberately: `docs/map/territory/row-windowing.md`.
   const [scrollTop, setScrollTop] = useState(0);
   const [box, setBox] = useState<{ viewportHeight: number; rowHeight: number } | null>(null);
 
@@ -90,12 +90,11 @@ export function TableGrid({
     const el = scrollerRef.current;
     if (!el) return;
 
-    // The lane is `overflow-x: clip`, which reserves no gutter, so it takes the scroller's by hand.
-    // React never writes this property — one owner.
+    // The lane's gutter, written by hand and never by React: `docs/map/territory/header-lane.md`.
     const lane = laneRef.current;
     if (lane) lane.style.paddingRight = `${el.offsetWidth - el.clientWidth}px`;
 
-    // A zero viewport is no measurement; `box` stays null and rows flow unwindowed.
+    // A zero viewport is no measurement: `docs/map/invariant/zero-is-no-measurement.md`.
     if (el.clientHeight <= 0) return;
     const row = canvasRef.current?.firstElementChild;
     const rootPx = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -118,14 +117,15 @@ export function TableGrid({
     const ro = new ResizeObserver(measureBox);
     ro.observe(el);
     return () => ro.disconnect();
-    // Attached once: `measureBox` reads only refs and calls setBox, so the first closure stays correct.
+    // Attached once, deliberately: `docs/map/territory/row-windowing.md`.
   }, []);
 
-  // Bring the focused row back into view; under windowing it may not be in the DOM to scroll to.
+  // Bring the focused row back into view.
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el || !box || focus === null) return;
-    // Reads the offset from the element so a scroll alone does not re-run this and pull the list back.
+    // Reads the offset from the element, not from state, deliberately:
+    // `docs/map/territory/row-windowing.md`.
     const next = scrollToReveal(focus, { scrollTop: el.scrollTop, ...box });
     if (next !== null) el.scrollTop = next;
   }, [focus, box]);
@@ -149,7 +149,8 @@ export function TableGrid({
             id: rowId(index),
             rowIndex: firstDataRow + index,
             focused: focus === index,
-            // `right: 0` as well as `left`, or an absolute row shrinks to fit and the filler track collapses.
+            // `right: 0` as well as `left` is deliberate:
+            // `docs/map/invariant/drawn-columns-are-tracks-are-cells.md`.
             style: box
               ? { position: 'absolute', top: index * box.rowHeight, left: 0, right: 0 }
               : undefined,
@@ -166,11 +167,12 @@ export function TableGrid({
       {...scrollerProps}
       onScroll={(e) => {
         setScrollTop(e.currentTarget.scrollTop);
-        // Horizontal follows in the DOM directly; through state the header would trail by a frame.
+        // Horizontal follows in the DOM directly, not through state:
+        // `docs/map/territory/header-lane.md`.
         const inner = laneInnerRef.current;
         if (inner) inner.style.transform = `translateX(${-e.currentTarget.scrollLeft}px)`;
       }}
-      // `scrollbar-gutter: stable`, so a classic scrollbar appearing does not narrow the rows under the header.
+      // `scrollbar-gutter: stable`: `docs/map/territory/header-lane.md`.
       className="justable:min-h-0 justable:flex-1 justable:overflow-auto justable:[scrollbar-gutter:stable]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onFloorClick?.();
@@ -180,7 +182,7 @@ export function TableGrid({
         <Fragment key={i}>{render(2 + i)}</Fragment>
       ))}
       {showRows && (
-        // `presentation`: a rowgroup inside the scroller's rowgroup is not a shape ARIA has.
+        // `presentation` is deliberate: `docs/map/territory/grid-scaffold.md`.
         <div
           ref={canvasRef}
           role="presentation"
@@ -196,7 +198,7 @@ export function TableGrid({
   return (
     <div
       role="grid"
-      // Where a consumer binds the `--table-*` colours, so they resolve in the table's own scope.
+      // Where a consumer binds the `--table-*` colours.
       data-table
       className={classNames(
         'justable:flex justable:min-h-0 justable:flex-col',
@@ -206,7 +208,7 @@ export function TableGrid({
       aria-disabled={disabled || undefined}
       aria-label={label}
       tabIndex={0}
-      // Never an id no element has: removed while the focused row is outside the window.
+      // Removed while the focused row is outside the window: `docs/map/territory/grid-scaffold.md`.
       aria-activedescendant={
         focus !== null && focus >= rowWindow.start && focus < rowWindow.end
           ? rowId(focus)
@@ -216,7 +218,8 @@ export function TableGrid({
       aria-rowcount={firstDataRow - 1 + total}
       aria-colcount={colCount}
     >
-      {/* The header lane: `clip`, not `hidden` — `hidden` forces the other axis to `auto`. */}
+      {/* The header lane: `clip`, not `hidden`, deliberately:
+          `docs/map/territory/header-lane.md`. */}
       <div role="rowgroup" ref={laneRef} className="justable:shrink-0 justable:[overflow-x:clip]">
         <div ref={laneInnerRef}>{header}</div>
       </div>

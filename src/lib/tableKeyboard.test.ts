@@ -20,8 +20,7 @@ describe('nextFocusIndex', () => {
   });
 
   it('stops at both ends rather than wrapping', () => {
-    // Wrapping in a file list is disorienting: a long press at the bottom silently returns you to
-    // the top, and the selection you were extending jumps with it.
+    // Never wrapping is deliberate: `docs/map/territory/keyboard-movement.md`.
     expect(move('ArrowDown', 9)).toBe(9);
     expect(move('ArrowUp', 0)).toBe(0);
   });
@@ -45,11 +44,8 @@ describe('nextFocusIndex', () => {
   });
 
   /**
-   * ⚠️ **This is the obligation 03c handed over, expressed as a test.**
-   *
-   * The table is `role="grid"`, and APG's grid pattern is written cell-first: *"Right Arrow: Moves
-   * focus one cell to the right."* This table declines that, because its cells are not individually
-   * actionable — nobody acts on a file's 수정 date, and there is nothing inside a cell to reach.
+   * ⚠️ **←/→ are declined, and this case pins it.** The table is `role="grid"`, whose APG pattern
+   * is cell-first; why it declines: `docs/map/territory/keyboard-movement.md`.
    *
    * Declining is a decision, so it is pinned here rather than left as an absence. If left/right are
    * ever given a meaning, this case is where the argument has to be made.
@@ -66,8 +62,7 @@ describe('nextFocusIndex', () => {
   });
 
   /**
-   * An empty folder still receives key presses — the pane is focusable and the user can arrive at
-   * it before anything has loaded. Every movement has to answer "nowhere".
+   * An empty list still receives key presses. Every movement has to answer "nowhere".
    */
   it('an empty folder has nowhere to go', () => {
     for (const key of ['ArrowDown', 'ArrowUp', 'Home', 'End', 'PageDown', 'PageUp']) {
@@ -77,9 +72,8 @@ describe('nextFocusIndex', () => {
   });
 
   /**
-   * ⚠️ `rowsPerPage` is measured from the viewport, so it can arrive as 0 in a pane that has not
-   * been laid out. A page of nothing must still move by something, or PageDown becomes a key that
-   * silently does nothing in exactly the situation the user reaches for it.
+   * ⚠️ `rowsPerPage` can arrive as 0 before layout, and a page must still move by something:
+   * `docs/map/invariant/zero-is-no-measurement.md`.
    */
   it('a page never measures as zero movement', () => {
     expect(nextFocusIndex({ key: 'PageDown', focus: 0, total: 10, rowsPerPage: 0 })).toBe(1);
@@ -123,8 +117,7 @@ describe('typeAheadIndex', () => {
 
   /**
    * ⚠️ The list is in **screen order**, which is the sorted order and not the filesystem's. Passing
-   * the wrong array makes type-ahead land on a row other than the one it names — the same trap the
-   * shift-range has, and the reason both take `shownNames`.
+   * the wrong array makes type-ahead land on a row other than the one it names.
    */
   it('answers positions in the order it was given', () => {
     expect(typeAheadIndex('c', ['cherry', 'Cranberry'], null)).toBe(0);
@@ -140,8 +133,7 @@ describe('typeAheadStep', () => {
 
   /**
    * ⚠️ **The rule people expect without naming it.** `c` `c` `c` cycles the c-names; it does not
-   * search for "ccc", which matches nothing and makes the key look broken. Windows Explorer does
-   * the same.
+   * search for "ccc", which matches nothing and makes the key look broken.
    */
   it('the same letter again walks instead of extending', () => {
     expect(typeAheadStep('c', 'c', false)).toEqual({ query: 'c', walk: true });

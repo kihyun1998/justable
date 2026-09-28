@@ -2,11 +2,9 @@
  * The table engine reaches nothing outside itself: no import but its own files, React, React DOM
  * and the icon set, and no colour utility but one reading a `--table-*` variable.
  *
- * Written against the engine's own directory (found from this file, not from a repo root), so it
- * travels with the engine into its package unchanged. The colour rule names no consumer's tokens:
- * any colour-bearing utility whose value is a named token rather than a `(--table-…)` variable is a
- * reach into somebody's theme — invisible in the app that happens to define it, broken everywhere
- * else.
+ * The engine is found from this file, not from a repo root:
+ * `docs/map/territory/verification-gates.md`.
+ * Why colour goes only through `--table-*`: `docs/map/territory/colour-variables.md`.
  */
 import fs from 'node:fs';
 import path from 'node:path';

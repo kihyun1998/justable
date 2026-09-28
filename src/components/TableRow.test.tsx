@@ -25,7 +25,7 @@ function renderRow(props: Partial<React.ComponentProps<typeof TableRow<'a' | 'b'
 
 describe('the grid holds no spacing of its own', () => {
   it('⚠️ no `gap` and no padding on the grid — a strip between cells would belong to none', () => {
-    // Tokens, not a regex: a word-boundary escape once lost its backslash on the way into a file.
+    // Tokens, not a regex, deliberately: `docs/map/territory/verification-gates.md`.
     const tokens = TABLE_GRID.split(' ').map((c) => c.replace(/^justable:/, ''));
     expect(tokens.filter((c) => c.startsWith('gap-'))).toEqual([]);
     expect(tokens.filter((c) => c.startsWith('p') && c.includes('-'))).toEqual([]);

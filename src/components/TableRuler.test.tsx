@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
- * What jsdom can check about the ruler: its shape. Widths need a layout engine — `check:guide`'s
- * `explorer-table-double-click-auto-fits-the-column` holds that half.
+ * What jsdom can check about the ruler: its shape. Where widths are checked:
+ * `docs/map/territory/verification-gates.md`.
  */
 import { act, cleanup, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -23,7 +23,7 @@ describe('TableRuler', () => {
 
   /**
    * RTL's text queries do not skip `aria-hidden` or `inert`, so a ruler left mounted doubles every
-   * row's text — why it exists only while measuring.
+   * row's text.
    */
   it('⚠️ a mounted ruler is found by text queries — so it must not stay mounted', () => {
     render(<TableRuler column="name" rows={ROWS} cell={(row) => row} />);

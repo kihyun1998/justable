@@ -3,8 +3,8 @@ import { flushSync } from 'react-dom';
 
 /**
  * Auto-fit: mount a `TableRuler` for one column, read its cells' widths, unmount it — all inside the
- * calling event. The ruler exists only while measuring, so it costs nothing and duplicates no text
- * the rest of the time.
+ * calling event, so `measure` is called from an event handler. Why the ruler exists only while
+ * measuring: `docs/map/territory/auto-fit.md`.
  */
 export function useColumnAutoFit<K extends string>() {
   /** The column whose ruler is mounted, or `null`. */

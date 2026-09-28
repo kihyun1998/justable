@@ -7,7 +7,9 @@ export interface TableRowProps<K extends string> extends Omit<
   HTMLAttributes<HTMLDivElement>,
   'children'
 > {
-  /** The drawn columns; one cell each, so the cell count always matches the tracks. */
+  /**
+   * The drawn columns; one cell each: `docs/map/invariant/drawn-columns-are-tracks-are-cells.md`.
+   */
   columns: readonly K[];
   gridStyle: CSSProperties;
   /** 1-based position in the whole grid, the header being row 1. */
@@ -18,8 +20,8 @@ export interface TableRowProps<K extends string> extends Omit<
 }
 
 /**
- * One grid row. `style` is merged under `gridStyle`, so a wrapper's injected style or a windowing
- * offset never replaces the template.
+ * One grid row. `style` is merged under `gridStyle`, never over it:
+ * `docs/map/invariant/drawn-columns-are-tracks-are-cells.md`.
  */
 export function TableRow<K extends string>({
   columns,

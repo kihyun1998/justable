@@ -1,6 +1,6 @@
 /**
- * Where a key moves the keyboard's row: movement keys and type-ahead, as pure functions. Why ←/→ do
- * nothing and how type-ahead walks: `docs/map/territory/keyboard-movement.md` § Design model.
+ * Where a key moves the keyboard's row: movement keys and type-ahead, as pure functions. The rules
+ * and their reasons: `docs/map/territory/keyboard-movement.md`.
  */
 
 /** How long a type-ahead query stays open, in ms. */
@@ -28,7 +28,6 @@ export function nextFocusIndex({ key, focus, total, rowsPerPage }: FocusMoveInpu
   const page = Math.max(FALLBACK_PAGE, Math.floor(rowsPerPage));
 
   switch (key) {
-    // The first arrow lands on the first row rather than nowhere.
     case 'ArrowDown':
       return focus === null ? 0 : clamp(focus + 1);
     case 'ArrowUp':
@@ -55,7 +54,6 @@ export function typeAheadIndex(
   const needle = query.toLowerCase();
   if (!needle || names.length === 0) return null;
 
-  // After the current row, wrapping, so a repeated letter walks the matches.
   const start = from === null ? 0 : from + 1;
   for (let step = 0; step < names.length; step += 1) {
     const i = (start + step) % names.length;
