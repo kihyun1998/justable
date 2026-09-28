@@ -38,6 +38,14 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   `data-table-resize="<key>"` on each handle. PenTerm's guide tour and its checks select by them, and
   `README.md` names them, with `data-table` and `data-table-ruler`, as stable.
 - **Height and type are the consumer's**, as `className` on the row; labels arrive translated.
+- **The sort button undoes a browser's button styles itself** — margin, border, background, vertical
+  padding, and the font family, size and line height, which it inherits. The package ships no
+  preflight, so nothing else will: in a page without one, Chrome drew each header cell as a grey
+  2 px outset button in 13.33 px Arial (measured in `example/`, 2026-09-28). PenTerm never showed it,
+  because its own Tailwind preflight resets buttons. The font is inherited in three utilities rather
+  than the `font` shorthand, which would also set the weight `font-medium` sets — two utilities for
+  one property on one element are what [stylesheet and prefix](stylesheet-and-prefix.md) forbids. A
+  test pins the classes; only a browser shows the effect.
 - **The arrow icons are `lucide-react`'s** `ArrowUp` and `ArrowDown` — the reason it is a peer
   dependency.
 

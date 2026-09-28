@@ -115,6 +115,8 @@ export function TableHeader<K extends string>({
             aria-label={column.label}
             className={classNames(
               'justable:relative justable:isolate justable:flex justable:h-full justable:w-full justable:min-w-0 justable:items-center justable:gap-1 justable:rounded justable:px-2 justable:text-left',
+              // A browser's button styles, undone: `docs/map/territory/header-row.md`.
+              'justable:m-0 justable:border-0 justable:bg-transparent justable:py-0 justable:[font-family:inherit] justable:text-[length:inherit] justable:leading-[inherit]',
               'justable:font-medium justable:text-(--table-header-ink) justable:focus-visible:outline-none justable:focus-visible:ring-1',
               'justable:focus-visible:ring-(--table-focus-ring)',
               HOVER_LAYER,

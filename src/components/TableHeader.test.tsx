@@ -138,6 +138,26 @@ describe('sorting', () => {
     expect(onSort).toHaveBeenCalledWith('b');
   });
 
+  /**
+   * ⚠️ The package ships no preflight, so the sort button must undo a browser's button styles itself.
+   * jsdom computes no CSS, so this pins the classes; the example measures the effect in a browser.
+   */
+  it('the sort button clears what a browser gives a button', () => {
+    const { header } = renderHeader();
+    const classes = header.querySelector('button')!.className.split(' ');
+    for (const reset of [
+      'justable:m-0',
+      'justable:border-0',
+      'justable:bg-transparent',
+      'justable:py-0',
+      'justable:[font-family:inherit]',
+      'justable:text-[length:inherit]',
+      'justable:leading-[inherit]',
+    ]) {
+      expect(classes, reset).toContain(reset);
+    }
+  });
+
   it('the sorted column alone carries `aria-sort` and an arrow', () => {
     const { header } = renderHeader({ sort: { key: 'b', desc: true } });
     const cells = [...header.querySelectorAll('[role="columnheader"]')];
