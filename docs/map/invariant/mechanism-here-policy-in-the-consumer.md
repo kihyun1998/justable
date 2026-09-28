@@ -26,7 +26,8 @@ consumer's policy that the consumer cannot see.
 - [Column resize](../territory/column-resize.md) — `refusePress` is required; the engine has no
   button rule. The width is reported unclamped.
 - [Keyboard movement](../territory/keyboard-movement.md) — `step` answers where and claims the event;
-  selection, opening and Space are the consumer's.
+  selection, opening and a lone Space are the consumer's; a space inside a running query is the
+  table's.
 - [Column model](../territory/column-model.md) — bounds, first sort direction, comparator and
   hideability are the spec's.
 - [Colour variables](../territory/colour-variables.md) — roles, not colours; no fallback.
@@ -54,9 +55,13 @@ In PenTerm, as the engine was separated from the app:
   stayed the Explorer's; a key handler on the grid would have left the pane's arrows dead.
 - `penterm ccd3eee0c` (2026-09-28) — type-ahead had taken Space, a consumer's key, and plain and
   Shift+Space stopped selecting; Space was handed back.
+- #1 (2026-09-28) — that hand-back was written too wide: refusing every space also gave away the
+  space inside a name, which is type-ahead's, so `new folder` could not be typed and its space
+  selected a row. A space now extends a running query and is otherwise the consumer's.
 
 The third is the rule broken and found: the engine had quietly decided a key that was the
-consumer's.
+consumer's. The fourth is its correction overshooting the other way — the seam runs through one
+key, by whether a query is running, not between keys.
 
 ## Where it will recur
 

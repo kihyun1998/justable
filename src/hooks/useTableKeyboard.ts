@@ -47,25 +47,25 @@ export function useTableKeyboard({ now = Date.now }: { now?: () => number } = {}
       rowsPerPage: link.rowsPerPage,
     });
     if (moved !== null) {
+      // A move ends any running query: `docs/map/territory/keyboard-movement.md`.
+      typeAhead.current = { query: '', at: 0 };
       event.preventDefault();
       return { by: 'move', to: moved };
     }
 
-    // One printable character without a chord modifier. Space is deliberately not type-ahead:
+    const at = now();
+    const running =
+      typeAhead.current.query !== '' && at - typeAhead.current.at <= TYPE_AHEAD_MS;
+    // One printable character without a chord modifier. A space only extends a running query:
     // `docs/map/territory/keyboard-movement.md`.
     if (
       event.key.length === 1 &&
-      event.key !== ' ' &&
+      (event.key !== ' ' || running) &&
       !event.ctrlKey &&
       !event.metaKey &&
       !event.altKey
     ) {
-      const at = now();
-      const { query, walk } = typeAheadStep(
-        typeAhead.current.query,
-        event.key,
-        at - typeAhead.current.at > TYPE_AHEAD_MS,
-      );
+      const { query, walk } = typeAheadStep(typeAhead.current.query, event.key, !running);
       typeAhead.current = { query, at };
       // Walking searches after the row, narrowing from the row itself:
       // `docs/map/territory/keyboard-movement.md`.

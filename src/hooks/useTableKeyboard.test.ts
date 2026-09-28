@@ -10,7 +10,10 @@ import { TYPE_AHEAD_MS } from '../lib/tableKeyboard.js';
 
 const NAMES = ['apple', 'banana', 'cherry', 'citrus', 'date', 'elder', 'fig', 'grape'];
 
-function key(k: string, mods: Partial<Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' | 'altKey'>> = {}) {
+function key(
+  k: string,
+  mods: Partial<Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'>> = {},
+) {
   return {
     key: k,
     ctrlKey: false,
@@ -21,12 +24,12 @@ function key(k: string, mods: Partial<Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' 
   };
 }
 
-function setup() {
-  let clock = 1_000;
+function setup({ names = NAMES, start = 1_000 }: { names?: readonly string[]; start?: number } = {}) {
+  let clock = start;
   const { result } = renderHook(() => useTableKeyboard({ now: () => clock }));
   return {
     step: (e: ReturnType<typeof key>, focus: number | null) =>
-      result.current.step(e, { focus, names: NAMES }),
+      result.current.step(e, { focus, names }),
     link: result.current.link,
     advance: (ms: number) => {
       clock += ms;
@@ -97,6 +100,14 @@ describe('type-ahead', () => {
     expect(step(key('b'), 2)).toEqual({ by: 'typeAhead', to: 1 });
   });
 
+  it('a movement key ends the query, so the next letter starts a new one', () => {
+    const { step } = setup();
+    expect(step(key('c'), null)).toEqual({ by: 'typeAhead', to: 2 });
+    expect(step(key('ArrowDown'), 2)).toEqual({ by: 'move', to: 3 });
+    // "d" alone lands on date; "cd" would match nothing.
+    expect(step(key('d'), 3)).toEqual({ by: 'typeAhead', to: 4 });
+  });
+
   it('within the window the query extends instead', () => {
     const { step, advance } = setup();
     step(key('c'), null);
@@ -119,16 +130,72 @@ describe('type-ahead', () => {
     }
   });
 
-  it('⚠️ a space is not type-ahead — it is left for the consumer', () => {
+  it('a named key is not type-ahead', () => {
     const { step } = setup();
+    expect(step(key('Enter'), 0)).toBeNull();
+  });
+});
+
+describe('a space', () => {
+  /** "new" lands on `news.txt`; only a space kept in the query reaches `new folder`. */
+  const FOLDERS = ['news.txt', 'new folder'];
+
+  /** Types `keys` one after another inside the window, following focus like a consumer does. */
+  function type(step: ReturnType<typeof setup>['step'], keys: string[]) {
+    let focus: number | null = null;
+    let last = null;
+    for (const k of keys) {
+      last = step(key(k), focus);
+      if (last?.to != null) focus = last.to;
+    }
+    return last;
+  }
+
+  it('⚠️ typed inside a running query, it is part of the query', () => {
+    const { step } = setup({ names: FOLDERS });
+    expect(type(step, ['n', 'e', 'w'])).toEqual({ by: 'typeAhead', to: 0 });
+    const e = key(' ');
+    expect(step(e, 0)).toEqual({ by: 'typeAhead', to: 1 });
+    expect(e.preventDefault).toHaveBeenCalledTimes(1);
+    expect(step(key('f'), 1)).toEqual({ by: 'typeAhead', to: 1 });
+  });
+
+  it('with Shift held inside a running query, it is part of the query too', () => {
+    const { step } = setup({ names: FOLDERS });
+    type(step, ['n', 'e', 'w']);
+    expect(step(key(' ', { shiftKey: true }), 0)).toEqual({ by: 'typeAhead', to: 1 });
+  });
+
+  it('⚠️ as the first key, it is the consumer’s: no answer, the event untouched', () => {
+    const { step } = setup({ names: FOLDERS });
     const e = key(' ');
     expect(step(e, 0)).toBeNull();
     expect(e.preventDefault).not.toHaveBeenCalled();
   });
 
-  it('a named key is not type-ahead', () => {
-    const { step } = setup();
-    expect(step(key('Enter'), 0)).toBeNull();
+  it('⚠️ after a pause longer than the window, it is the consumer’s', () => {
+    const { step, advance } = setup({ names: FOLDERS });
+    type(step, ['n', 'e', 'w']);
+    advance(TYPE_AHEAD_MS + 1);
+    const e = key(' ');
+    expect(step(e, 0)).toBeNull();
+    expect(e.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ after any movement key inside the window, it is the consumer’s', () => {
+    for (const move of ['ArrowDown', 'ArrowUp', 'Home', 'End', 'PageDown', 'PageUp']) {
+      const { step } = setup({ names: FOLDERS });
+      step(key('n'), null);
+      expect(step(key(move), 0)?.by, move).toBe('move');
+      const e = key(' ');
+      expect(step(e, 0), move).toBeNull();
+      expect(e.preventDefault, move).not.toHaveBeenCalled();
+    }
+  });
+
+  it('as the first key on a clock that starts near zero, it is still the consumer’s', () => {
+    const { step } = setup({ names: FOLDERS, start: 0 });
+    expect(step(key(' '), null)).toBeNull();
   });
 });
 

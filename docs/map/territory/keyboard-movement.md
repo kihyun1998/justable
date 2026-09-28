@@ -37,9 +37,26 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   nothing is answered `to: null` — distinct from a key never the table's — and its event is left
   alone.
 - **Type-ahead is one printable character with no Ctrl, Meta or Alt**, so chords are never eaten
-  (Shift is allowed; named keys are all longer than one character). **Never a space**: a space is the
-  keyboard's click in a list and is left to the consumer — taken by type-ahead, plain and Shift+Space
-  reached nothing (`penterm ccd3eee0c`).
+  (Shift is allowed; named keys are all longer than one character).
+- **A space extends a running query and is otherwise the consumer's.** A query is running while it
+  is non-empty and its last character arrived within `TYPE_AHEAD_MS` — one definition, `running`,
+  which also decides whether a letter starts a fresh query. A lone Space is the keyboard's click in a
+  list: taken by type-ahead, plain and Shift+Space reached nothing (`penterm ccd3eee0c`). Refusing
+  every space instead made a name with one inside it (`new folder`) unreachable by typing, and sent
+  the mid-name space to the consumer as a click (#1). "Non-empty" matters because the stored time
+  starts at 0: on a clock near 0, a first key would otherwise read as inside the window.
+- **A movement key ends the query** — the maintainer's call, 2026-09-28, #1. Found while checking the
+  space rule: with a move leaving the query running, `n` ↓ Space inside 700 ms extended the query to
+  "n " instead of reaching the consumer, so a row that selected before the change did not. Shown:
+  a move ends the query (Space after a move is always the consumer's; a letter after a move starts
+  fresh, so `c` ↓ `h` searches "h", not "ch") against exempting only the space (letters keep
+  narrowing across a move, at the cost of two definitions of "running") and against leaving the
+  narrow regression recorded. Chose the first. Theirs to reverse.
+- **Shift+Space inside a running query extends it too** — the maintainer's call, 2026-09-28, #1.
+  Shown: extend (a space typed with Shift held mid-name, the same rule as a letter) against leaving
+  it to the consumer (range selection always available, but a shifted space never in a name); the
+  cost named was that a Shift+Space within 700 ms of typing no longer extends a selection. Theirs to
+  reverse.
 - **The query**: a pause over `TYPE_AHEAD_MS` (700) starts a fresh one; the same letter again
   **walks** to the next match, searching after the current row, rather than asking for "cc" — but only
   while the whole query is that one letter: once it is longer the user is spelling, and `cr` + `r`
@@ -66,7 +83,7 @@ unchecked.
 - [Zero is no measurement](../invariant/zero-is-no-measurement.md) — `rowsPerPage` 0 is read as
   "unmeasured" and pages by `FALLBACK_PAGE`.
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
-  the hook answers where; selection, opening, Space and every modifier's meaning are the consumer's.
+  the hook answers where; selection, opening, a lone Space and every modifier's meaning are the consumer's.
 
 ## Blast radius
 
