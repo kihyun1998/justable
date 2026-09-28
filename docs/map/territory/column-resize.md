@@ -29,15 +29,36 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   `stopPropagation` run first, so a wheel press never starts autoscroll; only then does
   `refusePress(event)` say whether this press arms a drag. **The engine holds no button rule and no
   default**, so `refusePress` is required.
-- **The reported width is unclamped**, `startWidth + (clientX − startX) / scale`, where `scale` is
-  screen px per table px for a scaled copy of the table. The consumer's model clamps.
+- **The reported width is unclamped**, `startWidth + (clientX − startX) / scale + Δscroll`, where
+  `scale` is screen px per table px for a scaled copy of the table and `Δscroll` is how far the grid's
+  scroller has scrolled horizontally since the press. The consumer's model clamps.
+- **Only the pointer is divided by the scale.** `scrollLeft` is in the scroller's own px, which are
+  table px, whatever transform scales the table on screen. Measured in Chrome, 2026-09-28: inside
+  `transform: scale(0.5)`, `scrollLeft = 100` moved the content 50 screen px.
+- **The scroll is read from the element, not only from its `scroll` event.** A browser sends `scroll`
+  a frame after the scroll, so a width taken only from the event misses the last step before the
+  button comes up. Measured in the example: exactly one 16 px step short, three runs of three. So a
+  pointer move reads `scrollLeft`, and the release reads it once more before detaching; the event
+  covers a pointer held still.
+- **The engine never scrolls for a drag** — the maintainer's call, 2026-09-28 (#8), over an engine
+  loop and over an engine loop the consumer could replace. Shown: PenTerm already shares one
+  edge-scroll loop across its tab strip, library tree and explorer list (`createEdgeAutoScroll`: 48 px
+  zone, 2→24 px a frame), so an engine loop would give it a second speed. `onResizeDrag` hands the
+  consumer each move and the scroller, then `null` at the end — at the release and when the header
+  unmounts mid-drag, so the consumer's loop always stops. It did not cover vertical scrolling during a
+  drag, nor what the loop's zone and speed should be for any consumer.
+- **The header reaches the scroller through a context `TableGrid` provides** (`GridScrollerContext`),
+  since the header is handed to the grid as an element. A header drawn outside a grid gets no
+  scroller: `Δscroll` stays 0 and `onResizeDrag` carries `scroller: null`.
 - **A drag cannot outlive its component or another drag.** `begin` detaches any running drag first;
   unmounting detaches the `document` listeners, so a header gone mid-drag writes nothing more.
 
 ## Code
 
-- `src/hooks/useColumnResize.ts` — `useColumnResize`
-- `src/components/TableHeader.tsx` — `TableHeader`, `startResize`, `refusePress`
+- `src/hooks/useColumnResize.ts` — `useColumnResize`, `ResizeDrag`
+- `src/components/TableHeader.tsx` — `TableHeader`, `startResize`, `refusePress`, `onResizeDrag`
+- `src/components/gridScroller.ts` — `GridScrollerContext`
+- `example/edgeScroll.ts` — `useEdgeScroll`
 
 ## Reference behaviour
 
@@ -46,7 +67,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 ## Cross-cutting invariants
 
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
-  `refusePress` is this territory's policy seam, and the clamp is the model's.
+  `refusePress` is this territory's policy seam, and the clamp is the model's; `onResizeDrag` is the
+  seam for edge scrolling.
 
 ## Blast radius
 
@@ -55,6 +77,9 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - [Column model](column-model.md) — `withWidth` clamps what this reports.
 - [Auto-fit](auto-fit.md) — the same handle's double-click; a change to the handle's hit area moves
   both gestures.
+- [Grid scaffold](grid-scaffold.md) — owns the scroller and provides it to the header; a change to
+  which element scrolls horizontally moves `Δscroll`.
+- [Verification gates](verification-gates.md) — `check:example` holds a border past the edge.
 
 ## Known holes / open
 

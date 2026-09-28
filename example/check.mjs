@@ -141,6 +141,48 @@ try {
   const dark = await headerBg();
   check('the colour variables follow the theme', light !== dark, [light, dark]);
 
+  // A narrower page, so the table overflows before the name column reaches its maximum.
+  const narrow = await browser.newPage();
+  narrow.on('pageerror', (e) => errors.push(String(e)));
+  await narrow.setViewport({ width: 700, height: 800 });
+  await narrow.goto(url, { waitUntil: 'networkidle0' });
+  await narrow.waitForSelector('[data-table-resize="name"]');
+  const nameWidth = () =>
+    narrow.$eval('[role="columnheader"][aria-colindex="1"]', (h) => h.getBoundingClientRect().width);
+  const scrollerOf = () =>
+    narrow.evaluate(() => {
+      const s = [...document.querySelectorAll('[role="grid"] div')].find(
+        (d) => getComputedStyle(d).overflowX === 'auto',
+      );
+      const r = s.getBoundingClientRect();
+      return { left: s.scrollLeft, right: r.right };
+    });
+  const w0 = await nameWidth();
+  const { right } = await scrollerOf();
+  const nb = await (await narrow.$('[data-table-resize="name"]')).boundingBox();
+  const from = nb.x + nb.width / 2;
+  const to = right + 10;
+  await narrow.mouse.move(from, nb.y + nb.height / 2);
+  await narrow.mouse.down();
+  await narrow.mouse.move(to, nb.y + nb.height / 2, { steps: 10 });
+  await new Promise((r) => setTimeout(r, 150));
+  // Released first, so the loop has stopped and the width and the scroll are read at one moment.
+  await narrow.mouse.up();
+  await new Promise((r) => setTimeout(r, 100));
+  const w1 = await nameWidth();
+  const s1 = await scrollerOf();
+  const pointerOnly = w0 + (to - from);
+  // The name column's maximum in FileTable's spec.
+  const expected = Math.min(720, pointerOnly + s1.left);
+  // The window: the scroller must have scrolled, or the width check below says nothing.
+  check('a border held past the right edge scrolls the grid', s1.left > 0, { scrollLeft: s1.left });
+  check(
+    'and the column widens by the distance scrolled too',
+    w1 > pointerOnly + 1 && Math.abs(w1 - expected) <= 2,
+    { w0, w1, pointerOnly, expected, scrollLeft: s1.left },
+  );
+  await narrow.close();
+
   check('no page errors', errors.length === 0, errors);
 } finally {
   await browser.close();

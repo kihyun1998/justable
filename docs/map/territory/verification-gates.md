@@ -55,11 +55,15 @@ prefixed. There is no CI; every gate is run by hand.
   repository. It serves the example with Vite, drives it in an installed Chrome or Edge, and checks
   what jsdom cannot: header and row tracks equal (at load, after a drag, after auto-fit), the sort
   button free of browser button styles, windowing, the sort cycle, type-ahead through a space, Space
-  after a move, and the theme through the colour variables. It **exits 1 when no browser is found**,
+  after a move, the theme through the colour variables, and a border held past the scroller's right
+  edge scrolling the grid while the column keeps pace. It **exits 1 when no browser is found**,
   since a run that inspected nothing is not a pass. Proven failing: removing the button reset,
   dropping a placed row's `right: 0`, and refusing the space mid-query each fail it. The type-ahead
   check first asserts that "new" lands on `news.txt` — without that, `new folder` came first and the
-  check passed with the space refused.
+  check passed with the space refused. The edge-scroll checks run on a 700 px page, so the table
+  overflows before the name column reaches its maximum; they first assert that the grid scrolled, and
+  read width and scroll after the release, once the loop has stopped. Proven failing: removing the
+  scroll term, removing the release's last read, and unwiring the example's loop.
 - **`src/lint` is excluded from the build**, so the lint ships in no package and runs only under
   `pnpm test`.
 

@@ -60,7 +60,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 ## Code
 
-- `src/components/TableGrid.tsx` — `TableGrid`, `TableGridProps`, `RowPlace`, `multiselectable`, `rowIdPrefix`, `firstDataRow`, `leadingRows`, `onFloorClick`, `wrapScroller`, `scrollerProps`
+- `src/components/TableGrid.tsx` — `TableGrid`, `TableGridProps`, `RowPlace`, `multiselectable`, `rowIdPrefix`, `firstDataRow`, `leadingRows`, `onFloorClick`, `wrapScroller`, `scrollerProps`, `GridScrollerContext`
 
 ## Reference behaviour
 
@@ -86,6 +86,7 @@ APG grid pattern and VS Code's list (one focusable container) as what this shape
 - [Colour variables](colour-variables.md) — the grid root carries `data-table`, where the consumer
   binds the colours.
 - [Stylesheet and prefix](stylesheet-and-prefix.md) — every layout class here is a prefixed utility.
+- [Column resize](column-resize.md) — the header's drag reads the scroller this grid provides.
 
 ## Known holes / open
 

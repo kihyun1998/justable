@@ -65,13 +65,19 @@ Row colours — hover, selection, focus — are yours: pass them as row classes.
 - **Hooks**: `useTableKeyboard` (movement and type-ahead; you call its `step` from your own key
   handler and decide what a move selects), with `TableKeyEvent`, `TableKeyStep`,
   `TableKeyboardLink`; `useTypeAhead` (type-ahead alone, for a list whose movement is your own — call
-  its `end()` when you move the row), with `TypeAheadAnswer`; `useColumnResize`; `useColumnAutoFit`.
+  its `end()` when you move the row), with `TypeAheadAnswer`; `useColumnResize`, with `ResizeDrag`; `useColumnAutoFit`.
 - **Windowing**, for any list of equal-height rows: `visibleRange`, `scrollToReveal`, `BLOCK_ROWS`,
   `UNMEASURED_ROWS`, with `RowWindow`, `VisibleRangeInput`, `RevealInput`.
 - **Classes**: `TABLE_GRID` and `TABLE_CELL`, a row's grid and a cell's padding.
 
 `TableHeader` takes a required `refusePress(event)`: the engine has no rule of its own about which
 press starts a column resize. `(e) => e.button !== 0` is the simplest.
+
+A border dragged past the grid's edge does not scroll the grid by itself. `TableHeader`'s
+`onResizeDrag` hands you each move of a running drag — the pointer and the grid's scroller — then
+`null` when it ends; scroll the scroller from there with your own edge-scroll loop. Whatever scrolls
+it, the column keeps widening by the distance scrolled, so the border stays under the pointer.
+`example/edgeScroll.ts` is a small loop to start from.
 
 `TableGrid` takes `colCount`, the number of drawn columns, for `aria-colcount`: pass
 `model.visibleColumns(layout).length`. The grid receives the header as an element and cannot count

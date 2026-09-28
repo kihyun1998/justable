@@ -9,6 +9,7 @@ import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import type { TableKeyboardLink } from '../hooks/useTableKeyboard.js';
 import { classNames } from '../lib/classNames.js';
 import { UNMEASURED_ROWS, scrollToReveal, visibleRange } from '../lib/rowWindow.js';
+import { GridScrollerContext } from './gridScroller.js';
 
 /** Where a data row sits. */
 export interface RowPlace {
@@ -224,7 +225,9 @@ export function TableGrid({
       {/* The header lane: `clip`, not `hidden`, deliberately:
           `docs/map/territory/header-lane.md`. */}
       <div role="rowgroup" ref={laneRef} className="justable:shrink-0 justable:[overflow-x:clip]">
-        <div ref={laneInnerRef}>{header}</div>
+        <div ref={laneInnerRef}>
+          <GridScrollerContext.Provider value={scrollerRef}>{header}</GridScrollerContext.Provider>
+        </div>
       </div>
       {wrapScroller ? wrapScroller(scroller) : scroller}
     </div>

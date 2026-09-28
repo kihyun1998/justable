@@ -5,6 +5,7 @@
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { TableGrid } from './TableGrid.js';
 import { TableHeader, type TableHeaderProps } from './TableHeader.js';
 
 afterEach(cleanup);
@@ -79,6 +80,130 @@ describe('resizing', () => {
   it('names every handle', () => {
     const { header } = renderHeader();
     expect(handle(header, 'a').getAttribute('aria-label')).toBe('Resize');
+  });
+});
+
+describe('resizing inside a grid that scrolls', () => {
+  function renderInGrid(over: Partial<TableHeaderProps<Key>> = {}) {
+    const { container, unmount } = render(
+      <TableGrid
+        label="t"
+        header={
+          <TableHeader
+            columns={COLUMNS}
+            sort={undefined}
+            gridStyle={{}}
+            onSort={vi.fn()}
+            onResize={vi.fn()}
+            resizeLabel="Resize"
+            refusePress={() => false}
+            {...over}
+          />
+        }
+        colCount={2}
+        total={0}
+        renderRow={() => null}
+        rowKey={String}
+        fill
+        focus={null}
+        rowIdPrefix="t"
+        rowHeightRem={2}
+      />,
+    );
+    const grid = container.firstElementChild as HTMLElement;
+    const header = grid.querySelector('[data-table-header]') as HTMLElement;
+    const scroller = grid.querySelectorAll(':scope > [role="rowgroup"]')[1] as HTMLElement;
+    return { header, scroller, unmount };
+  }
+
+  const scrollTo = (scroller: HTMLElement, left: number) =>
+    act(() => {
+      scroller.scrollLeft = left;
+      fireEvent.scroll(scroller);
+    });
+
+  it('a scroll during a drag widens the column by the distance scrolled, the pointer still', () => {
+    const onResize = vi.fn();
+    const { header, scroller } = renderInGrid({ onResize });
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    move(10);
+    scrollTo(scroller, 30);
+    expect(onResize).toHaveBeenLastCalledWith('a', 140);
+  });
+
+  it('the scroll is in table px already, so the scale divides only the pointer', () => {
+    const onResize = vi.fn();
+    const { header, scroller } = renderInGrid({ onResize, scale: 0.5 });
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    move(10);
+    scrollTo(scroller, 30);
+    expect(onResize).toHaveBeenLastCalledWith('a', 150);
+  });
+
+  it('⚠️ a scroll whose event has not arrived yet still counts at the release', () => {
+    const onResize = vi.fn();
+    const { header, scroller } = renderInGrid({ onResize });
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    move(10);
+    act(() => {
+      scroller.scrollLeft = 16;
+      fireEvent.mouseUp(document);
+    });
+    expect(onResize).toHaveBeenLastCalledWith('a', 126);
+  });
+
+  it('a pointer move reads the scroll too, whether or not its event came first', () => {
+    const onResize = vi.fn();
+    const { header, scroller } = renderInGrid({ onResize });
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    scroller.scrollLeft = 16;
+    move(10);
+    expect(onResize).toHaveBeenLastCalledWith('a', 126);
+  });
+
+  it('a scroll after the release reports nothing', () => {
+    const onResize = vi.fn();
+    const { header, scroller } = renderInGrid({ onResize });
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    act(() => {
+      fireEvent.mouseUp(document);
+    });
+    scrollTo(scroller, 30);
+    expect(onResize).not.toHaveBeenCalled();
+  });
+
+  it('tells the consumer each move with the scroller, then null at the release', () => {
+    const onResizeDrag = vi.fn();
+    const { header, scroller } = renderInGrid({ onResizeDrag });
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    act(() => {
+      fireEvent.mouseMove(document, { clientX: 40, clientY: 7 });
+    });
+    expect(onResizeDrag).toHaveBeenLastCalledWith({ clientX: 40, clientY: 7, scroller });
+    act(() => {
+      fireEvent.mouseUp(document);
+    });
+    expect(onResizeDrag).toHaveBeenLastCalledWith(null);
+    expect(onResizeDrag).toHaveBeenCalledTimes(2);
+  });
+
+  it('⚠️ a header gone mid-drag tells the consumer null, so its loop stops', () => {
+    const onResizeDrag = vi.fn();
+    const { header, unmount } = renderInGrid({ onResizeDrag });
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    move(5);
+    unmount();
+    expect(onResizeDrag).toHaveBeenLastCalledWith(null);
+  });
+
+  it('a header outside a grid hands the consumer no scroller', () => {
+    const onResizeDrag = vi.fn();
+    const { header } = renderHeader({ onResizeDrag });
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    act(() => {
+      fireEvent.mouseMove(document, { clientX: 5, clientY: 1 });
+    });
+    expect(onResizeDrag).toHaveBeenLastCalledWith({ clientX: 5, clientY: 1, scroller: null });
   });
 });
 

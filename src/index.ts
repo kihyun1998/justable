@@ -18,7 +18,7 @@ export {
 export { TABLE_CELL, TABLE_GRID } from './lib/tableClasses.js';
 
 export { useColumnAutoFit } from './hooks/useColumnAutoFit.js';
-export { useColumnResize } from './hooks/useColumnResize.js';
+export { type ResizeDrag, useColumnResize } from './hooks/useColumnResize.js';
 export {
   useTableKeyboard,
   type TableKeyEvent,

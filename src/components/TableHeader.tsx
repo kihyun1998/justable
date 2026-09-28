@@ -4,12 +4,14 @@
  */
 import { ArrowDown, ArrowUp } from 'lucide-react';
 
+import { useContext } from 'react';
 import type { CSSProperties } from 'react';
 
-import { useColumnResize } from '../hooks/useColumnResize.js';
+import { type ResizeDrag, useColumnResize } from '../hooks/useColumnResize.js';
 import { classNames } from '../lib/classNames.js';
 import { TABLE_GRID } from '../lib/tableClasses.js';
 import type { HeaderColumn, TableSort } from '../types.js';
+import { GridScrollerContext } from './gridScroller.js';
 
 export interface TableHeaderProps<K extends string> {
   columns: readonly HeaderColumn<K>[];
@@ -18,6 +20,11 @@ export interface TableHeaderProps<K extends string> {
   onSort: (key: K) => void;
   /** The dragged width in table px, unclamped — the consumer's model clamps it. */
   onResize: (key: K, px: number) => void;
+  /**
+   * Each move of a running border drag, with the grid's scroller, then `null` when it ends. The engine
+   * never scrolls for a drag: `docs/map/territory/column-resize.md`.
+   */
+  onResizeDrag?: (drag: ResizeDrag | null) => void;
   /** A handle's double-click. Without it the double-click does nothing. */
   onAutoFit?: (key: K) => void;
   /** The handles' accessible name. */
@@ -45,13 +52,15 @@ export function TableHeader<K extends string>({
   gridStyle,
   onSort,
   onResize,
+  onResizeDrag,
   onAutoFit,
   resizeLabel,
   scale = 1,
   refusePress,
   className,
 }: TableHeaderProps<K>) {
-  const { resizing, begin } = useColumnResize(onResize);
+  const { resizing, begin } = useColumnResize(onResize, onResizeDrag);
+  const scroller = useContext(GridScrollerContext);
 
   const startResize = (column: HeaderColumn<K>) => (e: React.MouseEvent) => {
     // Suppressed for every button before `refusePress` decides, deliberately:
@@ -59,7 +68,7 @@ export function TableHeader<K extends string>({
     e.preventDefault();
     e.stopPropagation();
     if (refusePress(e)) return;
-    begin(column.key, column.width, e.clientX, scale);
+    begin(column.key, column.width, e.clientX, scale, scroller?.current ?? null);
   };
 
   return (

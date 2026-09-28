@@ -14,6 +14,7 @@ import { useMemo, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 
 import type { Modifiers } from './App.js';
+import { useEdgeScroll } from './edgeScroll.js';
 import { formatSize, type FileEntry } from './files.js';
 
 type Key = 'name' | 'kind' | 'size' | 'modified';
@@ -141,6 +142,8 @@ export function FileTable({
     else pick(answer.to, e);
   };
 
+  const onResizeDrag = useEdgeScroll();
+
   const onAutoFit = (key: Key) => {
     const px = autoFit.measure(key);
     if (px !== null) setLayout((l) => model.withWidth(l, key, px));
@@ -155,6 +158,7 @@ export function FileTable({
       gridStyle={gridStyle}
       onSort={(key) => setSort((s) => model.nextSort(s, key))}
       onResize={(key, px) => setLayout((l) => model.withWidth(l, key, px))}
+      onResizeDrag={onResizeDrag}
       onAutoFit={onAutoFit}
       resizeLabel="Resize column"
       refusePress={(e) => e.button !== 0}
