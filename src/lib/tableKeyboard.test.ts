@@ -139,6 +139,11 @@ describe('typeAheadStep', () => {
     expect(typeAheadStep('c', 'c', false)).toEqual({ query: 'c', walk: true });
   });
 
+  it('the same letter in the other case walks too, as matching ignores case', () => {
+    expect(typeAheadStep('c', 'C', false)).toEqual({ query: 'C', walk: true });
+    expect(typeAheadStep('C', 'c', false)).toEqual({ query: 'c', walk: true });
+  });
+
   it('a different letter extends, so c then h narrows onto cherry', () => {
     expect(typeAheadStep('c', 'h', false)).toEqual({ query: 'ch', walk: false });
   });

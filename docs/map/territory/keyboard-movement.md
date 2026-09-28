@@ -60,7 +60,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **The query**: a pause over `TYPE_AHEAD_MS` (700) starts a fresh one; the same letter again
   **walks** to the next match, searching after the current row, rather than asking for "cc" — but only
   while the whole query is that one letter: once it is longer the user is spelling, and `cr` + `r`
-  looks for "crr". Another
+  looks for "crr". The walk compares ignoring case, as matching does, so `c` then `C` walks too.
+  Another
   letter **narrows**, searching from the current row itself, so `c` then `h` stays on `cherry`.
   Matching is a case-insensitive prefix over `names`, which must be in screen order or the hit lands
   on the wrong row.
@@ -111,6 +112,3 @@ unchecked.
 
 ## Known holes / open
 
-- **Walk detection is case-sensitive while matching is not.** `typeAheadStep` compares the previous
-  query with the key exactly, so `c` then `C` extends to "cC" (matched as "cc") instead of walking.
-  Whether that is intended is recorded nowhere.

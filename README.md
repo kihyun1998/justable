@@ -73,6 +73,11 @@ Row colours — hover, selection, focus — are yours: pass them as row classes.
 `TableHeader` takes a required `refusePress(event)`: the engine has no rule of its own about which
 press starts a column resize. `(e) => e.button !== 0` is the simplest.
 
+The engine marks its parts with data attributes you can select by, in your own styles or checks,
+and they are kept stable: `data-table` on the grid root, `data-table-header` on the header row,
+`data-table-resize="<key>"` on each column's resize handle, and `data-table-ruler="<key>"` on an
+auto-fit ruler while it measures.
+
 `TableGrid` announces `aria-multiselectable` only when you pass `multiselectable`: whether several
 rows can be selected is your selection model, and the engine has none. It is off by default. A
 grid that relied on it being always on — before this prop existed — passes `multiselectable` now.

@@ -83,9 +83,9 @@ prefixed. There is no CI; every gate is run by hand.
 
 ## Known holes / open
 
-- **The prefix test sees only the branches its renders take.** It renders the header at rest and the
-  grid with `fill={false}` and `disabled`, so the dragging line's class and the `fill` class are
-  never checked.
+- **The prefix test sees only the branches its renders take.** It renders the grid filling and not,
+  enabled and disabled, and the header at rest and mid-drag; a class behind any other condition is
+  unchecked until a render reaches it.
 - **The lint reads `.ts` and `.tsx` only**; `src/style.css` is outside both rules.
 - **The import pattern also matches import-shaped text in comments.** A comment quoting
   `from '../../x'` is judged as an import. Nothing in the tree does this today.

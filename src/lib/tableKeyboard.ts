@@ -72,6 +72,6 @@ export interface TypeAheadStep {
 /** What a typed character does to the query: a fresh query, a walk (same letter), or an extension. */
 export function typeAheadStep(prev: string, key: string, fresh: boolean): TypeAheadStep {
   if (fresh) return { query: key, walk: false };
-  if (prev === key) return { query: key, walk: true };
+  if (prev.toLowerCase() === key.toLowerCase()) return { query: key, walk: true };
   return { query: prev + key, walk: false };
 }

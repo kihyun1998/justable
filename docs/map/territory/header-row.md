@@ -35,7 +35,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   that keeps its `z-10` handles with it; the surface keeps rows scrolled under the lane from showing
   through.
 - **Two data attributes are how a consumer finds the header**: `data-table-header` on the row and
-  `data-table-resize="<key>"` on each handle. PenTerm's guide tour and its checks select by them.
+  `data-table-resize="<key>"` on each handle. PenTerm's guide tour and its checks select by them, and
+  `README.md` names them, with `data-table` and `data-table-ruler`, as stable.
 - **Height and type are the consumer's**, as `className` on the row; labels arrive translated.
 - **The arrow icons are `lucide-react`'s** `ArrowUp` and `ArrowDown` — the reason it is a peer
   dependency.
@@ -71,7 +72,5 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 ## Known holes / open
 
-- **The two data attributes are a public contract the README does not name.** A consumer's checks
-  depend on them; renaming one breaks nothing here.
-- **The `resizing` branch's classes are not covered by the prefix test**, which renders the header
-  at rest — see [verification gates](verification-gates.md).
+- **Renaming a data attribute breaks nothing here.** `README.md` names them as stable, and a
+  consumer's checks select by them, but no test in this repository holds their names.
