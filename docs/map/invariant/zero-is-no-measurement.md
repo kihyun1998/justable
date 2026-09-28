@@ -32,6 +32,9 @@ guard is written differently at each site.
 ## What a violation looks like
 
 - Windowing against a zero viewport draws **one row** of a long list.
+- An unguarded zero **row height** is worse and opposite: `viewport / 0` is `Infinity`, and a window
+  of `0..Infinity` draws **every** row — for a 5,000-row list, the three-second first paint windowing
+  exists to remove. Failing safe means drawing few, not all.
 - A page of zero rows makes PageDown do nothing.
 - An auto-fit answer of 0 is clamped up to the column's minimum and looks like a fit.
 

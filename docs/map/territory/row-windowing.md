@@ -35,10 +35,17 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   the first `UNMEASURED_ROWS` (200, about 120 ms to draw in PenTerm) — a cap, not a guess at what
   fits. Windowing against a zero height would draw one row. See
   [zero is no measurement](../invariant/zero-is-no-measurement.md).
+- **The row-height guard is written `!(rowHeight > 0)`, not `rowHeight <= 0`.** `NaN` compares false
+  both ways, so only the negated form sends it to the unmeasured branch; rewriting it the natural way
+  lets `NaN` through to the division.
 - **The window moves in blocks**, so a one-row scroll usually changes nothing and costs no React
   render: the first row is snapped down to a multiple of `BLOCK_ROWS` (8) and a whole block is drawn
   past each edge: `start = snapped − 8`, `end = snapped + span + 16`. The block past the edge is also
   so a drag's edge-scroll step hit-tests a drawn row before the re-render lands.
+- **A consumer's suite depends on that margin.** PenTerm's drag edge-scroll moves up to 48 px a frame
+  (`EDGE_SCROLL_MAX_STEP`), and its `edgeScrollStaysInTheWindow.test.ts` imports `visibleRange` from
+  this package and checks that step against it. `rowWindow.test.ts` holds the same 48 px here, so
+  shrinking the block past the edge fails here first rather than only in the consumer.
 - **Edges are inclusive on purpose.** `floor` on the first row keeps the row straddling the top edge;
   the span is `ceil(viewport / row) + 1`, so a viewport that is an exact multiple still shows the next
   row's top border. The snapped start is clamped to `total − 1`.
@@ -51,7 +58,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **Revealing a row is arithmetic.** Under windowing the focused row may have no element to scroll
   into view. `scrollToReveal` returns the `scrollTop` that shows it whole — to the top edge going up,
   to the bottom edge going down, so a one-row move does not jump the list — or `null` if it already is
-  (a straddling row is not visible). The effect runs on `[focus, box]` and reads the offset from the
+  (a straddling row is not visible: half a row is not readable, and the key that just landed there
+  has to show what it landed on). The effect runs on `[focus, box]` and reads the offset from the
   element, not from state, so a scroll alone does not re-run it and pull the list back.
 - **The page size the keyboard moves by is written here.** When `box` changes, the grid writes
   `floor(viewportHeight / rowHeight)` into the keyboard hook's `link.rowsPerPage`.

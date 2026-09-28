@@ -29,6 +29,18 @@ prefixed. There is no CI; every gate is run by hand.
   reproduces in utilities.
 - **The prefix test renders the grid with its header and a row, and the ruler**, and fails on any
   class not starting `justable:` (the icon set's own `lucide*` markers excepted).
+- **The pure halves are tested apart** — `rowWindow.ts`, `tableKeyboard.ts`, `tableModel.ts` —
+  because that is where off-by-ones live and where they are quiet: a row missing at the viewport's
+  edge reads as a rendering glitch rather than a wrong number, and a component test cannot easily ask
+  what End does in an empty list.
+- **Layout is verified only in PenTerm.** jsdom measures nothing, so every width and alignment claim —
+  auto-fit's widths, the tracks lining up, the colours resolving in scope — is checked only by
+  PenTerm's browser checks (`check:guide`'s `explorer-table` group, including
+  `explorer-table-double-click-auto-fits-the-column`, and `check:drawer-columns`) and its edge-scroll
+  suite ([row windowing](row-windowing.md)). An engine change reaches them only after `pnpm build`
+  here and an install there.
+- **Class lists are checked as tokens, not regexes.** `TableRow.test.tsx` splits `TABLE_GRID` rather
+  than matching it: a word-boundary escape once lost its backslash on the way into a file.
 - **`src/lint` is excluded from the build**, so the lint ships in no package and runs only under
   `pnpm test`.
 

@@ -60,4 +60,6 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 ## Known holes / open
 
+- **Widths are verified only in PenTerm's browser checks** — see
+  [verification gates](verification-gates.md); the tests here check the ruler's shape.
 - **Cost grows with the row count.** Every row is rendered for one measurement; nothing here caps it.

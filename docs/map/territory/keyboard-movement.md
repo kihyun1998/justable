@@ -25,6 +25,10 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   PageDown into an unwalked list (`focus === null`) lands on row 0 rather than nowhere. A page is at
   least one row, because the viewport measures 0 before layout (`FALLBACK_PAGE`). Modifiers do not
   stop a movement key — what Shift or Ctrl adds is the consumer's.
+- **Movement clamps at the ends and never wraps**, unlike type-ahead's search: a held key at the
+  bottom would silently return to the top and carry an extending selection with it. An empty list
+  answers `null` for every key — the container is focusable, and keys arrive before anything has
+  loaded.
 - **←/→ do nothing, out loud.** `grid`'s APG pattern is cell-first, but no cell here is actionable on
   its own; `grid` was chosen only because `aria-sort` exists nowhere else
   ([grid scaffold](grid-scaffold.md)), and declining the arrows is the bill that choice left.
@@ -36,8 +40,10 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   (Shift is allowed; named keys are all longer than one character). **Never a space**: a space is the
   keyboard's click in a list and is left to the consumer — taken by type-ahead, plain and Shift+Space
   reached nothing (`penterm ccd3eee0c`).
-- **The query**: a pause over `TYPE_AHEAD_MS` (700) starts a fresh one; the same single letter again
-  **walks** to the next match, searching after the current row, rather than asking for "cc"; another
+- **The query**: a pause over `TYPE_AHEAD_MS` (700) starts a fresh one; the same letter again
+  **walks** to the next match, searching after the current row, rather than asking for "cc" — but only
+  while the whole query is that one letter: once it is longer the user is spelling, and `cr` + `r`
+  looks for "crr". Another
   letter **narrows**, searching from the current row itself, so `c` then `h` stays on `cherry`.
   Matching is a case-insensitive prefix over `names`, which must be in screen order or the hit lands
   on the wrong row.
@@ -51,7 +57,9 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 ## Reference behaviour
 
 **None.** in this repository. The W3C APG grid pattern is what the ←/→ refusal is measured against;
-PenTerm's `explorer-block.md` § Reference behavior records that reading.
+PenTerm's `explorer-block.md` § Reference behavior records that reading. Windows Explorer is said
+to walk repeated letters the same way (carried from a test comment); no source is pinned, so that is
+unchecked.
 
 ## Cross-cutting invariants
 
