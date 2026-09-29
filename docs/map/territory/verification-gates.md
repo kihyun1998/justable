@@ -20,7 +20,15 @@ be run by hand.
   check is **vendored** into `.github/scripts/check_map.py` rather than left local-only, because the
   skills repository it comes from is private and CI cannot fetch it; `check:example` **runs in CI**
   rather than local-only; and the runner is **Ubuntu only**, over Ubuntu and Windows. Chrome comes with
-  the runner image (actions/runner-images `c9dd57c6b6`, `Ubuntu2404-Readme.md`).
+  the runner image (actions/runner-images `c9dd57c6b6`, `Ubuntu2404-Readme.md`); the first run found
+  it at `/usr/bin/google-chrome`, the path `check:example` tries.
+- **Each gate has been seen failing in CI**, 2026-09-29, each from one planted break on a throwaway
+  branch, and each at its own step with the steps after it skipped: a wrong expectation (test), a
+  wrong annotation in the example (typecheck), an `@import` of a missing file in `src/style.css`
+  (build), a broken anchor (map check), and the example's edge-scroll speed set to 0 (browser check).
+  A plant must pass every gate before its own: the first browser plant, the example's loop unwired,
+  failed at typecheck instead, since it left a variable unused. The map check's `--selftest` was not
+  planted; it runs the checker against its own defect fixtures.
 - **The vendored map check is a fork.** Its `BUILD_STAMP` names the skills commit it was copied from
   (`0a76ff1`); apart from that line it was identical on 2026-09-29. It gains nothing when the
   original gains a rule — re-copy it, and diff before assuming they match.
@@ -137,5 +145,6 @@ be run by hand.
   and a specifier resolving to another drive (an absolute `path.relative`). Neither shape exists in
   the tree.
 - **`check:example`'s "no browser" exit has not been exercised** on a machine without one.
+- **The Vitest worker crash** seen once locally on 2026-09-28 did not recur in the first six CI runs.
 - **Windows is not in CI**, and it is where the maintainer develops: a CRLF-only or path-only
   failure shows locally and not in CI.
