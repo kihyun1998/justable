@@ -109,6 +109,17 @@ pnpm check:example   # the example driven in an installed Chrome or Edge (CHROME
 CI runs all of these, `pnpm typecheck` and the map check (`python .github/scripts/check_map.py`) on
 every push and pull request.
 
+### Releasing
+
+1. Pick the version: from 0.x, a breaking change to the exports or to how one behaves bumps the
+   minor, anything else the patch.
+2. Set it in `package.json`, and turn `CHANGELOG.md`'s unreleased entry into that version with the
+   date — breaking changes first.
+3. Commit, then push a tag `v<version>`. CI runs every gate, checks the tag names `package.json`'s
+   version, and publishes to npm. A mismatched tag fails before anything is published.
+
+npm never takes the same version twice, so a bad release is fixed by the next one.
+
 `example/` is a file list of 5,000 rows and a folder list beside it, wired the way a consumer
 would: sorting, column resize and auto-fit, hiding columns, keyboard movement and type-ahead,
 multi-selection, and the colour variables bound for a light and a dark theme. It uses no Tailwind of

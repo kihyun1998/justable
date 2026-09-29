@@ -31,6 +31,22 @@ today.
   reaches it only after `pnpm build` here and an install there; its note keeps the install mechanics
   ([provenance](../MAP.md#penterm-provenance)).
 - **Whether the package is on the registry** is `npm view justable version`; not a fact to store here.
+- **The release process** — four calls, the maintainer's, 2026-09-29 (#7):
+  - **0.x semver**, over 1.0 now: until 1.0 a breaking change to the exports, or to how one behaves,
+    bumps the minor; anything else the patch.
+  - **`CHANGELOG.md` written by hand** at release time, over changesets.
+  - **CI publishes on a `v*` tag**, over no publishing yet and over a person running `npm publish`.
+  - **PenTerm stays on `file:`** while both are developed together, over installing the published
+    version; moving it is a later call.
+  The steps are README § Releasing.
+- **The publish job runs only after every gate passes** (`needs: gates` in `ci.yml`), and first
+  checks that the tag names `package.json`'s version (`.github/scripts/check-tag.mjs`: `v0.1.0`
+  passes, `v0.1.1`, `0.1.0` and no tag fail). It authenticates with the `NPM_TOKEN` repository
+  secret, the maintainer's choice over npm trusted publishing, and checks it with `npm whoami` before
+  publishing. `--provenance` attaches a build attestation, which needs the job's `id-token: write`.
+- **The published tarball** is 36 files: `dist/`, `README.md`, `LICENSE` and `package.json`
+  (`npm pack --dry-run`, 2026-09-29). CI builds `dist/` fresh, so no file a local build left behind
+  can ship.
 
 ## Code
 
@@ -39,6 +55,9 @@ today.
 - `tsconfig.json`
 - `src/index.ts`
 - `README.md`
+- `CHANGELOG.md`
+- `.github/workflows/ci.yml`
+- `.github/scripts/check-tag.mjs`
 
 ## Reference behaviour
 
@@ -60,7 +79,9 @@ today.
 
 ## Known holes / open
 
-- **No release process is written down** — versioning, changelog, who publishes. The version is
-  `0.1.0` and nothing records what would move it. Tracked: #7.
+- **Nothing has been published.** The publish job has not run: the `NPM_TOKEN` secret is set, and
+  whether it may publish `justable` — a package that does not exist yet — is unknown until a tag runs
+  it. A token scoped to one package may not be able to create it.
+- **Nothing checks that `CHANGELOG.md` covers a release's changes**; it is written by hand.
 - **TypeScript is pinned to `~7.0.2`**, the Go-native compiler; which declaration output a consumer on
   TypeScript 5 can read has not been checked.
