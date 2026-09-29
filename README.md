@@ -106,6 +106,9 @@ pnpm example   # example/ in a browser, against src/ — an edit to the engine r
 pnpm check:example   # the example driven in an installed Chrome or Edge (CHROME_PATH to choose)
 ```
 
+CI runs all of these, `pnpm typecheck` and the map check (`python .github/scripts/check_map.py`) on
+every push and pull request.
+
 `example/` is a file list of 5,000 rows and a folder list beside it, wired the way a consumer
 would: sorting, column resize and auto-fit, hiding columns, keyboard movement and type-ahead,
 multi-selection, and the colour variables bound for a light and a dark theme. It uses no Tailwind of

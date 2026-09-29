@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+      - run: pnpm install --frozen-lockfile
+      - name: test
+        run: pnpm test
+      - name: typecheck
+        run: pnpm typecheck
+      - name: build
+        run: pnpm build
+      - name: map check selftest
+        run: python .github/scripts/check_map.py --selftest
+      - name: map check
+        run: python .github/scripts/check_map.py
+      - name: browser check
+        run: pnpm check:example

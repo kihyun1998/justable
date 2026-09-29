@@ -5,13 +5,28 @@
 What checks a change before it is called done: `pnpm test` (Vitest over `src/**/*.test.{ts,tsx}`),
 `pnpm typecheck`, and `pnpm build`. Two of the tests are package-level guards rather than unit tests:
 the lint that the engine reaches nothing outside itself, and the test that every rendered class is
-prefixed. There is no CI; every gate is run by hand.
+prefixed. CI runs every gate on each push and pull request (`.github/workflows/ci.yml`), and each can
+be run by hand.
 
 ## Governing decisions
 
 **None.**
 
 ## Design model
+
+- **CI runs every gate, each as its own step** — test, typecheck, build, the map check's
+  `--selftest`, the map check, and `check:example` — on Ubuntu 24.04, for every push and pull
+  request, so a red run names its gate. Three calls are the maintainer's (2026-09-29, #6): the map
+  check is **vendored** into `.github/scripts/check_map.py` rather than left local-only, because the
+  skills repository it comes from is private and CI cannot fetch it; `check:example` **runs in CI**
+  rather than local-only; and the runner is **Ubuntu only**, over Ubuntu and Windows. Chrome comes with
+  the runner image (actions/runner-images `c9dd57c6b6`, `Ubuntu2404-Readme.md`).
+- **The vendored map check is a fork.** Its `BUILD_STAMP` names the skills commit it was copied from
+  (`0a76ff1`); apart from that line it was identical on 2026-09-29. It gains nothing when the
+  original gains a rule — re-copy it, and diff before assuming they match.
+- **Node 24 and pnpm 10.28.0 in CI.** pnpm is pinned by `packageManager` in `package.json`;
+  `pnpm/action-setup` v6 reads it. Its successor, `pnpm/setup`, requires pnpm 11, so moving to it
+  moves pnpm too. Node 24 is the LTS; the maintainer develops on 26.
 
 - **The environment is chosen per file.** Vitest's default is Node; each component and hook test
   opts into jsdom with a `// @vitest-environment jsdom` first line. jsdom lays nothing out, so a grid
@@ -79,6 +94,9 @@ prefixed. There is no CI; every gate is run by hand.
 - `example/tsconfig.json`
 - `example/check.mjs`
 - `package.json`
+- `.github/workflows/ci.yml`
+- `.github/scripts/check_map.py`
+- `.checkup.json`
 - `src/lint/the-engine-reaches-nothing-outside-itself.test.ts` — `sourceFiles`, `importViolations`, `staysInside`, `colourViolations`, `EXTERNAL`, `ENGINE`
 - `src/components/prefix.test.tsx` — `unprefixed`
 - `src/components/TableGrid.test.tsx`
@@ -118,6 +136,6 @@ prefixed. There is no CI; every gate is run by hand.
 - **Two branches of `staysInside` are unexercised**: an inner directory whose name starts with `..`,
   and a specifier resolving to another drive (an absolute `path.relative`). Neither shape exists in
   the tree.
-- **No CI.** Nothing runs any of this unless someone does. Tracked: #6.
-- **`check:example` needs an installed browser**, and nothing runs it — there is no CI. Its "no
-  browser" exit has not been exercised on a machine without one.
+- **`check:example`'s "no browser" exit has not been exercised** on a machine without one.
+- **Windows is not in CI**, and it is where the maintainer develops: a CRLF-only or path-only
+  failure shows locally and not in CI.
