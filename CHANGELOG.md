@@ -4,6 +4,22 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
+## 0.1.2 — 2026-09-29
+
+### Added
+
+- **A marquee**: `TableGrid`'s `marquee` draws a rectangle dragged over the rows, as a file explorer
+  does, and reports the rows it touches as `{ anchor, head }` through `onMarquee` — on `start`,
+  `move`, `end` and `cancel`, with the drag's mouse event and the grid's scroller. What a range
+  selects stays yours; `refusePress` and `threshold` are required, and the table never scrolls for
+  the drag. Types `MarqueeOptions`, `MarqueeReport`, `MarqueePhase`, `MarqueeRange`. Two colour
+  variables, `--table-marquee-fill` and `--table-marquee-border`, and `data-table-marquee` on the
+  rectangle (#9).
+
+### Documentation
+
+- The README opens with the logo; brand assets are under `logo/` in the repository.
+
 ## 0.1.1 — 2026-09-29
 
 ### Documentation
