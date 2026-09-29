@@ -185,7 +185,9 @@ ascending order.
   `model.visibleColumns(layout)` is what to draw. Pass its length to `TableGrid` as `colCount`.
 - **Auto-fit.** `useColumnAutoFit()` measures the widest cell of a column. Render its `TableRuler`
   while `measuring` is set, and call `measure(key)` from `TableHeader`'s `onAutoFit` — a double-click
-  on the border — then store the result with `withWidth`. See
+  on the border — then store the result with `withWidth`. `measureAll(keys)` fits several columns
+  from one mount of the ruler and answers `{ [key]: px | null }`; store each non-null width the same
+  way. See
   [`example/FileTable.tsx`](https://github.com/kihyun1998/justable/blob/main/example/FileTable.tsx).
 - **Scrolling while resizing.** A border dragged past the grid's edge does not scroll the grid by
   itself. `onResizeDrag` gives you each move of the drag — the pointer and the grid's scroll

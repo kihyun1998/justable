@@ -188,6 +188,16 @@ export function FileTable({
     onStatus(px === null ? `auto-fit ${key}: nothing measured` : `auto-fit ${key}: ${px}px`);
   };
 
+  /** Every visible column at once; a column that measured nothing keeps its width. */
+  const onFitAll = () => {
+    const px = autoFit.measureAll(columns);
+    setLayout((l) => columns.reduce((acc, key) => {
+      const w = px[key];
+      return w === null ? acc : model.withWidth(acc, key, w);
+    }, l));
+    onStatus(`auto-fit all: ${columns.map((key) => `${key} ${px[key] === null ? '-' : px[key]}`).join(', ')}`);
+  };
+
   const header = (
     <TableHeader
       className="header"
@@ -216,6 +226,9 @@ export function FileTable({
             {LABELS[c.key]}
           </label>
         ))}
+        <button type="button" data-fit-all onClick={onFitAll}>
+          Fit all columns
+        </button>
         <span className="cell-muted">
           {selected.size} selected · double-click a column border to auto-fit
         </span>

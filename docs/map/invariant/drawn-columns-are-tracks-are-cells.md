@@ -7,7 +7,8 @@ For one table, three lists are the same ordered list — the model's `visibleCol
 1. the px tracks of `gridTemplate(layout)`, which then adds exactly one filler track that is not a
    column;
 2. the header's `columnheader`s (`TableHeader`'s `columns`);
-3. every row's `gridcell`s (`TableRow`'s `columns`), and the ruler's one column when auto-fit runs.
+3. every row's `gridcell`s (`TableRow`'s `columns`), and each of the ruler's groups when auto-fit
+   runs — one per column the consumer asks to measure, drawn as that column's cells.
 
 And the header and every row lay those tracks out in boxes of the same width, so the tracks sit
 over one another. `aria-colcount` is the count of the list.
