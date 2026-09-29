@@ -2,7 +2,8 @@
 
 ## What it is
 
-What checks a change before it is called done: `pnpm test` (Vitest over `src/**/*.test.{ts,tsx}`),
+What checks a change before it is called done: `pnpm test` (Vitest over `src/**/*.test.{ts,tsx}` and
+`example/**/*.test.{ts,tsx}`),
 `pnpm typecheck`, and `pnpm build`. Two of the tests are package-level guards rather than unit tests:
 the lint that the engine reaches nothing outside itself, and the test that every rendered class is
 prefixed. CI runs every gate on each push and pull request (`.github/workflows/ci.yml`), and each can
@@ -32,6 +33,12 @@ be run by hand.
 - **The vendored map check is a fork.** Its `BUILD_STAMP` names the skills commit it was copied from
   (`0a76ff1`); apart from that line it was identical on 2026-09-29. It gains nothing when the
   original gains a rule — re-copy it, and diff before assuming they match.
+- **The README's quick start is a file under test.** `example/QuickStart.tsx` is typechecked with the
+  example, `example/QuickStart.test.tsx` renders it (header, rows, a sort, a keyboard move), and the
+  same test requires the README's `tsx` block under `## Quick start` to equal the file. Vitest maps
+  `@kihyun1998/justable` and its `style.css` to `src/` (`vitest.config.ts`), as the example's Vite
+  config does. Proven failing: an edited README block, and the quick start without its key handler or
+  its sort. The README's other snippets are not checked.
 - **Node 24 and pnpm 10.28.0 in CI.** pnpm is pinned by `packageManager` in `package.json`;
   `pnpm/action-setup` v6 reads it. Its successor, `pnpm/setup`, requires pnpm 11, so moving to it
   moves pnpm too. Node 24 is the LTS; the maintainer develops on 26.
@@ -101,6 +108,8 @@ be run by hand.
 - `example/FolderList.tsx` — `FolderList`
 - `example/tsconfig.json`
 - `example/check.mjs`
+- `example/QuickStart.tsx` — `People`
+- `example/QuickStart.test.tsx`
 - `package.json`
 - `.github/workflows/ci.yml`
 - `.github/scripts/check_map.py`

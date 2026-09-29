@@ -4,6 +4,15 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
+## 0.1.1 — 2026-09-29
+
+### Documentation
+
+- The README is written for someone meeting the package for the first time: a quick start that is a
+  tested file in the repository, how the pieces fit together, columns, keyboard, colours,
+  accessibility, and lists that are not a table. The links to example files point at GitHub, since
+  the package does not ship them.
+
 ## 0.1.0 — 2026-09-29
 
 The first release, published as `@kihyun1998/justable` — npm refused the unscoped `justable` as too close to
