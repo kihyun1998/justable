@@ -4,6 +4,30 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
+## 0.2.0 — 2026-09-29
+
+### Breaking
+
+- **`useColumnAutoFit()`'s `measuring` is `K | readonly K[] | null`**, no longer `K | null`: it holds
+  the list while `measureAll` measures. A consumer that only tests it against `null` and passes it
+  to `TableRuler` as `column={measuring}` needs no change; one that uses it as a single key must
+  narrow it first.
+
+### Added
+
+- **Fit every column at once**: `useColumnAutoFit()` returns `measureAll(keys)`, which mounts the
+  ruler once for every distinct key asked about and answers `{ [key]: px | null }` — each the width
+  a double-click on that column's border gives, unclamped, `null` where nothing was measured. Store
+  each width with `withWidth`, as for `measure`. `TableRuler`'s `column` takes a key or an array of
+  keys, one group each (#14).
+
+### Fixed
+
+- **A column key holding `"` or `]` no longer breaks auto-fit.** A ruler group was looked up with a
+  CSS selector built from the key, which threw on such a key and left the ruler mounted with
+  `measuring` stuck. Groups are now matched on their attribute, and `measure` and `measureAll` both
+  unmount the ruler even when a read throws.
+
 ## 0.1.2 — 2026-09-29
 
 ### Added

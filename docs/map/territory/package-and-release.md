@@ -27,17 +27,20 @@ today.
 - **The build is two steps**: `tsc -p tsconfig.build.json` emits JS and declarations from `src/`,
   excluding tests and `src/lint`; then the Tailwind CLI builds `src/style.css` into `dist/style.css`.
   Neither step runs the tests. `dist/` is ignored by git.
-- **The consumer consumes `dist/`.** PenTerm depends on `file:../justable`, so an engine change
-  reaches it only after `pnpm build` here and an install there; its note keeps the install mechanics
-  ([provenance](../MAP.md#penterm-provenance)).
-- **Whether the package is on the registry** is `npm view justable version`; not a fact to store here.
+- **The consumer consumes the published package.** PenTerm depends on `@kihyun1998/justable` from
+  npm at an exact version (pinned at 0.1.2 in `penterm 1a8954d1b`, 2026-09-29), so an engine change
+  reaches it only after a release here and a version bump there; its note keeps the install
+  mechanics ([provenance](../MAP.md#penterm-provenance)).
+- **Whether the package is on the registry** is `npm view @kihyun1998/justable version`; not a fact
+  to store here.
 - **The release process** — four calls, the maintainer's, 2026-09-29 (#7):
   - **0.x semver**, over 1.0 now: until 1.0 a breaking change to the exports, or to how one behaves,
     bumps the minor; anything else the patch.
   - **`CHANGELOG.md` written by hand** at release time, over changesets.
   - **CI publishes on a `v*` tag**, over no publishing yet and over a person running `npm publish`.
   - **PenTerm stays on `file:`** while both are developed together, over installing the published
-    version; moving it is a later call.
+    version; moving it is a later call. That later call was made in PenTerm (`penterm 1a8954d1b`,
+    2026-09-29): it installs the published version, pinned exactly.
   The steps are README § Releasing.
 - **The publish job runs only after every gate passes** (`needs: gates` in `ci.yml`), and first
   checks that the tag names `package.json`'s version (`.github/scripts/check-tag.mjs`: `v0.1.0`
@@ -45,7 +48,7 @@ today.
   secret, the maintainer's choice over npm trusted publishing, and checks it with `npm whoami` before
   publishing. `--provenance` attaches a build attestation, which needs the job's `id-token: write`.
 - **The published tarball** is 36 files: `dist/`, `README.md`, `LICENSE` and `package.json`
-  (`npm pack --dry-run`, 2026-09-29). CI builds `dist/` fresh, so no file a local build left behind
+  (`npm pack --dry-run`, 2026-09-29); 40 files at 0.2.0, the same day. CI builds `dist/` fresh, so no file a local build left behind
   can ship.
 
 ## Code

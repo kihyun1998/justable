@@ -73,7 +73,7 @@ be run by hand.
   `check:example` here (below) and by PenTerm's browser checks (`check:guide`'s `explorer-table`
   group, including `explorer-table-double-click-auto-fits-the-column`, and `check:drawer-columns`) and
   its edge-scroll suite ([row windowing](row-windowing.md)). An engine change reaches PenTerm's only
-  after `pnpm build` here and an install there.
+  after a release here and a version bump there.
 - **Class lists are checked as tokens, not regexes.** `TableRow.test.tsx` splits `TABLE_GRID` rather
   than matching it: a word-boundary escape once lost its backslash on the way into a file.
 - **`example/` is where layout is seen in this repository.** `pnpm example` serves a consumer of the
