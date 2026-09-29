@@ -4,7 +4,7 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
-## 0.1.0 — unreleased
+## 0.1.0 — 2026-09-29
 
 The first release. Before it, the package reached its one consumer, PenTerm, only as
 `file:../justable`; the changes below are measured against that.
