@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/kihyun1998/justable/main/logo/readme/justable-lockup-white-trim.png">
+    <img alt="justable" src="https://raw.githubusercontent.com/kihyun1998/justable/main/logo/readme/justable-lockup-black-trim.png" width="320">
+  </picture>
+</p>
+
 # @kihyun1998/justable
 
 A virtualized, keyboard-navigable data table for React. It draws only the rows in view — a
