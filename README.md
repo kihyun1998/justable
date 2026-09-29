@@ -8,7 +8,7 @@ supply a column spec, the rows, and what goes in each cell.
 ## Install
 
 ```bash
-pnpm add justable
+pnpm add @kihyun1998/justable
 ```
 
 Peer dependencies: `react` and `react-dom` 19, and `lucide-react` for the sort arrows.
@@ -16,7 +16,7 @@ Peer dependencies: `react` and `react-dom` 19, and `lucide-react` for the sort a
 Import the stylesheet once, at your app's entry:
 
 ```ts
-import 'justable/style.css';
+import '@kihyun1998/justable/style.css';
 ```
 
 It holds the package's layout utilities only, every class prefixed `justable:` so none collides with

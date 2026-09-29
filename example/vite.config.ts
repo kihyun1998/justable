@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      justable: fileURLToPath(new URL('../src/index.ts', import.meta.url)),
+      '@kihyun1998/justable': fileURLToPath(new URL('../src/index.ts', import.meta.url)),
     },
   },
 });

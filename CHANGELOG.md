@@ -6,7 +6,8 @@ anything else the patch.
 
 ## 0.1.0 — 2026-09-29
 
-The first release. Before it, the package reached its one consumer, PenTerm, only as
+The first release, published as `@kihyun1998/justable` — npm refused the unscoped `justable` as too close to
+`stable`. Before it, the package reached its one consumer, PenTerm, only as
 `file:../justable`; the changes below are measured against that.
 
 ### Breaking

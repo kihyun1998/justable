@@ -2,7 +2,7 @@
 
 ## What it is
 
-How the engine leaves this repository: the `justable` npm package — ESM with type declarations and
+How the engine leaves this repository: the `@kihyun1998/justable` npm package — ESM with type declarations and
 one stylesheet, under two export paths — its peer dependencies, the build that produces `dist/`, and
 the published README that is its user-facing contract. Also how its one consumer, PenTerm, reaches it
 today.
@@ -81,10 +81,13 @@ today.
 
 - **The publish job has run only as a dry run**, 2026-09-29, on throwaway tags deleted after: a tag
   not naming the version failed at the tag check with every later step skipped, and a matching one
-  passed `npm whoami` with `NPM_TOKEN` and packed `justable` (36 files) for public access. A dry run
-  asks the registry nothing about permission, so whether the token may create `justable` — a package
-  that does not exist yet — is still unknown until the first real tag. A token scoped to one package
-  may not be able to create it.
+  passed `npm whoami` with `NPM_TOKEN` and packed the package (36 files) for public access. A dry run
+  asks the registry nothing about permission.
+- **The name is scoped, `@kihyun1998/justable`** — the maintainer's call, 2026-09-29, over another
+  unscoped name. The first real publish, of `v0.1.0` as `justable`, was refused: npm answered 403,
+  "Package name too similar to existing package stable", and suggested the scoped name. Nothing was
+  published. The stylesheet's `justable:` class prefix and PenTerm's dependency key are not the
+  package name and did not change.
 - **A prerelease version cannot be published as the job stands**: npm refuses one without `--tag`
   ("You must specify a tag using --tag when publishing a prerelease version"), met by the dry run's
   first test version.

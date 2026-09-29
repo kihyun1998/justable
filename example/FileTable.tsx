@@ -9,7 +9,7 @@ import {
   type ColumnLayout,
   type ColumnSpec,
   type TableSort,
-} from 'justable';
+} from '@kihyun1998/justable';
 import { useMemo, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 

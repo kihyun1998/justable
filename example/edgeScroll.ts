@@ -6,7 +6,7 @@
  * the target over about `EASE` s. Time-based, so a 144 Hz screen scrolls as fast as a 60 Hz one.
  * Sub-pixel distance carries over between frames. The release stops it at once, with no glide.
  */
-import type { ResizeDrag } from 'justable';
+import type { ResizeDrag } from '@kihyun1998/justable';
 import { useEffect, useRef } from 'react';
 
 const ZONE = 48;

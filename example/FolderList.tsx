@@ -1,4 +1,4 @@
-import { scrollToReveal, useTypeAhead, visibleRange } from 'justable';
+import { scrollToReveal, useTypeAhead, visibleRange } from '@kihyun1998/justable';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 
