@@ -8,9 +8,10 @@ import {
   useTableKeyboard,
   type ColumnLayout,
   type ColumnSpec,
+  type MarqueeReport,
   type TableSort,
 } from '@kihyun1998/justable';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 
 import type { Modifiers } from './App.js';
@@ -66,7 +67,7 @@ const model = createTableModel<FileEntry, Key, Hideable>(SPEC);
 function cellOf(file: FileEntry, key: Key): ReactNode {
   switch (key) {
     case 'name':
-      return <span className="truncate">{file.kind === 'folder' ? `📁 ${file.name}` : file.name}</span>;
+      return <span className="truncate" data-name>{file.kind === 'folder' ? `📁 ${file.name}` : file.name}</span>;
     case 'kind':
       return file.kind;
     case 'size':
@@ -142,7 +143,44 @@ export function FileTable({
     else pick(answer.to, e);
   };
 
-  const onResizeDrag = useEdgeScroll();
+  const onResizeDrag = useEdgeScroll('x');
+  const edgeScrollMarquee = useEdgeScroll('xy');
+  /** The selection when the marquee started, which every report is laid over. */
+  const before = useRef<ReadonlySet<string>>(new Set());
+
+  /**
+   * The marquee's rows laid over the selection it started from: plain replaces it, Ctrl/Meta toggles
+   * the rows it touches, Shift adds them. Escape puts the selection back.
+   */
+  const onMarquee = ({ phase, range, event, scroller }: MarqueeReport) => {
+    if (phase === 'start') before.current = selected;
+    const running = phase === 'start' || phase === 'move';
+    edgeScrollMarquee(running ? { clientX: event.clientX, clientY: event.clientY, scroller } : null);
+    if (phase === 'cancel') {
+      setSelected(before.current);
+      return;
+    }
+    const low = range ? Math.min(range.anchor, range.head) : 0;
+    const touched = range ? names.slice(low, low + Math.abs(range.head - range.anchor) + 1) : [];
+    let next: Set<string>;
+    if (event.ctrlKey || event.metaKey) {
+      next = new Set(before.current);
+      for (const name of touched) {
+        if (next.has(name)) next.delete(name);
+        else next.add(name);
+      }
+    } else if (event.shiftKey) {
+      next = new Set([...before.current, ...touched]);
+    } else {
+      next = new Set(touched);
+    }
+    setSelected(next);
+    if (phase === 'end' && range) {
+      setAnchor(range.anchor);
+      setFocus(range.head);
+      onStatus(`marquee: ${touched.length} rows`);
+    }
+  };
 
   const onAutoFit = (key: Key) => {
     const px = autoFit.measure(key);
@@ -213,6 +251,12 @@ export function FileTable({
           rowHeightRem={1.75}
           keyboard={keyboard.link}
           onFloorClick={() => setSelected(new Set())}
+          marquee={{
+            // A press on a file's name is a click on that file, never a marquee.
+            refusePress: (e) => e.button !== 0 || (e.target as Element).closest('[data-name]') !== null,
+            threshold: 4,
+            onMarquee,
+          }}
         />
       </div>
 

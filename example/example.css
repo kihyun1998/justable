@@ -43,6 +43,8 @@
   --table-resize-line-active: var(--primary);
   --table-hover: var(--hover);
   --table-focus-ring: var(--ring);
+  --table-marquee-fill: color-mix(in srgb, var(--primary) 12%, transparent);
+  --table-marquee-border: var(--primary);
 }
 
 * {

@@ -28,7 +28,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   so an unchanged measurement costs no re-render. A `ResizeObserver` attached once calls it too; it
   reads only refs (`rowHeightRemRef` included) and calls `setBox`, so the first closure never goes
   stale.
-- **The row height is measured from a drawn row, never assumed.** It follows the app's root font size
+- **The row height is measured from a drawn row, never assumed** — the canvas's first child, unless
+  that is the [marquee](marquee.md)'s rectangle. It follows the app's root font size
   and row density — 28 px at a 16 px root, 42 px at 24 px (PenTerm). `rowHeightRem` × the root font
   size (16 if unparsable) covers only frames before a row exists.
 - **A zero viewport is no measurement.** `box` stays `null`, rows flow unpositioned and the window is

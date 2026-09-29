@@ -6,6 +6,7 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 
+import { type MarqueeOptions, useMarquee } from '../hooks/useMarquee.js';
 import type { TableKeyboardLink } from '../hooks/useTableKeyboard.js';
 import { classNames } from '../lib/classNames.js';
 import { UNMEASURED_ROWS, scrollToReveal, visibleRange } from '../lib/rowWindow.js';
@@ -56,6 +57,8 @@ export interface TableGridProps {
   wrapScroller?: (scroller: ReactElement) => ReactNode;
   /** Extra attributes for the scroller element. */
   scrollerProps?: Record<string, string | boolean>;
+  /** A rectangle dragged over the rows, reporting the rows it touches; absent, there is none. */
+  marquee?: MarqueeOptions;
 }
 
 export function TableGrid({
@@ -77,8 +80,11 @@ export function TableGrid({
   onFloorClick,
   wrapScroller,
   scrollerProps,
+  marquee,
 }: TableGridProps) {
+  const gridRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const marqueeRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const laneRef = useRef<HTMLDivElement>(null);
   const laneInnerRef = useRef<HTMLDivElement>(null);
@@ -100,7 +106,8 @@ export function TableGrid({
 
     // A zero viewport is no measurement: `docs/map/invariant/zero-is-no-measurement.md`.
     if (el.clientHeight <= 0) return;
-    const row = canvasRef.current?.firstElementChild;
+    const first = canvasRef.current?.firstElementChild;
+    const row = first === marqueeRef.current ? null : first;
     const rootPx = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     const next = {
       viewportHeight: el.clientHeight,
@@ -137,6 +144,12 @@ export function TableGrid({
   useEffect(() => {
     if (box && keyboard) keyboard.rowsPerPage = Math.floor(box.viewportHeight / box.rowHeight);
   }, [box, keyboard]);
+
+  const marqueeDrag = useMarquee(
+    marquee,
+    { grid: gridRef, scroller: scrollerRef, canvas: canvasRef, rectangle: marqueeRef },
+    box && showRows ? { rowHeight: box.rowHeight, total } : null,
+  );
 
   const rowWindow = box
     ? visibleRange({ scrollTop, ...box, total })
@@ -197,6 +210,7 @@ export function TableGrid({
       onClick={(e) => {
         if (e.target === e.currentTarget) onFloorClick?.();
       }}
+      onMouseDown={marquee ? marqueeDrag.onMouseDown : undefined}
     >
       {leadingRows.map((render, i) => (
         <Fragment key={i}>{render(2 + i)}</Fragment>
@@ -210,6 +224,14 @@ export function TableGrid({
           style={box ? { height: total * box.rowHeight } : undefined}
         >
           {drawn}
+          {marquee && box && (
+            <div
+              ref={marqueeRef}
+              aria-hidden
+              data-table-marquee
+              className="justable:pointer-events-none justable:absolute justable:hidden justable:border justable:border-(--table-marquee-border) justable:bg-(--table-marquee-fill)"
+            />
+          )}
         </div>
       )}
     </div>
@@ -217,6 +239,7 @@ export function TableGrid({
 
   return (
     <div
+      ref={gridRef}
       role="grid"
       // Where a consumer binds the `--table-*` colours.
       data-table

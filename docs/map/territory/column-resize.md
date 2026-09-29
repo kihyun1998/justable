@@ -46,7 +46,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   zone, 2→24 px a frame), so an engine loop would give it a second speed. `onResizeDrag` hands the
   consumer each move and the scroller, then `null` at the end — at the release and when the header
   unmounts mid-drag, so the consumer's loop always stops. It did not cover vertical scrolling during a
-  drag, nor what the loop's zone and speed should be for any consumer.
+  drag, nor what the loop's zone and speed should be for any consumer. #9 (2026-09-29) extended it to
+  the vertical axis for the [marquee](marquee.md).
 - **During a drag the grid's content keeps its widest width**, and lets go at the release — the
   maintainer's call, 2026-09-29, over leaving the border where it is while the content slides. Without
   the hold, a column shrunk while the grid is scrolled to its right end made the content narrower, the
@@ -61,7 +62,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   scroller and the width hold), since the header is handed to the grid as an element. A header drawn
   outside a grid gets neither: `Δscroll` stays 0, nothing is held, and `onResizeDrag` carries
   `scroller: null`.
-- **The example's loop** (`example/edgeScroll.ts`) is time-based, eased, and reaches its top speed at
+- **The example's loop** (`example/edgeScroll.ts`, `useEdgeScroll('x')` here; the marquee's is
+  `'xy'`) is time-based, eased, and reaches its top speed at
   the edge rather than past it, measuring the edge inside the vertical scrollbar. Its first version
   was faster to the left: the grid's right edge was the window's, so the pointer could go far past the
   left edge and not the right, and the right edge counted the scrollbar as view. Measured after the
@@ -97,6 +99,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - [Grid scaffold](grid-scaffold.md) — owns the scroller and provides it to the header; a change to
   which element scrolls horizontally moves `Δscroll`.
 - [Verification gates](verification-gates.md) — `check:example` holds a border past the edge.
+- [Marquee](marquee.md) — shares the example's edge-scroll loop; a change to its horizontal axis
+  moves both drags.
 
 ## Known holes / open
 
