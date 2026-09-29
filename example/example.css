@@ -154,6 +154,12 @@ body {
   white-space: nowrap;
 }
 
+/* As wide as its text, up to the cell: the name refuses a marquee, the space beside it does not. */
+.file-name {
+  width: fit-content;
+  max-width: 100%;
+}
+
 .header {
   height: 32px;
 }

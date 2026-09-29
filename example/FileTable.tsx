@@ -67,7 +67,7 @@ const model = createTableModel<FileEntry, Key, Hideable>(SPEC);
 function cellOf(file: FileEntry, key: Key): ReactNode {
   switch (key) {
     case 'name':
-      return <span className="truncate" data-name>{file.kind === 'folder' ? `📁 ${file.name}` : file.name}</span>;
+      return <span className="truncate file-name" data-name>{file.kind === 'folder' ? `📁 ${file.name}` : file.name}</span>;
     case 'kind':
       return file.kind;
     case 'size':

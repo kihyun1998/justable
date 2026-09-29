@@ -100,8 +100,13 @@ be run by hand.
 - **The [marquee](marquee.md)'s browser checks run on a page of their own**, so nothing above has
   scrolled or selected: a drag over four rows selects those four and leaves the grid focused, the
   rectangle shows in its bound colours and hides at the release, a drag held past the bottom edge
-  scrolls the grid, Escape puts the selection back, a Ctrl drag inside one row adds that row, and a
-  disabled grid draws none — which only a browser sees, since it rests on a class.
+  scrolls the grid, Escape puts the selection back, a Ctrl drag inside one row adds that row, a press
+  on a name's text starts none while one beside it in the name column does, and a disabled grid
+  draws none — which only a browser sees, since it rests on a class. The name check was added after
+  the example refused the whole name column: its name span was `display: block`, so it measured
+  x 268–512 in a 260–520 cell around text at 268–359, and every press in the column landed on it.
+  The span is now as wide as its text (`.file-name`), up to the cell, where a long name still ends in
+  an ellipsis (measured: 244 px, the cell's content width). Proven failing on the block span.
   The last is the only one that can see the click swallow: the click lands on the press's and
   release's common ancestor, so a drag across rows sends it to the canvas, where nothing listens.
   That check scrolls back to the top first — the drag before it left its row above the view, and the
