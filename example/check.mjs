@@ -135,6 +135,31 @@ try {
   const t2 = await tracks();
   check('a double-click auto-fits, tracks still shared', /auto-fit kind: \d+px/.test(fit) && t2.same, fit);
 
+  const headerWidths = () =>
+    page.$$eval('[role="columnheader"]', (hs) => hs.map((h) => Math.round(h.getBoundingClientRect().width)));
+  const unfitted = await headerWidths();
+  await page.click('[data-fit-all]');
+  const fitted = await headerWidths();
+  const fitAll = await page.$eval('.status', (s) => s.textContent);
+  const t3 = await tracks();
+  check(
+    'fit all moves the columns, tracks still shared',
+    /^auto-fit all: /.test(fitAll) && fitted.join() !== unfitted.join() && t3.same,
+    { unfitted, fitted, fitAll },
+  );
+  const refit = {};
+  for (const key of await page.$$eval('[data-table-resize]', (hs) => hs.map((h) => h.dataset.tableResize))) {
+    const kh = await page.$(`[data-table-resize="${key}"]`);
+    const b = await kh.boundingBox();
+    await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2, { clickCount: 2 });
+    refit[key] = await headerWidths();
+  }
+  check(
+    'a double-click on any border after fit all changes no width',
+    Object.keys(refit).length > 1 && Object.values(refit).every((w) => w.join() === fitted.join()),
+    { fitted, refit },
+  );
+
   const headerBg = () => page.$eval('[data-table-header]', (h) => getComputedStyle(h).backgroundColor);
   const light = await headerBg();
   await page.click('.toolbar label:nth-of-type(1) input');

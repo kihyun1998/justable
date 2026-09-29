@@ -71,7 +71,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 - [Column resize](column-resize.md) — the handle lives in this component and its press handler is
   here.
-- [Auto-fit](auto-fit.md) — the handle's double-click is the entry point.
+- [Auto-fit](auto-fit.md) — the handle's double-click is the entry point to `measure`; fitting every
+  column (`measureAll`) is triggered by the consumer, not from here.
 - [Column model](column-model.md) — the sort shown here is the one `nextSort` produced.
 - [Colour variables](colour-variables.md) — every colour this component paints.
 - [Header lane](header-lane.md) — the strip this row sits in.

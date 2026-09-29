@@ -68,12 +68,12 @@ be run by hand.
   because that is where off-by-ones live and where they are quiet: a row missing at the viewport's
   edge reads as a rendering glitch rather than a wrong number, and a component test cannot easily ask
   what End does in an empty list.
-- **Layout is verified only in PenTerm.** jsdom measures nothing, so every width and alignment claim —
-  auto-fit's widths, the tracks lining up, the colours resolving in scope — is checked only by
-  PenTerm's browser checks (`check:guide`'s `explorer-table` group, including
-  `explorer-table-double-click-auto-fits-the-column`, and `check:drawer-columns`) and its edge-scroll
-  suite ([row windowing](row-windowing.md)). An engine change reaches them only after `pnpm build`
-  here and an install there.
+- **Layout is verified only in a browser.** jsdom measures nothing, so every width and alignment
+  claim — auto-fit's widths, the tracks lining up, the colours resolving in scope — is checked by
+  `check:example` here (below) and by PenTerm's browser checks (`check:guide`'s `explorer-table`
+  group, including `explorer-table-double-click-auto-fits-the-column`, and `check:drawer-columns`) and
+  its edge-scroll suite ([row windowing](row-windowing.md)). An engine change reaches PenTerm's only
+  after `pnpm build` here and an install there.
 - **Class lists are checked as tokens, not regexes.** `TableRow.test.tsx` splits `TABLE_GRID` rather
   than matching it: a word-boundary escape once lost its backslash on the way into a file.
 - **`example/` is where layout is seen in this repository.** `pnpm example` serves a consumer of the
@@ -83,7 +83,10 @@ be run by hand.
   (`example/tsconfig.json`).
 - **`pnpm check:example` is the layout gate** — the maintainer's call, 2026-09-28, to keep it in the
   repository. It serves the example with Vite, drives it in an installed Chrome or Edge, and checks
-  what jsdom cannot: header and row tracks equal (at load, after a drag, after auto-fit), the sort
+  what jsdom cannot: header and row tracks equal (at load, after a drag, after auto-fit, after fit all), fit all
+  answering each column's double-click width — the check first asserts that fit all moved the
+  widths, which it must since the name column was dragged 100 px wider just before, and then that a
+  double-click on every border changes none of them — the sort
   button free of browser button styles, windowing, the sort cycle, type-ahead through a space, Space
   after a move, the theme through the colour variables, and a border held past the scroller's right
   edge scrolling the grid while the column keeps pace. It **exits 1 when no browser is found**,
