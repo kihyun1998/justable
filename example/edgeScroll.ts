@@ -1,12 +1,12 @@
 /**
- * The example's edge scroll for a border drag, the consumer's side of `onResizeDrag`; the engine never
- * scrolls. Within `ZONE` px of the scroller's visible left or right edge — inside its scrollbar — the
- * target speed grows with the square of the depth to `MAX_SPEED` px/s at the edge, and no faster past
- * it, so both sides reach the same top speed wherever the grid sits on screen. The speed eases toward
- * the target over about `EASE` s. Time-based, so a 144 Hz screen scrolls as fast as a 60 Hz one.
- * Sub-pixel distance carries over between frames. The release stops it at once, with no glide.
+ * The example's edge scroll for a drag, the consumer's side of `onResizeDrag` and `onMarquee`; the
+ * engine never scrolls. Within `ZONE` px of the scroller's visible edge on a scrolled axis — inside its
+ * scrollbars — the target speed grows with the square of the depth to `MAX_SPEED` px/s at the edge,
+ * and no faster past it, so both sides reach the same top speed wherever the grid sits on screen. The
+ * speed eases toward the target over about `EASE` s. Time-based, so a 144 Hz screen scrolls as fast
+ * as a 60 Hz one. Sub-pixel distance carries over between frames. The release stops it at once, with
+ * no glide.
  */
-import type { ResizeDrag } from '@kihyun1998/justable';
 import { useEffect, useRef } from 'react';
 
 const ZONE = 48;
@@ -17,59 +17,109 @@ const MAX_DT = 0.05;
 /** Below this speed, with no target, the loop rests. */
 const REST = 1;
 
-/** Signed target speed in px/s for a pointer at `x` against visible edges `left` and `right`. */
-export function edgeSpeed(x: number, left: number, right: number): number {
-  const into = x > right - ZONE ? x - (right - ZONE) : x < left + ZONE ? x - (left + ZONE) : 0;
+/** Where a running drag's pointer is, and the scroller it may scroll. */
+export interface EdgeDrag {
+  clientX: number;
+  clientY: number;
+  scroller: HTMLElement | null;
+}
+
+/** Which axes a drag scrolls: a border drag only across, a marquee both ways. */
+export type EdgeAxes = 'x' | 'xy';
+
+/** Signed target speed in px/s for a pointer at `at` against visible edges `low` and `high`. */
+export function edgeSpeed(at: number, low: number, high: number): number {
+  const into = at > high - ZONE ? at - (high - ZONE) : at < low + ZONE ? at - (low + ZONE) : 0;
   const depth = Math.min(1, Math.abs(into) / ZONE);
   return Math.sign(into) * MAX_SPEED * depth * depth;
 }
 
 /**
- * The scroller's visible edges in screen px: inside its border and its vertical scrollbar. The box
- * sizes are the element's own px, so they are scaled by how wide it is drawn.
+ * The scroller's visible edges in screen px: inside its border and its scrollbars. The box sizes are
+ * the element's own px, so they are scaled by how large it is drawn.
  */
 function visibleEdges(scroller: HTMLElement) {
   const rect = scroller.getBoundingClientRect();
-  const drawn = scroller.offsetWidth > 0 ? rect.width / scroller.offsetWidth : 1;
-  const left = rect.left + scroller.clientLeft * drawn;
-  return { left, right: left + scroller.clientWidth * drawn };
+  const wide = scroller.offsetWidth > 0 ? rect.width / scroller.offsetWidth : 1;
+  const tall = scroller.offsetHeight > 0 ? rect.height / scroller.offsetHeight : 1;
+  const left = rect.left + scroller.clientLeft * wide;
+  const top = rect.top + scroller.clientTop * tall;
+  return {
+    left,
+    right: left + scroller.clientWidth * wide,
+    top,
+    bottom: top + scroller.clientHeight * tall,
+  };
 }
 
-export function useEdgeScroll() {
-  const drag = useRef<ResizeDrag | null>(null);
+interface Motion {
+  speed: number;
+  carry: number;
+}
+
+const still = (): Motion => ({ speed: 0, carry: 0 });
+
+export function useEdgeScroll(axes: EdgeAxes) {
+  const drag = useRef<EdgeDrag | null>(null);
   const frame = useRef<number | null>(null);
-  const motion = useRef({ speed: 0, carry: 0, last: null as number | null });
+  const last = useRef<number | null>(null);
+  const motion = useRef({ x: still(), y: still() });
 
   const stop = () => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     frame.current = null;
-    motion.current = { speed: 0, carry: 0, last: null };
+    last.current = null;
+    motion.current = { x: still(), y: still() };
+  };
+
+  /** Moves one axis a frame's worth; whether that axis still has somewhere to go. */
+  const step = (m: Motion, target: number, dt: number, read: () => number, write: (v: number) => void) => {
+    m.speed += (target - m.speed) * (1 - Math.exp(-dt / EASE));
+    m.carry += m.speed * dt;
+    const whole = Math.trunc(m.carry);
+    if (whole !== 0) {
+      const before = read();
+      write(before + whole);
+      m.carry -= whole;
+      // At an end: nothing moved, so nothing is carried and this axis rests.
+      if (read() === before) {
+        Object.assign(m, still());
+        return false;
+      }
+    }
+    return !(target === 0 && Math.abs(m.speed) < REST);
   };
 
   const tick = (now: number) => {
     frame.current = null;
     const d = drag.current;
-    if (!d?.scroller) return;
-    const m = motion.current;
-    const dt = m.last === null ? 0 : Math.min(MAX_DT, (now - m.last) / 1000);
-    m.last = now;
+    const scroller = d?.scroller;
+    if (!d || !scroller) return;
+    const dt = last.current === null ? 0 : Math.min(MAX_DT, (now - last.current) / 1000);
+    last.current = now;
 
-    const { left, right } = visibleEdges(d.scroller);
-    const target = edgeSpeed(d.clientX, left, right);
-    m.speed += (target - m.speed) * (1 - Math.exp(-dt / EASE));
-    m.carry += m.speed * dt;
-    const whole = Math.trunc(m.carry);
-    if (whole !== 0) {
-      const before = d.scroller.scrollLeft;
-      d.scroller.scrollLeft = before + whole;
-      m.carry -= whole;
-      // At an end: nothing moved, so nothing is carried and the loop rests until the next move.
-      if (d.scroller.scrollLeft === before) {
-        stop();
-        return;
-      }
-    }
-    if (target === 0 && Math.abs(m.speed) < REST) {
+    const edges = visibleEdges(scroller);
+    const across = step(
+      motion.current.x,
+      edgeSpeed(d.clientX, edges.left, edges.right),
+      dt,
+      () => scroller.scrollLeft,
+      (v) => {
+        scroller.scrollLeft = v;
+      },
+    );
+    const down =
+      axes === 'xy' &&
+      step(
+        motion.current.y,
+        edgeSpeed(d.clientY, edges.top, edges.bottom),
+        dt,
+        () => scroller.scrollTop,
+        (v) => {
+          scroller.scrollTop = v;
+        },
+      );
+    if (!across && !down) {
       stop();
       return;
     }
@@ -78,7 +128,7 @@ export function useEdgeScroll() {
 
   useEffect(() => stop, []);
 
-  return (next: ResizeDrag | null) => {
+  return (next: EdgeDrag | null) => {
     drag.current = next;
     if (next === null) stop();
     else if (frame.current === null) frame.current = requestAnimationFrame(tick);

@@ -141,6 +141,95 @@ try {
   const dark = await headerBg();
   check('the colour variables follow the theme', light !== dark, [light, dark]);
 
+  // The marquee, on a fresh page so nothing above has scrolled or selected.
+  const mq = await browser.newPage();
+  mq.on('pageerror', (e) => errors.push(String(e)));
+  await mq.goto(url, { waitUntil: 'networkidle0' });
+  await mq.waitForSelector('[role="grid"] [role="row"][aria-rowindex="8"]');
+  const rowBox = (rowIndex) =>
+    mq.$eval(`[role="grid"] [role="row"][aria-rowindex="${rowIndex}"]`, (r) => {
+      const b = r.getBoundingClientRect();
+      return { x: b.x, y: b.y, width: b.width, height: b.height };
+    });
+  const selectedRows = () =>
+    mq.$$eval('[role="row"][aria-selected="true"]', (rs) => rs.map((r) => Number(r.getAttribute('aria-rowindex'))));
+  const rectangle = () =>
+    mq.$eval('[data-table-marquee]', (m) => {
+      const s = getComputedStyle(m);
+      return { display: s.display, fill: s.backgroundColor, height: m.getBoundingClientRect().height };
+    });
+  const scrollerTop = () =>
+    mq.evaluate(() => {
+      const s = [...document.querySelectorAll('[role="grid"] div')].find((d) => getComputedStyle(d).overflowY === 'auto');
+      const r = s.getBoundingClientRect();
+      return { scrollTop: s.scrollTop, bottom: r.bottom };
+    });
+
+  // Pressed on the last column, away from the name the example refuses a marquee on.
+  const r3 = await rowBox(3);
+  const r6 = await rowBox(6);
+  const px = r3.x + r3.width - 40;
+  await mq.mouse.move(px, r3.y + r3.height / 2);
+  await mq.mouse.down();
+  await mq.mouse.move(px - 30, r6.y + r6.height / 2, { steps: 6 });
+  const during = await rectangle();
+  await mq.mouse.up();
+  const afterRelease = await rectangle();
+  const dragged = await selectedRows();
+  const focusOnGrid = await mq.evaluate(() => document.activeElement?.getAttribute('role') === 'grid');
+  check('a marquee over four rows selects those four, and the release’s click does not undo it', dragged.join() === '3,4,5,6', dragged);
+  check(
+    'the rectangle shows in its colours while dragged, and goes at the release',
+    during.display === 'block' && during.fill !== 'rgba(0, 0, 0, 0)' && during.height > 0 && afterRelease.display === 'none',
+    { during, afterRelease },
+  );
+  check('the grid keeps keyboard focus after a marquee', focusOnGrid);
+
+  // Held past the bottom edge: the example's loop scrolls, and the range follows the scroll.
+  const s0 = await scrollerTop();
+  await mq.mouse.move(px, r3.y + r3.height / 2);
+  await mq.mouse.down();
+  await mq.mouse.move(px, s0.bottom + 20, { steps: 6 });
+  await new Promise((r) => setTimeout(r, 400));
+  const held = await scrollerTop();
+  await mq.keyboard.press('Escape');
+  const cancelled = await selectedRows();
+  await mq.mouse.up();
+  check('a marquee held past the bottom edge scrolls the grid', held.scrollTop > 0, { scrollTop: held.scrollTop });
+  check('Escape puts the selection back as it was before the drag', cancelled.join() === dragged.join(), cancelled);
+
+  // Pressed and released on one row, so the browser's click lands on that row: with Ctrl held, a
+  // click that got through would toggle the row straight back off. Scrolled back first: the drag above
+  // left row 8 above the view.
+  await mq.evaluate(() => {
+    [...document.querySelectorAll('[role="grid"] div')].find((d) => getComputedStyle(d).overflowY === 'auto').scrollTop = 0;
+  });
+  await new Promise((r) => setTimeout(r, 100));
+  const r8 = await rowBox(8);
+  await mq.keyboard.down('Control');
+  await mq.mouse.move(px, r8.y + r8.height / 2);
+  await mq.mouse.down();
+  await mq.mouse.move(px - 60, r8.y + r8.height / 2, { steps: 6 });
+  await mq.mouse.up();
+  await mq.keyboard.up('Control');
+  const toggled = await selectedRows();
+  check('a Ctrl marquee inside one row adds it, and the click on that row does not toggle it back', toggled.join() === '3,4,5,6,8', toggled);
+
+  // Disabled by its class alone, which jsdom cannot see.
+  await mq.click('.toolbar label:nth-of-type(2) input');
+  await mq.mouse.move(px, r3.y + r3.height / 2);
+  await mq.mouse.down();
+  await mq.mouse.move(px, r6.y + r6.height / 2, { steps: 6 });
+  const whileDisabled = await rectangle();
+  await mq.mouse.up();
+  const untouched = await selectedRows();
+  check(
+    'a disabled grid draws no marquee and selects nothing',
+    whileDisabled.display === 'none' && untouched.join() === toggled.join(),
+    { rectangle: whileDisabled.display, selected: untouched },
+  );
+  await mq.close();
+
   // A narrower page, so the table overflows before the name column reaches its maximum.
   const narrow = await browser.newPage();
   narrow.on('pageerror', (e) => errors.push(String(e)));

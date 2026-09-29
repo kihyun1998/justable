@@ -97,6 +97,19 @@ be run by hand.
   scrolls to the end and drags a border 20 px left: the column must shrink by 20. It fails when the
   grid never holds its content's width; it does not see the hold rising during a drag, which only the
   jsdom test pins.
+- **The [marquee](marquee.md)'s browser checks run on a page of their own**, so nothing above has
+  scrolled or selected: a drag over four rows selects those four and leaves the grid focused, the
+  rectangle shows in its bound colours and hides at the release, a drag held past the bottom edge
+  scrolls the grid, Escape puts the selection back, a Ctrl drag inside one row adds that row, and a
+  disabled grid draws none — which only a browser sees, since it rests on a class.
+  The last is the only one that can see the click swallow: the click lands on the press's and
+  release's common ancestor, so a drag across rows sends it to the canvas, where nothing listens.
+  That check scrolls back to the top first — the drag before it left its row above the view, and the
+  press landed on the header. Proven failing: removing the swallow, inverting its `detail` test,
+  removing the grid's focus, removing the example's restore on `cancel`, scrolling the example's
+  marquee on `'x'` only, and removing the disabled grid's `pointer-events-none`. A check that the rectangle never enlarged the scroll area was dropped: with
+  the pointer clamped to the view and 5,000 rows, the rectangle cannot reach the content's edge there,
+  so it could not fail; the jsdom test holds it.
 - **`src/lint` is excluded from the build**, so the lint ships in no package and runs only under
   `pnpm test`.
 

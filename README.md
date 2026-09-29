@@ -157,6 +157,7 @@ Row colours — hover, focus, selection — are yours too: style the rows throug
 | `TableHeader` | The header row: one sort button per column, and a resize handle on each column's right border. |
 | `TableRow` | One row: one cell per column, from `cell(key)`. Spread `place.id`, `place.rowIndex` and `place.style` onto it. |
 | `useTableKeyboard` | Arrow keys, Home/End, Page Up/Down and type-ahead. You call its `step` from your own key handler. |
+| `TableGrid`'s `marquee` | A rectangle dragged over the rows, reporting which rows it touches. |
 
 **Rows must all be the same height.** The grid measures one drawn row and uses it for every row;
 `rowHeightRem` is only its estimate before that.
@@ -201,6 +202,54 @@ screen order, for type-ahead. `step` answers:
 
 What a move does — focus only, or select too — is yours: the table selects nothing.
 
+## Marquee
+
+Pass `marquee` to `TableGrid` to let a drag over the rows draw a rectangle, as a file explorer does.
+The table draws it and tells you which rows it touches; what that selects is yours.
+
+```tsx
+<TableGrid
+  // …
+  marquee={{
+    refusePress: (e) => e.button !== 0 || (e.target as Element).closest('[data-name]') !== null,
+    threshold: 4,
+    onMarquee: ({ phase, range, event, scroller }) => {
+      // phase 'start': remember the selection; 'move' and 'end': lay `range` over it; 'cancel': put it back
+    },
+  }}
+/>
+```
+
+- **Which press starts one.** Any press on the rows or on the empty space below them, unless
+  `refusePress(event)` says no — a press on a file's name may be yours to drag, a right-click your
+  context menu. A refused press is left entirely alone. An allowed one loses its default — the browser
+  selects no text — and focuses the grid, whether or not it goes on to become a marquee, so refuse a
+  press on anything in a row that takes focus itself, such as an input. A press on the scrollbar
+  never starts one.
+- **The threshold.** Nothing happens until the pointer has moved more than `threshold` px on either
+  axis. A press that moves less is an ordinary click. After a real drag, the click the browser sends
+  for the release reaches neither your row's `onClick` nor `onFloorClick`, nor does the double-click
+  that follows when the drag began as a second click.
+- **The range.** `{ anchor, head }`, in the same row indexes as `focus` and `renderRow`: `anchor` is
+  the touched row nearest the press, `head` the one nearest the pointer, so `head < anchor` when
+  dragging up. Only the rectangle's height counts: every row it overlaps top to bottom is touched,
+  wherever it lies across. `null` while it touches no row. Each report carries the whole range, never
+  a change to it, so apply it over the selection you had at `start` rather than over the last one.
+- **Reports.** `'start'` when the threshold is passed, `'move'` on every pointer move and on every
+  scroll that changes the range, `'end'` at the release of the button that started it (or at the
+  first move that finds it no longer held), `'cancel'` on Escape (which then reaches no other
+  handler), when the window loses focus, or when a new press starts over. `event` is the drag's latest mouse event, for its
+  modifiers. A grid removed mid-drag reports nothing more.
+- **Scrolling.** The table never scrolls for a drag. `scroller` is the grid's scroll container: scroll
+  it from your own loop when the pointer nears an edge, as
+  [`example/edgeScroll.ts`](https://github.com/kihyun1998/justable/blob/main/example/edgeScroll.ts)
+  does. The rectangle stays anchored where it was pressed while the rows scroll under it, and a
+  pointer past the grid's edge counts at that edge.
+- **Mouse only.** Touch and pen do not draw one.
+
+[`example/FileTable.tsx`](https://github.com/kihyun1998/justable/blob/main/example/FileTable.tsx)
+replaces the selection on a plain drag, toggles with Ctrl or ⌘, and adds with Shift.
+
 ## Colours
 
 The table paints colour only through CSS variables, with no defaults. Bind them on the table's root,
@@ -216,6 +265,8 @@ which carries `data-table`:
   --table-resize-line-active: #0969da;
   --table-hover: rgb(0 0 0 / 0.04);
   --table-focus-ring: #0969da;
+  --table-marquee-fill: rgb(9 105 218 / 0.12);
+  --table-marquee-border: #0969da;
 }
 ```
 
@@ -229,14 +280,17 @@ which carries `data-table`:
 | `--table-resize-line-active` | a column border being dragged |
 | `--table-hover` | a header cell's hover background |
 | `--table-focus-ring` | a header cell's keyboard focus ring |
+| `--table-marquee-fill` | the marquee rectangle's inside |
+| `--table-marquee-border` | the marquee rectangle's edge |
 
 If you point them at your own design tokens (`var(--border)`), bind them on `[data-table]` rather
 than `:root`: a variable holding `var(--x)` is resolved where it is declared, so a theme that
 redefines `--x` further down the page only reaches the table if the binding sits on the table.
 
 The table's parts carry stable data attributes to select by: `data-table` on the root,
-`data-table-header` on the header row, `data-table-resize="<key>"` on a column's resize handle, and
-`data-table-ruler="<key>"` on an auto-fit ruler while it measures.
+`data-table-header` on the header row, `data-table-resize="<key>"` on a column's resize handle,
+`data-table-marquee` on the marquee rectangle, and `data-table-ruler="<key>"` on an auto-fit ruler
+while it measures.
 
 ## Accessibility
 
@@ -267,6 +321,7 @@ For a list with its own markup and movement — a sidebar, a tree:
   `HeaderColumn`.
 - **Components**: `TableGrid`, `TableHeader`, `TableRow`, `TableRuler`; types `TableGridProps`,
   `RowPlace`, `TableHeaderProps`, `TableRowProps`, `TableRulerProps`.
+- **Marquee**: types `MarqueeOptions`, `MarqueeReport`, `MarqueePhase`, `MarqueeRange`.
 - **Hooks**: `useTableKeyboard` (types `TableKeyEvent`, `TableKeyStep`, `TableKeyboardLink`),
   `useTypeAhead` (`TypeAheadAnswer`), `useColumnResize` (`ResizeDrag`), `useColumnAutoFit`.
 - **Windowing**: `visibleRange`, `scrollToReveal`, `BLOCK_ROWS`, `UNMEASURED_ROWS`; types

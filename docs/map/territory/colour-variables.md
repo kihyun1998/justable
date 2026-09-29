@@ -28,8 +28,10 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   declared and descendants inherit the result, so a scope that redefines `--x` below `:root` does not
   reach the table. Bound at `:root`, 8 of the 10 header colours came out wrong in each of two such
   scopes (PenTerm). The grid root carries `data-table` for exactly this.
-- **Only the header paints.** `TableHeader` uses every variable; the grid, the rows and the ruler
-  paint no colour. Row hover, selection and focus colours are the consumer's row classes.
+- **Only the header and the marquee paint.** `TableHeader` uses every variable but the marquee's
+  two; `TableGrid` paints only the marquee rectangle (`--table-marquee-fill`,
+  `--table-marquee-border`); the rows and the ruler paint no colour. Row hover, selection and focus
+  colours are the consumer's row classes.
 - **Enforced by lint**, not by review: any colour-bearing utility whose value is not a `(--table-…)`
   variable fails [verification gates](verification-gates.md)' colour rule.
 
@@ -50,7 +52,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 ## Blast radius
 
-- [Header row](header-row.md) — the only component that paints.
+- [Header row](header-row.md) — paints every role but the marquee's.
+- [Marquee](marquee.md) — the rectangle's two roles.
 - [Grid scaffold](grid-scaffold.md) — owns the `data-table` attribute the binding hangs on.
 - [Package and release](package-and-release.md) — `README.md` § Colours is the published roster; a
   new, renamed or removed variable is a change to it, and to every consumer's binding.
