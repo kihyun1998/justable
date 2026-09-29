@@ -6,7 +6,7 @@
   "author": "Ki Hyun Park",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kihyun1998/justable.git"
+    "url": "git+https://github.com/kihyun1998/justable.git"
   },
   "type": "module",
   "packageManager": "pnpm@10.28.0",

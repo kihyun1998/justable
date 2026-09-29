@@ -79,9 +79,15 @@ today.
 
 ## Known holes / open
 
-- **Nothing has been published.** The publish job has not run: the `NPM_TOKEN` secret is set, and
-  whether it may publish `justable` — a package that does not exist yet — is unknown until a tag runs
-  it. A token scoped to one package may not be able to create it.
+- **The publish job has run only as a dry run**, 2026-09-29, on throwaway tags deleted after: a tag
+  not naming the version failed at the tag check with every later step skipped, and a matching one
+  passed `npm whoami` with `NPM_TOKEN` and packed `justable` (36 files) for public access. A dry run
+  asks the registry nothing about permission, so whether the token may create `justable` — a package
+  that does not exist yet — is still unknown until the first real tag. A token scoped to one package
+  may not be able to create it.
+- **A prerelease version cannot be published as the job stands**: npm refuses one without `--tag`
+  ("You must specify a tag using --tag when publishing a prerelease version"), met by the dry run's
+  first test version.
 - **Nothing checks that `CHANGELOG.md` covers a release's changes**; it is written by hand.
 - **TypeScript is pinned to `~7.0.2`**, the Go-native compiler; which declaration output a consumer on
   TypeScript 5 can read has not been checked.
