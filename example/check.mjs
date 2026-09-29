@@ -215,6 +215,32 @@ try {
   const toggled = await selectedRows();
   check('a Ctrl marquee inside one row adds it, and the click on that row does not toggle it back', toggled.join() === '3,4,5,6,8', toggled);
 
+  // A file's name refuses a marquee, and only its text: the rest of the name column starts one.
+  const nameGeo = await mq.$eval('[role="grid"] [role="row"][aria-rowindex="10"] [data-name]', (span) => {
+    const text = document.createRange();
+    text.selectNodeContents(span);
+    const t = text.getBoundingClientRect();
+    const cell = span.parentElement.getBoundingClientRect();
+    return { textLeft: t.left, textRight: t.right, cellRight: cell.right, y: (t.top + t.bottom) / 2 };
+  });
+  const r12 = await rowBox(12);
+  const dragFrom = async (x) => {
+    await mq.mouse.move(x, nameGeo.y);
+    await mq.mouse.down();
+    await mq.mouse.move(x, r12.y + r12.height / 2, { steps: 6 });
+    const shown = (await rectangle()).display;
+    await mq.mouse.up();
+    return shown;
+  };
+  const onText = await dragFrom((nameGeo.textLeft + nameGeo.textRight) / 2);
+  const pastText = await dragFrom((nameGeo.textRight + nameGeo.cellRight) / 2);
+  const fromName = await selectedRows();
+  check(
+    'a press on a name’s text starts no marquee, and one beside it in the name column does',
+    onText === 'none' && pastText === 'block' && fromName.join() === '10,11,12',
+    { onText, pastText, selected: fromName, text: [nameGeo.textLeft, nameGeo.textRight], cellRight: nameGeo.cellRight },
+  );
+
   // Disabled by its class alone, which jsdom cannot see.
   await mq.click('.toolbar label:nth-of-type(2) input');
   await mq.mouse.move(px, r3.y + r3.height / 2);
@@ -225,7 +251,7 @@ try {
   const untouched = await selectedRows();
   check(
     'a disabled grid draws no marquee and selects nothing',
-    whileDisabled.display === 'none' && untouched.join() === toggled.join(),
+    whileDisabled.display === 'none' && untouched.join() === fromName.join(),
     { rectangle: whileDisabled.display, selected: untouched },
   );
   await mq.close();
