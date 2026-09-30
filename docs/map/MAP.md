@@ -60,8 +60,9 @@ What they showed on the day this was written, and what does not rot with the num
 - **M1 — every public promise is ungoverned.** The package has no `docs/adr/` and no `CONTEXT.md`.
   The only records that decided anything about it — PenTerm's ADR-0099 and ADR-0100, on column
   resize — are in the consumer's repository, and nothing here adopts them. So every
-  `## Governing decisions` in this map is `**None.**`, and the adjacent PenTerm records are named where
-  they apply.
+  `## Governing decisions` in this map was `**None.**`, and the adjacent PenTerm records are named where
+  they apply. Since then the maintainer's calls have been recorded in the notes they govern, from #8
+  on; which notes still hold none is the sentinel query under Conventions, not a list here.
 - **M3 — `TableGrid.tsx` is about half of the component layer**, and it is three territories that
   share one function: [grid scaffold](territory/grid-scaffold.md),
   [row windowing](territory/row-windowing.md) and [header lane](territory/header-lane.md). The
@@ -115,7 +116,7 @@ What they showed on the day this was written, and what does not rot with the num
 
 ## Coverage
 
-**Complete for `src/` and the package's build and publish surface as of `6236425`.** Every file
+**Complete for `src/` and the package's build and publish surface as of `e613ea2`.** Every file
 under `src/` is named under some note's `## Code`. The territories:
 [column model](territory/column-model.md) · [row windowing](territory/row-windowing.md) ·
 [grid scaffold](territory/grid-scaffold.md) · [header lane](territory/header-lane.md) ·

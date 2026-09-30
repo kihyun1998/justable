@@ -28,6 +28,9 @@ guard is written differently at each site.
 - [Keyboard movement](../territory/keyboard-movement.md) — `rowsPerPage` of 0 pages by
   `FALLBACK_PAGE` (1).
 - [Auto-fit](../territory/auto-fit.md) — a ruler that measured nothing answers `null`, never 0.
+- [Marquee](../territory/marquee.md) — a zero view width or height neither marks a press as on a
+  scrollbar nor clamps the pointer; a zero `scrollWidth` or `scrollHeight` bounds the rectangle
+  nowhere (`Infinity`); `marqueeRange` answers `null` for `!(rowHeight > 0)`.
 
 ## What a violation looks like
 
@@ -55,6 +58,9 @@ Each guard was added by a different slice in PenTerm, each re-deciding the same 
   (`penterm 1b3bc40a3`); its first form is older.
 
 Three sites, three slices, one rule, and no node that named it until this one.
+
+- #9 (2026-09-29, marquee) — the first site written against this note rather than rediscovering the
+  rule: its guards cite it.
 
 ## Where it will recur
 

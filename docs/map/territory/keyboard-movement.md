@@ -112,3 +112,7 @@ unchecked.
 
 ## Known holes / open
 
+- **A fresh query searches from the focused row itself**, so on `cherry` a fresh `c` stays there, and
+  README § Keyboard says "the next row". Measured with `useTypeAhead` (2026-09-30). The maintainer's
+  call, 2026-09-30, is to change the behaviour to the README's (#20): a fresh single letter searches
+  after the row.

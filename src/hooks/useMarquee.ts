@@ -71,7 +71,8 @@ export function useMarquee(
     const viewTop = view.top + scroller.clientTop;
     const viewWidth = scroller.clientWidth;
     const viewHeight = scroller.clientHeight;
-    // A press past the view's inner edge is on a scrollbar. A zero length is no measurement.
+    // A press past the view's inner edge is on a scrollbar. A zero length is no measurement:
+    // `docs/map/invariant/zero-is-no-measurement.md`.
     if (viewWidth > 0 && press.clientX >= viewLeft + viewWidth) return;
     if (viewHeight > 0 && press.clientY >= viewTop + viewHeight) return;
     if (options.refusePress(press)) return;
