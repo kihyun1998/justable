@@ -74,13 +74,15 @@ export function typeAheadIndex(
 export interface TypeAheadStep {
   /** The query to search for. */
   query: string;
-  /** Walk to the *next* match rather than searching from the top. */
-  walk: boolean;
+  /** Search after the row, checking it last, rather than from the row itself. */
+  after: boolean;
 }
 
-/** What a typed character does to the query: a fresh query, a walk (same letter), or an extension. */
+/**
+ * What a typed character does to the query: a fresh query and a walk (the same letter again) search
+ * after the row; an extension searches from it.
+ */
 export function typeAheadStep(prev: string, key: string, fresh: boolean): TypeAheadStep {
-  if (fresh) return { query: key, walk: false };
-  if (prev.toLowerCase() === key.toLowerCase()) return { query: key, walk: true };
-  return { query: prev + key, walk: false };
+  if (fresh || prev.toLowerCase() === key.toLowerCase()) return { query: key, after: true };
+  return { query: prev + key, after: false };
 }

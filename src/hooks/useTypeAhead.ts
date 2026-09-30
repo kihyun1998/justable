@@ -40,9 +40,9 @@ export function useTypeAhead({ now = Date.now }: { now?: () => number } = {}) {
     ) {
       return null;
     }
-    const { query, walk } = typeAheadStep(state.current.query, event.key, !running);
-    // Walking searches after the row, narrowing from the row itself.
-    const hit = typeAheadIndex(query, names, walk ? focus : focus === null ? null : focus - 1);
+    const { query, after } = typeAheadStep(state.current.query, event.key, !running);
+    // A fresh letter and a walk search after the row, narrowing from the row itself.
+    const hit = typeAheadIndex(query, names, after ? focus : focus === null ? null : focus - 1);
     // A miss ends the query: `docs/map/territory/keyboard-movement.md`.
     state.current = hit === null ? { query: '', at: 0 } : { query, at };
     if (hit !== null) event.preventDefault();

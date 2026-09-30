@@ -21,6 +21,13 @@ anything else the patch.
   `align-content`; and `TABLE_CELL` is three classes, so a test looking for it as one class token
   must look for each of its classes. Engines older than Chrome 123, Firefox 125 and Safari 17.4 keep
   the full-height cell and show its text at the top (#16).
+- **A fresh type-ahead letter searches after the focused row.** A letter that starts a new query —
+  the first one, or one after a pause, a movement key, a miss or `end()` — searched from the focused
+  row itself, so a focused row that matched kept focus: on `cherry`, `c` stayed on `cherry`, and ↓
+  onto `cherry` then `c` did too. It now lands on the next match after the row, wrapping round, as the README
+  said; the focused row is checked last, so a letter only it matches still lands on it. This holds
+  for `useTypeAhead` and for `useTableKeyboard`'s `{ by: 'typeAhead' }` answer. A second, different
+  letter still narrows from the row the first one landed on (#20).
 
 ### Added
 
