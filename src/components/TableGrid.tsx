@@ -3,50 +3,15 @@
  * rows the viewport can see. One focusable container; rows carry no `tabIndex`, and the focused row
  * is named by `aria-activedescendant`.
  */
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useRef } from 'react';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 
+import { useHeaderLane } from '../hooks/useHeaderLane.js';
 import { type MarqueeOptions, useMarquee } from '../hooks/useMarquee.js';
+import { useRowWindow } from '../hooks/useRowWindow.js';
 import type { TableKeyboardLink } from '../hooks/useTableKeyboard.js';
 import { classNames } from '../lib/classNames.js';
-import { screenScale, scrollToReveal, visibleRange } from '../lib/rowWindow.js';
-import { type GridScroller, GridScrollerContext } from './gridScroller.js';
-
-/** Whether this document's engine withholds an empty reserved gutter from the horizontal scroll end. */
-interface GutterWithheld {
-  /** With the scroller's content shorter than it. */
-  short: boolean;
-  /** With the scroller's content taller than it. */
-  tall: boolean;
-}
-
-const gutterWithheld = new WeakMap<Document, GutterWithheld>();
-
-/**
- * Whether an offscreen scroller reserving its gutter stops its horizontal scroll short of
- * `scrollWidth − clientWidth`, with short content and with tall; measured once per document.
- */
-function emptyGutterWithheld(doc: Document): GutterWithheld {
-  const known = gutterWithheld.get(doc);
-  if (known) return known;
-  if (!doc.body) return { short: false, tall: false };
-  const probe = doc.createElement('div');
-  probe.style.cssText =
-    'position:absolute;top:0;left:-10000px;width:100px;height:100px;overflow:auto;scrollbar-gutter:stable;visibility:hidden';
-  const content = doc.createElement('div');
-  probe.appendChild(content);
-  doc.body.appendChild(probe);
-  const shortfall = (height: number) => {
-    content.style.cssText = `width:200px;height:${height}px`;
-    probe.scrollLeft = probe.scrollWidth;
-    // The half px is deliberate: `docs/map/territory/header-lane.md`.
-    return probe.scrollWidth - probe.clientWidth - probe.scrollLeft > 0.5;
-  };
-  const measured = { short: shortfall(10), tall: shortfall(300) };
-  probe.remove();
-  gutterWithheld.set(doc, measured);
-  return measured;
-}
+import { GridScrollerContext } from './gridScroller.js';
 
 /** Where a data row sits. */
 export interface RowPlace {
@@ -125,92 +90,18 @@ export function TableGrid({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const marqueeRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const laneRef = useRef<HTMLDivElement>(null);
-  const laneInnerRef = useRef<HTMLDivElement>(null);
-  const spacerRef = useRef<HTMLDivElement>(null);
-  /** How far the spacer extends the scroller's content past its own right end, in px. */
-  const spacerPadRef = useRef(0);
-  // Read through a ref by the observer attached once: `docs/map/territory/row-windowing.md`.
-  const rowHeightRemRef = useRef(rowHeightRem);
-  rowHeightRemRef.current = rowHeightRem;
-
-  // Scroll and size are separate state, deliberately: `docs/map/territory/row-windowing.md`.
-  const [scrollTop, setScrollTop] = useState(0);
-  const [box, setBox] = useState<{ viewportHeight: number; rowHeight: number } | null>(null);
-
-  const measureBox = () => {
-    const el = scrollerRef.current;
-    if (!el) return;
-
-    // The lane's gutter, written by hand and never by React: `docs/map/territory/header-lane.md`.
-    const gutter = el.offsetWidth - el.clientWidth;
-    const lane = laneRef.current;
-    if (lane) lane.style.paddingRight = `${gutter}px`;
-
-    // A zero viewport is no measurement: `docs/map/invariant/zero-is-no-measurement.md`.
-    if (el.clientHeight <= 0) return;
-    const first = canvasRef.current?.firstElementChild;
-    const row = first === marqueeRef.current ? null : first;
-    const rootPx = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    // The row is measured on screen and converted to layout px:
-    // `docs/map/invariant/lengths-are-layout-px.md`.
-    const scale = screenScale(el.getBoundingClientRect().height, el.offsetHeight);
-    const next = {
-      viewportHeight: el.clientHeight,
-      rowHeight: (row?.getBoundingClientRect().height ?? 0) / scale || rowHeightRemRef.current * rootPx,
-    };
-    // The spacer past an empty gutter, written by hand and never by React:
-    // `docs/map/territory/header-lane.md`.
-    const spacer = spacerRef.current;
-    if (spacer) {
-      const withheld = emptyGutterWithheld(el.ownerDocument);
-      const empty = gutter > 0 && (el.scrollHeight > el.clientHeight ? withheld.tall : withheld.short);
-      let content = 0;
-      if (empty) {
-        for (const child of el.children) {
-          if (child !== spacer && child instanceof HTMLElement) {
-            content = Math.max(content, child.scrollWidth);
-          }
-        }
-      }
-      const shown = content > el.clientWidth;
-      const width = shown ? `${content + gutter}px` : '';
-      if (spacer.style.width !== width) spacer.style.width = width;
-      if (spacer.style.display !== (shown ? 'block' : '')) spacer.style.display = shown ? 'block' : '';
-      spacerPadRef.current = shown ? gutter : 0;
-    }
-
-    setBox((prev) =>
-      prev && prev.viewportHeight === next.viewportHeight && prev.rowHeight === next.rowHeight
-        ? prev
-        : next,
-    );
-  };
-
-  useLayoutEffect(measureBox);
-
-  useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(measureBox);
-    ro.observe(el);
-    return () => ro.disconnect();
-    // Attached once, deliberately: `docs/map/territory/row-windowing.md`.
-  }, []);
-
-  // Bring the focused row back into view.
-  useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el || !box || focus === null) return;
-    // Reads the offset from the element, not from state, deliberately:
-    // `docs/map/territory/row-windowing.md`.
-    const next = scrollToReveal(focus, { scrollTop: el.scrollTop, ...box });
-    if (next !== null) el.scrollTop = next;
-  }, [focus, box]);
-
-  useEffect(() => {
-    if (box && keyboard) keyboard.rowsPerPage = Math.floor(box.viewportHeight / box.rowHeight);
-  }, [box, keyboard]);
+  // Called before `useHeaderLane`, deliberately: `docs/map/territory/header-lane.md`.
+  const rows = useRowWindow({
+    scrollerRef,
+    canvasRef,
+    notARowRef: marqueeRef,
+    total,
+    focus,
+    rowHeightRem,
+    keyboard,
+  });
+  const { box, range: rowWindow } = rows;
+  const lane = useHeaderLane({ scrollerRef, canvasRef, remeasure: rows.measure });
 
   const marqueeDrag = useMarquee(
     marquee,
@@ -218,9 +109,6 @@ export function TableGrid({
     box && showRows ? { rowHeight: box.rowHeight, total } : null,
   );
 
-  // No box is no measurement, which `visibleRange` answers for itself:
-  // `docs/map/invariant/zero-is-no-measurement.md`.
-  const rowWindow = visibleRange({ scrollTop, viewportHeight: 0, rowHeight: 0, ...box, total });
   const rowId = (index: number) => `${rowIdPrefix}-row-${index}`;
   const firstDataRow = FIRST_BODY_ROW + leadingRows.length;
 
@@ -233,34 +121,12 @@ export function TableGrid({
             id: rowId(index),
             rowIndex: firstDataRow + index,
             focused: focus === index,
-            // `right: 0` as well as `left` is deliberate:
-            // `docs/map/invariant/drawn-columns-are-tracks-are-cells.md`.
-            style: box
-              ? { position: 'absolute', top: index * box.rowHeight, left: 0, right: 0 }
-              : undefined,
+            style: rows.place(index),
           })}
         </Fragment>,
       );
     }
   }
-
-  // The content never narrows during a border drag: `docs/map/territory/column-resize.md`.
-  const gridScroller = useMemo<GridScroller>(
-    () => ({
-      scrollerRef,
-      holdWidth: (on) => {
-        const canvas = canvasRef.current;
-        const el = scrollerRef.current;
-        if (!canvas || !el) return;
-        canvas.style.minWidth = on
-          ? `${Math.max(Number.parseFloat(canvas.style.minWidth) || 0, el.scrollWidth - spacerPadRef.current)}px`
-          : '';
-        // Released, the spacer is re-measured: `docs/map/territory/header-lane.md`.
-        if (!on) measureBox();
-      },
-    }),
-    [],
-  );
 
   const scroller = (
     <div
@@ -268,11 +134,8 @@ export function TableGrid({
       ref={scrollerRef}
       {...scrollerProps}
       onScroll={(e) => {
-        setScrollTop(e.currentTarget.scrollTop);
-        // Horizontal follows in the DOM directly, not through state:
-        // `docs/map/territory/header-lane.md`.
-        const inner = laneInnerRef.current;
-        if (inner) inner.style.transform = `translateX(${-e.currentTarget.scrollLeft}px)`;
+        rows.onScroll(e.currentTarget.scrollTop);
+        lane.onScroll(e.currentTarget.scrollLeft);
       }}
       // `scrollbar-gutter: stable`: `docs/map/territory/header-lane.md`.
       className="justable:min-h-0 justable:flex-1 justable:overflow-auto justable:[scrollbar-gutter:stable]"
@@ -304,7 +167,7 @@ export function TableGrid({
         </div>
       )}
       <div
-        ref={spacerRef}
+        ref={lane.spacerRef}
         aria-hidden
         className="justable:pointer-events-none justable:invisible justable:hidden justable:-mt-px justable:h-px"
       />
@@ -337,9 +200,9 @@ export function TableGrid({
     >
       {/* The header lane: `clip`, not `hidden`, deliberately:
           `docs/map/territory/header-lane.md`. */}
-      <div role="rowgroup" ref={laneRef} className="justable:shrink-0 justable:[overflow-x:clip]">
-        <div ref={laneInnerRef}>
-          <GridScrollerContext.Provider value={gridScroller}>{header}</GridScrollerContext.Provider>
+      <div role="rowgroup" ref={lane.laneRef} className="justable:shrink-0 justable:[overflow-x:clip]">
+        <div ref={lane.laneInnerRef}>
+          <GridScrollerContext.Provider value={lane.gridScroller}>{header}</GridScrollerContext.Provider>
         </div>
       </div>
       {wrapScroller ? wrapScroller(scroller) : scroller}

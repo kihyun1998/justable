@@ -29,7 +29,7 @@ stand.
 
 ## Territories it holds in
 
-- [Row windowing](../territory/row-windowing.md) — **converted (#19).** `measureBox` divides the first
+- [Row windowing](../territory/row-windowing.md) — **converted (#19).** `useRowWindow`'s `measure` divides the first
   drawn row's screen height by `screenScale`, the scroller's own screen height over its
   `offsetHeight`. The `rowHeightRem` fallback is in layout px already and is not divided.
 - [Column resize](../territory/column-resize.md) — **converted by the consumer's `scale` (#8).**

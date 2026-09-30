@@ -63,7 +63,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   scrollbars (#22 found the shortfall is the empty gutter's, not a drawn scrollbar's). Since #22 a
   spacer extends `scrollWidth` by that gutter, so the end is still not `scrollWidth − clientWidth`.
   So the drag leaves blank space on the right, and the content slides once, at the release. The hold is a `min-width` on the rows'
-  canvas, raised on every read of the drag (`holdWidth`, in `TableGrid`'s `gridScroller`). It is
+  canvas, raised on every read of the drag (`holdWidth`, in `useHeaderLane`'s `gridScroller`). It is
   written by hand on an element whose JSX sets `style` too — the canvas's `height` — which
   [header lane](header-lane.md)'s rule for hand-written styles avoids: two owners of one inline
   style. It holds only because React never writes `min-width` there; a `minWidth` in the canvas's
@@ -92,7 +92,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 ## Code
 
 - `src/hooks/useColumnResize.ts` — `useColumnResize`, `ResizeDrag`
-- `src/components/TableGrid.tsx` — `gridScroller`, `holdWidth`
+- `src/hooks/useHeaderLane.ts` — `gridScroller`, `holdWidth`
 - `src/components/TableHeader.tsx` — `TableHeader`, `startResize`, `refusePress`, `onResizeDrag`
 - `src/components/gridScroller.ts` — `GridScrollerContext`
 - `example/edgeScroll.ts` — `useEdgeScroll`

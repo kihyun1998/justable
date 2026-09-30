@@ -60,7 +60,8 @@ nothing to a consumer itself; each drag says what its own moments mean.
   2026-09-30: a guard there survived every test as a mutation. A caller that keeps `end` past `ended`
   would null out a newer drag. A consumer that unmounts the component synchronously inside a release
   (`flushSync` in `onResize` or an `end` report) runs `ended` twice — a second `onDrag(null)` and
-  `holdWidth(false)`, as the hand-kept lifetime before #10 did too.
+  `holdWidth(false)`, which measures the row window and the lane again, as the hand-kept lifetime
+  before #10 did too.
 - **Only the lifetime is shared.** Threshold, Escape, blur, the click swallow, scale, `Δscroll` and the
   width hold are each drag's own, attached and released through their own code.
 

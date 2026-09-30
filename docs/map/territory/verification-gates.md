@@ -48,6 +48,13 @@ be run by hand.
   test sees the unmeasured state unless it stubs a length — `TableGrid.test.tsx` stubs
   `HTMLElement.prototype.clientHeight` to reach the measured one — and a disabled grid is visible to
   a test only as `aria-disabled` and a class name, since jsdom compiles no CSS.
+- **The header lane's jsdom test is a file of its own** (`TableGrid.lane.test.tsx`), because the
+  engine probe caches its answer per document and a test file shares one: the first grid rendered
+  decides the probe for the rest of the file. It stubs `scrollLeft` to 0, since jsdom keeps an
+  assigned `scrollLeft` (400 read back as 400, measured 2026-09-30), which makes the probe see an
+  engine that scrolls all the way. Its release case changes only the content's width and asserts no
+  commit: changing the viewport height as well commits the grid, and the commit re-measures the lane
+  whether or not the release does (#25, measured by removing the release's lane measure).
 - **The lint finds the engine from its own file, not from a repo root** (`ENGINE` is `src/`), so it
   travelled into this package unchanged. It skips `src/lint` and every test file, and it **fails
   when it finds five or fewer sources** — a scope that matched nothing is not a pass.
@@ -174,6 +181,7 @@ be run by hand.
 - `src/components/prefix.test.tsx` — `unprefixed`
 - `src/components/TableGrid.test.tsx`
 - `src/components/TableGrid.marquee.test.tsx`
+- `src/components/TableGrid.lane.test.tsx`
 - `src/components/TableHeader.test.tsx`
 - `src/components/TableRow.test.tsx`
 - `src/components/TableRuler.test.tsx`

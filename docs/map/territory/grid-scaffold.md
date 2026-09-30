@@ -64,7 +64,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 ## Code
 
-- `src/components/TableGrid.tsx` — `TableGrid`, `TableGridProps`, `RowPlace`, `multiselectable`, `rowIdPrefix`, `firstDataRow`, `leadingRows`, `onFloorClick`, `wrapScroller`, `scrollerProps`, `GridScrollerContext`, `gridRef`, `marquee`
+- `src/components/TableGrid.tsx` — `TableGrid`, `TableGridProps`, `RowPlace`, `multiselectable`, `rowIdPrefix`, `firstDataRow`, `leadingRows`, `onFloorClick`, `wrapScroller`, `scrollerProps`, `GridScrollerContext`, `gridRef`, `scrollerRef`, `marquee`; it calls `useRowWindow` ([row windowing](row-windowing.md)) and `useHeaderLane` ([header lane](header-lane.md)) and draws what they answer
 
 ## Reference behaviour
 

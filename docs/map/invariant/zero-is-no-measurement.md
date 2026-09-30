@@ -23,13 +23,14 @@ guard is written differently at each site.
 
 - [Row windowing](../territory/row-windowing.md) — `visibleRange` treats `!(rowHeight > 0)` as
   unmeasured and draws the first `UNMEASURED_ROWS`; `scrollToReveal` answers `null` for a zero row or
-  viewport; `TableGrid` hands `visibleRange` a zero row height while `box` is `null`, so the
-  unmeasured window is that function's alone; `measureBox` keeps `box` at `null` for a zero
+  viewport; `useRowWindow` hands `visibleRange` a zero row height while `box` is `null`, so the
+  unmeasured window is that function's alone; `useRowWindow`'s `measure` keeps `box` at `null` for a zero
   `clientHeight`, falls back to `rowHeightRem` for a zero row height and to 16 px for an unparsable
   root font size; `screenScale` answers 1 — no scale — for a zero, negative or non-finite screen or
   layout height.
-- [Header lane](../territory/header-lane.md) — a zero gutter pads nothing, and the engine probe
-  counts a shortfall only above half a px.
+- [Header lane](../territory/header-lane.md) — a zero gutter pads nothing, the engine probe
+  counts a shortfall only above half a px, and `useHeaderLane`'s `measure` leaves the spacer alone
+  for a zero `clientHeight` — its own guard since #25, duplicating the row window's.
 - [Keyboard movement](../territory/keyboard-movement.md) — `rowsPerPage` of 0 pages by
   `FALLBACK_PAGE` (1).
 - [Auto-fit](../territory/auto-fit.md) — a ruler that measured nothing answers `null`, never 0.
@@ -46,7 +47,7 @@ guard is written differently at each site.
 - A page of zero rows makes PageDown do nothing.
 - An auto-fit answer of 0 is clamped up to the column's minimum and looks like a fit.
 
-The live gap: `measureBox` guards the viewport but not the row height. It accepts a `box` whose
+The live gap: `useRowWindow`'s `measure` guards the viewport but not the row height. It accepts a `box` whose
 `rowHeight` is 0 when the first drawn row measures 0 **and** `rowHeightRem` is 0. `visibleRange`
 then falls back safely, but row placement (`index × rowHeight`) stacks every row at the top and the
 page size written to the keyboard becomes `Infinity`, so PageDown jumps to the last row. Reachable
