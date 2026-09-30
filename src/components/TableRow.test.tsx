@@ -31,10 +31,12 @@ describe('the grid holds no spacing of its own', () => {
     expect(tokens.filter((c) => c.startsWith('p') && c.includes('-'))).toEqual([]);
   });
 
-  it('every cell carries the padding', () => {
+  it('every cell carries each of `TABLE_CELL`’s classes', () => {
     const cells = [...renderRow().querySelectorAll('[role="gridcell"]')];
     expect(cells).toHaveLength(COLUMNS.length);
-    for (const c of cells) expect(c.className.split(' ')).toContain(TABLE_CELL);
+    for (const c of cells) {
+      expect(c.className.split(' ')).toEqual(expect.arrayContaining(TABLE_CELL.split(' ')));
+    }
   });
 });
 

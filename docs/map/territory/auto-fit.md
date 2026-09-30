@@ -18,7 +18,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **It measures the real cell, not the text.** A cell is more than glyphs — icon, gap, padding — so
   `canvas.measureText` undercounts. The consumer hands the ruler the same `cell` renderer, the same
   `cellClassName` and the row's inherited type (`className`), and the ruler pads with `TABLE_CELL`,
-  so the ruler cell and the real cell cannot measure apart.
+  so the ruler cell and the real cell cannot measure apart. `TABLE_CELL`'s stretch and centring move
+  no width on the ruler, whose cells sit in a block ([table row](table-row.md)).
 - **Every row, not the window.** A fit must not depend on the scroll position.
 - **The ruler exists only inside the measuring call**: `flushSync` mounts it, the cells are read,
   `flushSync` unmounts it. Kept mounted it costs a node per row and doubles every row's text for

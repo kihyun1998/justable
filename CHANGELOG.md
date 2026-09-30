@@ -13,6 +13,14 @@ anything else the patch.
   `mouseup` ended it, and a drag whose release was missed kept following the pointer. A test that
   drags a border with synthetic events must now send `buttons` on its moves (`buttons: 1` for the
   primary button): a move without it ends the drag (#10).
+- **A body cell is as tall as its row.** It was as tall as its content, centred by the row, so a
+  press just above or below the content landed on the row and `closest('[role="gridcell"]')` found
+  no cell. `TABLE_CELL` now stretches the cell (`align-self: stretch`) and centres its content inside
+  it (`align-content: center`); the content draws where it did. What changes for you: a cell's own
+  background or border spans the row's height; a cell class of yours must not set `align-self` or
+  `align-content`; and `TABLE_CELL` is three classes, so a test looking for it as one class token
+  must look for each of its classes. Engines older than Chrome 123, Firefox 125 and Safari 17.4 keep
+  the full-height cell and show its text at the top (#16).
 
 ### Added
 

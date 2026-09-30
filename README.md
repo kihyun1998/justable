@@ -337,8 +337,8 @@ For a list with its own markup and movement — a sidebar, a tree:
   `useTypeAhead` (`TypeAheadAnswer`), `useColumnResize` (`ResizeDrag`), `useColumnAutoFit`.
 - **Windowing**: `visibleRange`, `scrollToReveal`, `BLOCK_ROWS`, `UNMEASURED_ROWS`; types
   `RowWindow`, `VisibleRangeInput`, `RevealInput`.
-- **Classes**: `TABLE_GRID` and `TABLE_CELL`, a row's grid layout and a cell's padding, for rows you
-  draw yourself.
+- **Classes**: `TABLE_GRID` and `TABLE_CELL`, a row's grid layout and a cell — padded, as tall as its
+  row, its content centred — for rows you draw yourself.
 
 ## Develop
 

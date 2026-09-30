@@ -33,9 +33,10 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   coexist — the resize line carries its rest colour only at rest and its active colour only while
   dragged — and a consumer's classes must not target a property the engine sets on the same element.
 - **Spacing belongs to the cells, never the grid.** `TABLE_GRID` has no gap or padding; `TABLE_CELL`
-  pads each cell. A gap belonged to no cell, so header hover stopped short of it and a resize line
-  drew beside the visible border (PenTerm). `min-w-min` keeps a row as wide as its tracks — without it
-  a 470 px row in a 300 px box drew its selection fill 300 px wide (PenTerm).
+  pads each cell, and stretches it to its row ([table row](table-row.md)). A gap belonged to no
+  cell, so header hover stopped short of it and a resize line drew beside the visible border
+  (PenTerm). `min-w-min` keeps a row as wide as its tracks — without it a 470 px row in a 300 px box
+  drew its selection fill 300 px wide (PenTerm).
 
 ## Code
 
