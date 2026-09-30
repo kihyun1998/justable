@@ -95,14 +95,16 @@ turns the rectangle's vertical span into the rows it touches. The engine draws a
 - **Escape is claimed only while a marquee runs**: `window` capture phase, `preventDefault` and
   `stopPropagation`, so a consumer's grid-level Escape (clear the selection) does not undo the restore
   its `cancel` just did. Before the threshold, Escape is the consumer's.
-- **A drag cannot outlive its component or another drag**, as in [column resize](column-resize.md): a
+- **A drag cannot outlive its component or another drag** — the [drag lifetime](drag-lifetime.md)'s,
+  shared with [column resize](column-resize.md). What this drag says when interrupted is its own: a
   new press **cancels** a running drag that had started — its consumer is alive and would otherwise be
   left mid-drag, its edge-scroll loop still running (column resize's `stop` tells its consumer
   `null` for the same reason); unmounting detaches every listener **without** a `cancel`, since the
   consumer it would call may be gone too.
 - **Only the button that pressed releases it.** A mouseup of another button — a right press refused
   mid-drag — is ignored. A move whose `buttons` no longer hold that button ends the drag as its
-  release would have: the release happened somewhere no listener saw it.
+  release would have: the release happened somewhere no listener saw it. The rule is the
+  [drag lifetime](drag-lifetime.md)'s; #10 gave it to the border drag too.
 - **`end` recomputes the range.** A list that shrank or grew under a still pointer is reported as it
   is at the release, not as it was at the last move.
 - **`event` is the drag's latest mouse event.** A report caused by a scroll, Escape or blur carries
@@ -142,8 +144,10 @@ this imitates; neither was read or measured.
   protects, the focus the press moves, and the disabled class.
 - [Row windowing](row-windowing.md) — owns `box` and the canvas; a change to how rows are placed moves
   the hit-test's origin and band.
-- [Column resize](column-resize.md) — the sibling drag: its predicate seam, its lifetime rule, and #8,
-  which this extends to the vertical axis.
+- [Column resize](column-resize.md) — the sibling drag: its predicate seam and #8, which this extends
+  to the vertical axis.
+- [Drag lifetime](drag-lifetime.md) — owns when this drag ends and what interrupts it; a change there
+  moves when `end` and `cancel` are reported.
 - [Colour variables](colour-variables.md) — the rectangle paints through two roles.
 - [Package and release](package-and-release.md) — `README.md` § Marquee and § Colours are the
   published contract.

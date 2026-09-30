@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
 
 import { type MarqueeRange, marqueeRange } from '../lib/marquee.js';
+import { useDrag } from './useDrag.js';
 
 /** What a report says happened: the drag passed its threshold, moved, was released, or was abandoned. */
 export type MarqueePhase = 'start' | 'move' | 'end' | 'cancel';
@@ -42,9 +43,6 @@ export interface MarqueeRows {
 
 const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value));
 
-/** `MouseEvent.button` → its bit in `MouseEvent.buttons`. */
-const BUTTON_BIT = [1, 4, 2, 8, 16];
-
 /**
  * A rectangle dragged over the grid's rows: a press on the scroller arms it, `document` mousemove
  * and the scroller's scroll move it, mouseup ends it, Escape and a lost window cancel it. It draws
@@ -59,16 +57,7 @@ export function useMarquee(
   optionsRef.current = options;
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
-  /** Ends the running drag, with a `cancel` if it had started and `tell` is set; `null` while none runs. */
-  const detach = useRef<((tell: boolean) => void) | null>(null);
-
-  useEffect(
-    () => () => {
-      detach.current?.(false);
-      detach.current = null;
-    },
-    [],
-  );
+  const drag = useDrag();
 
   const onMouseDown = (press: ReactMouseEvent<HTMLElement>) => {
     const scroller = parts.scroller.current;
@@ -89,129 +78,117 @@ export function useMarquee(
 
     press.preventDefault();
     parts.grid.current?.focus({ preventScroll: true });
-    detach.current?.(true);
 
-    const { threshold } = options;
-    const held = BUTTON_BIT[press.button] ?? 0;
-    const at = canvas.getBoundingClientRect();
-    const scrollLeft0 = scroller.scrollLeft;
-    const scrollTop0 = scroller.scrollTop;
-    /** The canvas's offset inside the scroller's content, which leading rows push down. */
-    const canvasLeft = at.left - viewLeft + scrollLeft0;
-    const canvasTop = at.top - viewTop + scrollTop0;
-    /** The scroller's content in canvas px, as it was at the press; a zero length bounds nothing. */
-    const bounds = {
-      left: -canvasLeft,
-      top: -canvasTop,
-      right: scroller.scrollWidth > 0 ? scroller.scrollWidth - canvasLeft : Infinity,
-      bottom: scroller.scrollHeight > 0 ? scroller.scrollHeight - canvasTop : Infinity,
-    };
-    const toCanvas = (clientX: number, clientY: number) => {
-      const x = viewWidth > 0 ? clamp(clientX, viewLeft, viewLeft + viewWidth) : clientX;
-      const y = viewHeight > 0 ? clamp(clientY, viewTop, viewTop + viewHeight) : clientY;
-      return {
-        x: x - at.left + scroller.scrollLeft - scrollLeft0,
-        y: y - at.top + scroller.scrollTop - scrollTop0,
+    drag.begin(press.button, scroller, (end) => {
+      const { threshold } = options;
+      const at = canvas.getBoundingClientRect();
+      const scrollLeft0 = scroller.scrollLeft;
+      const scrollTop0 = scroller.scrollTop;
+      /** The canvas's offset inside the scroller's content, which leading rows push down. */
+      const canvasLeft = at.left - viewLeft + scrollLeft0;
+      const canvasTop = at.top - viewTop + scrollTop0;
+      /** The scroller's content in canvas px, as it was at the press; a zero length bounds nothing. */
+      const bounds = {
+        left: -canvasLeft,
+        top: -canvasTop,
+        right: scroller.scrollWidth > 0 ? scroller.scrollWidth - canvasLeft : Infinity,
+        bottom: scroller.scrollHeight > 0 ? scroller.scrollHeight - canvasTop : Infinity,
       };
-    };
+      const toCanvas = (clientX: number, clientY: number) => {
+        const x = viewWidth > 0 ? clamp(clientX, viewLeft, viewLeft + viewWidth) : clientX;
+        const y = viewHeight > 0 ? clamp(clientY, viewTop, viewTop + viewHeight) : clientY;
+        return {
+          x: x - at.left + scroller.scrollLeft - scrollLeft0,
+          y: y - at.top + scroller.scrollTop - scrollTop0,
+        };
+      };
 
-    const origin = toCanvas(press.clientX, press.clientY);
-    let pointer = { clientX: press.clientX, clientY: press.clientY };
-    let last: MouseEvent = press.nativeEvent;
-    let started = false;
-    let range: MarqueeRange | null = null;
+      const origin = toCanvas(press.clientX, press.clientY);
+      let pointer = { clientX: press.clientX, clientY: press.clientY };
+      let last: MouseEvent = press.nativeEvent;
+      let started = false;
+      let range: MarqueeRange | null = null;
 
-    const update = () => {
-      const measured = rowsRef.current;
-      const here = toCanvas(pointer.clientX, pointer.clientY);
-      range = measured ? marqueeRange({ from: origin.y, to: here.y, ...measured }) : null;
-      const left = clamp(Math.min(origin.x, here.x), bounds.left, bounds.right);
-      const right = clamp(Math.max(origin.x, here.x), bounds.left, bounds.right);
-      const top = clamp(Math.min(origin.y, here.y), bounds.top, bounds.bottom);
-      const bottom = clamp(Math.max(origin.y, here.y), bounds.top, bounds.bottom);
-      Object.assign(rectangle.style, {
-        left: `${left}px`,
-        top: `${top}px`,
-        width: `${right - left}px`,
-        height: `${bottom - top}px`,
-      });
-    };
-    const report = (phase: MarqueePhase) =>
-      optionsRef.current?.onMarquee({ phase, range, event: last, scroller });
+      const update = () => {
+        const measured = rowsRef.current;
+        const here = toCanvas(pointer.clientX, pointer.clientY);
+        range = measured ? marqueeRange({ from: origin.y, to: here.y, ...measured }) : null;
+        const left = clamp(Math.min(origin.x, here.x), bounds.left, bounds.right);
+        const right = clamp(Math.max(origin.x, here.x), bounds.left, bounds.right);
+        const top = clamp(Math.min(origin.y, here.y), bounds.top, bounds.bottom);
+        const bottom = clamp(Math.max(origin.y, here.y), bounds.top, bounds.bottom);
+        Object.assign(rectangle.style, {
+          left: `${left}px`,
+          top: `${top}px`,
+          width: `${right - left}px`,
+          height: `${bottom - top}px`,
+        });
+      };
+      const report = (phase: MarqueePhase) =>
+        optionsRef.current?.onMarquee({ phase, range, event: last, scroller });
 
-    const onMove = (ev: MouseEvent) => {
-      if ((ev.buttons & held) === 0) {
-        finish(ev);
-        return;
-      }
-      last = ev;
-      pointer = { clientX: ev.clientX, clientY: ev.clientY };
-      if (!started) {
-        const far = Math.max(
-          Math.abs(ev.clientX - press.clientX),
-          Math.abs(ev.clientY - press.clientY),
-        );
-        if (far <= threshold) return;
-        started = true;
-        rectangle.style.display = 'block';
+      const onMove = (ev: MouseEvent) => {
+        last = ev;
+        pointer = { clientX: ev.clientX, clientY: ev.clientY };
+        if (!started) {
+          const far = Math.max(
+            Math.abs(ev.clientX - press.clientX),
+            Math.abs(ev.clientY - press.clientY),
+          );
+          if (far <= threshold) return;
+          started = true;
+          rectangle.style.display = 'block';
+          update();
+          report('start');
+          return;
+        }
         update();
-        report('start');
-        return;
-      }
-      update();
-      report('move');
-    };
-    const onScroll = () => {
-      if (!started) return;
-      const before = range;
-      update();
-      if (before?.anchor !== range?.anchor || before?.head !== range?.head) report('move');
-    };
-    const finish = (ev: MouseEvent) => {
-      last = ev;
-      if (started) {
+        report('move');
+      };
+      const onScroll = () => {
+        if (!started) return;
+        const before = range;
+        update();
+        if (before?.anchor !== range?.anchor || before?.head !== range?.head) report('move');
+      };
+      const onRelease = (ev: MouseEvent) => {
+        last = ev;
+        if (!started) return;
         update();
         report('end');
         swallowNextClick();
-      }
-      stop();
-    };
-    const onUp = (ev: MouseEvent) => {
-      if (ev.button === press.button) finish(ev);
-    };
-    const cancel = () => {
-      report('cancel');
-      stop();
-    };
-    const onKey = (ev: KeyboardEvent) => {
-      if (!started || ev.key !== 'Escape') return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      cancel();
-    };
-    const onBlur = () => {
-      if (started) cancel();
-      else stop();
-    };
-    const stop = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      window.removeEventListener('keydown', onKey, true);
-      window.removeEventListener('blur', onBlur);
-      scroller.removeEventListener('scroll', onScroll);
-      rectangle.style.display = '';
-      detach.current = null;
-    };
+      };
+      const cancel = () => {
+        report('cancel');
+        end();
+      };
+      const onKey = (ev: KeyboardEvent) => {
+        if (!started || ev.key !== 'Escape') return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        cancel();
+      };
+      const onBlur = () => {
+        if (started) cancel();
+        else end();
+      };
 
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    window.addEventListener('keydown', onKey, true);
-    window.addEventListener('blur', onBlur);
-    scroller.addEventListener('scroll', onScroll);
-    detach.current = (tell) => {
-      if (tell && started) cancel();
-      else stop();
-    };
+      window.addEventListener('keydown', onKey, true);
+      window.addEventListener('blur', onBlur);
+      return {
+        move: onMove,
+        scroll: onScroll,
+        release: onRelease,
+        interrupted: (why) => {
+          if (why === 'replaced' && started) report('cancel');
+        },
+        ended: () => {
+          window.removeEventListener('keydown', onKey, true);
+          window.removeEventListener('blur', onBlur);
+          rectangle.style.display = '';
+        },
+      };
+    });
   };
 
   return { onMouseDown };

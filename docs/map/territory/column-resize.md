@@ -8,7 +8,11 @@ right edge, the press handler that arms a drag, and `useColumnResize`, which fol
 
 ## Governing decisions
 
-**None.** in this repository. Adjacent, in PenTerm: ADR-0099 (a resize boundary is not
+- **#10, the maintainer's calls in triage, 2026-09-30**: this drag takes #9's two release rules, and
+  runs on the [drag lifetime](drag-lifetime.md) the marquee shares; what an interrupted drag tells its
+  consumer stays this drag's. What they were shown, and what they did not cover, is in that note.
+
+Nothing else is decided in this repository. Adjacent, in PenTerm: ADR-0099 (a resize boundary is not
 keyboard-operable) and ADR-0100 (a resize in flight is not cancelled) roster this column border among
 PenTerm's resize boundaries. They decide PenTerm's policy across its boundaries; nothing here adopts
 them, and the code matches both only because it implements neither a key nor Escape.
@@ -24,11 +28,11 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **The line shows by colour, never width**, so nothing shifts under the pointer; it stays at its
   active colour for the whole drag, because the pointer leaves the handle as soon as it moves.
 - **Mouse events on `document`, not HTML5 drag** — PenTerm's host (Tauri) swallows HTML5 drags in its
-  webview. `mousedown` arms, `mousemove` reports, `mouseup` ends.
+  webview. `mousedown` arms, `mousemove` reports, the pressing button's `mouseup` ends.
 - **The press is suppressed for every button, then the consumer decides.** `preventDefault` and
   `stopPropagation` run first, so a wheel press never starts autoscroll; only then does
-  `refusePress(event)` say whether this press arms a drag. **The engine holds no button rule and no
-  default**, so `refusePress` is required.
+  `refusePress(event)` say whether this press arms a drag. **The engine holds no rule for which button
+  arms, and no default**, so `refusePress` is required.
 - **The reported width is unclamped**, `startWidth + (clientX − startX) / scale + Δscroll`, where
   `scale` is screen px per table px for a scaled copy of the table and `Δscroll` is how far the grid's
   scroller has scrolled horizontally since the press. The consumer's model clamps.
@@ -69,8 +73,13 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   left edge and not the right, and the right edge counted the scrollbar as view. Measured after the
   change, holding a border at each visible edge: 779 px/s right, 803 px/s left, for a 1000 px/s
   target.
-- **A drag cannot outlive its component or another drag.** `begin` detaches any running drag first;
-  unmounting detaches the `document` listeners, so a header gone mid-drag writes nothing more.
+- **A drag cannot outlive its component or another drag**, and **only the button that pressed ends
+  it** — a mouseup of another button is ignored, and a move whose `buttons` no longer hold it ends the
+  drag as its release would have. Both are the [drag lifetime](drag-lifetime.md)'s. This drag tells
+  its consumer `null` however it ends — released, replaced by a second press, or its header unmounted —
+  so the consumer's loop always stops; a header gone mid-drag writes no width.
+- **`startResize` passes the press's `button` to `begin`**; a consumer calling `useColumnResize`'s
+  `begin` without it keeps the release it had before #10, any button's `mouseup`.
 
 ## Code
 
@@ -101,6 +110,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - [Verification gates](verification-gates.md) — `check:example` holds a border past the edge.
 - [Marquee](marquee.md) — shares the example's edge-scroll loop; a change to its horizontal axis
   moves both drags.
+- [Drag lifetime](drag-lifetime.md) — owns when this drag ends; a change there moves when
+  `onResizeDrag` gets `null`.
 
 ## Known holes / open
 

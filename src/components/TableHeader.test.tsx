@@ -35,9 +35,10 @@ function renderHeader(over: Partial<TableHeaderProps<Key>> = {}) {
 const handle = (header: HTMLElement, key: Key) =>
   header.querySelector(`[data-table-resize="${key}"]`) as HTMLElement;
 
-const move = (x: number) =>
+/** A move with the primary button still held, as a browser sends during a drag. */
+const move = (x: number, init: MouseEventInit = {}) =>
   act(() => {
-    fireEvent.mouseMove(document, { clientX: x });
+    fireEvent.mouseMove(document, { clientX: x, buttons: 1, ...init });
   });
 
 describe('resizing', () => {
@@ -66,6 +67,37 @@ describe('resizing', () => {
     });
     move(50);
     expect(onResize).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ releasing another button leaves the drag running', () => {
+    const onResize = vi.fn();
+    const onResizeDrag = vi.fn();
+    const { header } = renderHeader({ onResize, onResizeDrag });
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    act(() => {
+      fireEvent.mouseUp(document, { button: 2 });
+    });
+    move(30);
+    expect(onResize).toHaveBeenLastCalledWith('a', 130);
+    expect(onResizeDrag).not.toHaveBeenCalledWith(null);
+  });
+
+  it('⚠️ a move with the button no longer held ends the drag, as its lost release would have', () => {
+    const onResize = vi.fn();
+    const onResizeDrag = vi.fn();
+    const { header } = renderHeader({ onResize, onResizeDrag });
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    move(30);
+    move(50, { buttons: 0 });
+    expect(onResize).toHaveBeenLastCalledWith('a', 130);
+    expect(onResizeDrag).toHaveBeenLastCalledWith(null);
+    expect(handle(header, 'a').querySelector('span')!.className.split(' ')).toContain(
+      'justable:bg-(--table-resize-line)',
+    );
+    const told = onResizeDrag.mock.calls.length;
+    move(70);
+    expect(onResizeDrag).toHaveBeenCalledTimes(told);
+    expect(onResize).toHaveBeenLastCalledWith('a', 130);
   });
 
   it('⚠️ a header gone mid-drag writes nothing more', () => {
@@ -207,7 +239,7 @@ describe('resizing inside a grid that scrolls', () => {
     const { header, scroller } = renderInGrid({ onResizeDrag });
     fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
     act(() => {
-      fireEvent.mouseMove(document, { clientX: 40, clientY: 7 });
+      fireEvent.mouseMove(document, { clientX: 40, clientY: 7, buttons: 1 });
     });
     expect(onResizeDrag).toHaveBeenLastCalledWith({ clientX: 40, clientY: 7, scroller });
     act(() => {
@@ -215,6 +247,34 @@ describe('resizing inside a grid that scrolls', () => {
     });
     expect(onResizeDrag).toHaveBeenLastCalledWith(null);
     expect(onResizeDrag).toHaveBeenCalledTimes(2);
+  });
+
+  it('⚠️ a second press tells the consumer null for the first drag before the second moves', () => {
+    const onResizeDrag = vi.fn();
+    const { header, scroller } = renderInGrid({ onResizeDrag });
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    move(5);
+    fireEvent.mouseDown(handle(header, 'b'), { button: 0, clientX: 5 });
+    move(9);
+    expect(onResizeDrag.mock.calls.map(([d]) => d?.clientX ?? null)).toEqual([5, null, 9]);
+    expect(onResizeDrag).toHaveBeenLastCalledWith({ clientX: 9, clientY: 0, scroller });
+  });
+
+  it('⚠️ a second press reads the scroll only after the first drag has let go of it', () => {
+    const onResize = vi.fn();
+    const at: { scroller?: HTMLElement } = {};
+    // The first drag's end moves the scroll, as a browser clamping it to the released width does.
+    const onResizeDrag = (drag: unknown) => {
+      if (drag === null) at.scroller!.scrollLeft = 400;
+    };
+    const { header, scroller } = renderInGrid({ onResize, onResizeDrag });
+    at.scroller = scroller;
+    scroller.scrollLeft = 500;
+    fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
+    move(5);
+    fireEvent.mouseDown(handle(header, 'b'), { button: 0, clientX: 5 });
+    move(10);
+    expect(onResize).toHaveBeenLastCalledWith('b', 65);
   });
 
   it('⚠️ a header gone mid-drag tells the consumer null, so its loop stops', () => {
@@ -231,7 +291,7 @@ describe('resizing inside a grid that scrolls', () => {
     const { header } = renderHeader({ onResizeDrag });
     fireEvent.mouseDown(handle(header, 'a'), { button: 0, clientX: 0 });
     act(() => {
-      fireEvent.mouseMove(document, { clientX: 5, clientY: 1 });
+      fireEvent.mouseMove(document, { clientX: 5, clientY: 1, buttons: 1 });
     });
     expect(onResizeDrag).toHaveBeenLastCalledWith({ clientX: 5, clientY: 1, scroller: null });
   });
@@ -252,11 +312,11 @@ describe('which press arms a resize', () => {
     expect(onResize).not.toHaveBeenCalled();
   });
 
-  it('a consumer predicate that allows lets any press arm — the engine holds no button rule', () => {
+  it('a consumer predicate that allows lets any press arm — the engine holds no rule for which button arms', () => {
     const onResize = vi.fn();
     const { header } = renderHeader({ onResize, refusePress: () => false });
     press(header, 2);
-    move(30);
+    move(30, { buttons: 2 });
     expect(onResize).toHaveBeenLastCalledWith('a', 130);
   });
 
