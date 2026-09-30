@@ -1,7 +1,15 @@
 import { useRef } from 'react';
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
 
-import { type MarqueeRange, marqueeRange } from '../lib/marquee.js';
+import {
+  type MarqueeRange,
+  marqueeFrame,
+  marqueeRange,
+  marqueeRectangle,
+  marqueeView,
+  pressOnScrollbar,
+  toCanvas,
+} from '../lib/marquee.js';
 import { useDrag } from './useDrag.js';
 
 /** What a report says happened: the drag passed its threshold, moved, was released, or was abandoned. */
@@ -41,8 +49,6 @@ export interface MarqueeRows {
   total: number;
 }
 
-const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value));
-
 /**
  * A rectangle dragged over the grid's rows: a press on the scroller arms it, `document` mousemove
  * and the scroller's scroll move it, mouseup ends it, Escape and a lost window cancel it. It draws
@@ -66,15 +72,16 @@ export function useMarquee(
     const options = optionsRef.current;
     if (!options || !scroller || !canvas || !rectangle) return;
 
-    const view = scroller.getBoundingClientRect();
-    const viewLeft = view.left + scroller.clientLeft;
-    const viewTop = view.top + scroller.clientTop;
-    const viewWidth = scroller.clientWidth;
-    const viewHeight = scroller.clientHeight;
-    // A press past the view's inner edge is on a scrollbar. A zero length is no measurement:
-    // `docs/map/invariant/zero-is-no-measurement.md`.
-    if (viewWidth > 0 && press.clientX >= viewLeft + viewWidth) return;
-    if (viewHeight > 0 && press.clientY >= viewTop + viewHeight) return;
+    const box = scroller.getBoundingClientRect();
+    const view = marqueeView({
+      boxLeft: box.left,
+      boxTop: box.top,
+      clientLeft: scroller.clientLeft,
+      clientTop: scroller.clientTop,
+      clientWidth: scroller.clientWidth,
+      clientHeight: scroller.clientHeight,
+    });
+    if (pressOnScrollbar(view, press.clientX, press.clientY)) return;
     if (options.refusePress(press)) return;
 
     press.preventDefault();
@@ -83,28 +90,20 @@ export function useMarquee(
     drag.begin(press.button, scroller, (end) => {
       const { threshold } = options;
       const at = canvas.getBoundingClientRect();
-      const scrollLeft0 = scroller.scrollLeft;
-      const scrollTop0 = scroller.scrollTop;
-      /** The canvas's offset inside the scroller's content, which leading rows push down. */
-      const canvasLeft = at.left - viewLeft + scrollLeft0;
-      const canvasTop = at.top - viewTop + scrollTop0;
-      /** The scroller's content in canvas px, as it was at the press; a zero length bounds nothing. */
-      const bounds = {
-        left: -canvasLeft,
-        top: -canvasTop,
-        right: scroller.scrollWidth > 0 ? scroller.scrollWidth - canvasLeft : Infinity,
-        bottom: scroller.scrollHeight > 0 ? scroller.scrollHeight - canvasTop : Infinity,
-      };
-      const toCanvas = (clientX: number, clientY: number) => {
-        const x = viewWidth > 0 ? clamp(clientX, viewLeft, viewLeft + viewWidth) : clientX;
-        const y = viewHeight > 0 ? clamp(clientY, viewTop, viewTop + viewHeight) : clientY;
-        return {
-          x: x - at.left + scroller.scrollLeft - scrollLeft0,
-          y: y - at.top + scroller.scrollTop - scrollTop0,
-        };
-      };
+      const frame = marqueeFrame({
+        view,
+        canvasLeft: at.left,
+        canvasTop: at.top,
+        scrollLeft: scroller.scrollLeft,
+        scrollTop: scroller.scrollTop,
+        scrollWidth: scroller.scrollWidth,
+        scrollHeight: scroller.scrollHeight,
+      });
+      /** A client point on the canvas, against the scroller's scroll offset now. */
+      const onCanvas = (clientX: number, clientY: number) =>
+        toCanvas(frame, clientX, clientY, scroller.scrollLeft, scroller.scrollTop);
 
-      const origin = toCanvas(press.clientX, press.clientY);
+      const origin = onCanvas(press.clientX, press.clientY);
       let pointer = { clientX: press.clientX, clientY: press.clientY };
       let last: MouseEvent = press.nativeEvent;
       let started = false;
@@ -112,17 +111,14 @@ export function useMarquee(
 
       const update = () => {
         const measured = rowsRef.current;
-        const here = toCanvas(pointer.clientX, pointer.clientY);
+        const here = onCanvas(pointer.clientX, pointer.clientY);
         range = measured ? marqueeRange({ from: origin.y, to: here.y, ...measured }) : null;
-        const left = clamp(Math.min(origin.x, here.x), bounds.left, bounds.right);
-        const right = clamp(Math.max(origin.x, here.x), bounds.left, bounds.right);
-        const top = clamp(Math.min(origin.y, here.y), bounds.top, bounds.bottom);
-        const bottom = clamp(Math.max(origin.y, here.y), bounds.top, bounds.bottom);
+        const { left, top, width, height } = marqueeRectangle(frame.bounds, origin, here);
         Object.assign(rectangle.style, {
           left: `${left}px`,
           top: `${top}px`,
-          width: `${right - left}px`,
-          height: `${bottom - top}px`,
+          width: `${width}px`,
+          height: `${height}px`,
         });
       };
       const report = (phase: MarqueePhase) =>

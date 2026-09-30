@@ -48,8 +48,10 @@ stand.
     measured in Chrome with #19 applied: under `scale(0.5)` a drag over rows 3–6 selects 2–4, and
     over 15–18 selects 8–10. Before #19 the rows themselves were misplaced, so neither was right.
 
-  #26 moves this geometry into pure functions and is a pure refactor by the maintainer's call, with
-  the scale out of its scope; #28 converts the lengths in those functions once #26 has landed.
+  #26 moved this geometry into pure functions in `src/lib/marquee.ts`, a pure refactor by the
+  maintainer's call with the scale out of its scope; #28 converts the lengths in `marqueeView` (the
+  view's edge, which the scrollbar test and the clamp both read), `toCanvas` and `marqueeFrame` (the
+  canvas offset and the bounds).
 - [Auto-fit](../territory/auto-fit.md) — **not converted; symptom unmeasured.** `useColumnAutoFit`
   takes the widest ruler cell's `getBoundingClientRect().width`, so a fit taken inside a scaled copy
   may come out scaled.

@@ -1,6 +1,6 @@
 /**
- * Which data rows a marquee touches. Only its vertical span counts; the rules and their reasons:
- * `docs/map/territory/marquee.md`.
+ * Which data rows a marquee touches, and where its points and rectangle lie on the rows' canvas. Only
+ * its vertical span decides the rows; the rules and their reasons: `docs/map/territory/marquee.md`.
  */
 
 /** The rows a marquee touches, by data-row index: `anchor` nearest the press, `head` nearest the pointer. */
@@ -34,4 +34,160 @@ export function marqueeRange({ from, to, rowHeight, total }: MarqueeRangeInput):
   const low = Math.max(0, first);
   const high = Math.min(total - 1, last);
   return from <= to ? { anchor: low, head: high } : { anchor: high, head: low };
+}
+
+/** The scroller's inner box on screen — its scrollbars and border excluded — in client px. */
+export interface MarqueeView {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+export interface MarqueeViewInput {
+  /** The scroller's border box on screen: its `getBoundingClientRect()`'s left and top. */
+  boxLeft: number;
+  boxTop: number;
+  /** The scroller's left and top border widths. */
+  clientLeft: number;
+  clientTop: number;
+  /** The scroller's inner width and height. */
+  clientWidth: number;
+  clientHeight: number;
+}
+
+export function marqueeView({
+  boxLeft,
+  boxTop,
+  clientLeft,
+  clientTop,
+  clientWidth,
+  clientHeight,
+}: MarqueeViewInput): MarqueeView {
+  return {
+    left: boxLeft + clientLeft,
+    top: boxTop + clientTop,
+    width: clientWidth,
+    height: clientHeight,
+  };
+}
+
+/**
+ * Whether a press at this client point lies at or past the view's inner right or bottom edge. A zero
+ * length marks no scrollbar on its axis: `docs/map/invariant/zero-is-no-measurement.md`.
+ */
+export function pressOnScrollbar(view: MarqueeView, clientX: number, clientY: number): boolean {
+  if (view.width > 0 && clientX >= view.left + view.width) return true;
+  if (view.height > 0 && clientY >= view.top + view.height) return true;
+  return false;
+}
+
+/** The scroller's content in canvas px; a side with no measured length is `Infinity`. */
+export interface MarqueeBounds {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/** What a marquee reads once, at the press, and measures every later point against. */
+export interface MarqueeFrame {
+  view: MarqueeView;
+  /** The canvas's client box at the press. */
+  canvasLeft: number;
+  canvasTop: number;
+  /** The scroller's scroll offset at the press. */
+  scrollLeft: number;
+  scrollTop: number;
+  bounds: MarqueeBounds;
+}
+
+export interface MarqueeFrameInput {
+  view: MarqueeView;
+  /** The canvas's `getBoundingClientRect()` left and top at the press. */
+  canvasLeft: number;
+  canvasTop: number;
+  /** The scroller's `scrollLeft`, `scrollTop`, `scrollWidth` and `scrollHeight` at the press. */
+  scrollLeft: number;
+  scrollTop: number;
+  scrollWidth: number;
+  scrollHeight: number;
+}
+
+export function marqueeFrame({
+  view,
+  canvasLeft,
+  canvasTop,
+  scrollLeft,
+  scrollTop,
+  scrollWidth,
+  scrollHeight,
+}: MarqueeFrameInput): MarqueeFrame {
+  /** The canvas's offset inside the scroller's content, which leading rows push down. */
+  const offsetLeft = canvasLeft - view.left + scrollLeft;
+  const offsetTop = canvasTop - view.top + scrollTop;
+  return {
+    view,
+    canvasLeft,
+    canvasTop,
+    scrollLeft,
+    scrollTop,
+    // A zero length bounds nothing: `docs/map/invariant/zero-is-no-measurement.md`.
+    bounds: {
+      left: -offsetLeft,
+      top: -offsetTop,
+      right: scrollWidth > 0 ? scrollWidth - offsetLeft : Infinity,
+      bottom: scrollHeight > 0 ? scrollHeight - offsetTop : Infinity,
+    },
+  };
+}
+
+/** A point on the rows' canvas, in px. */
+export interface CanvasPoint {
+  x: number;
+  y: number;
+}
+
+const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value));
+
+/**
+ * A client point on the rows' canvas: clamped to the frame's view, less the canvas's client box at the
+ * press, plus how far the scroller has scrolled since. `scrollLeft` and `scrollTop` are the scroller's
+ * now. A zero view length clamps nothing on its axis.
+ */
+export function toCanvas(
+  frame: MarqueeFrame,
+  clientX: number,
+  clientY: number,
+  scrollLeft: number,
+  scrollTop: number,
+): CanvasPoint {
+  const { view } = frame;
+  const x = view.width > 0 ? clamp(clientX, view.left, view.left + view.width) : clientX;
+  const y = view.height > 0 ? clamp(clientY, view.top, view.top + view.height) : clientY;
+  return {
+    x: x - frame.canvasLeft + scrollLeft - frame.scrollLeft,
+    y: y - frame.canvasTop + scrollTop - frame.scrollTop,
+  };
+}
+
+/** The rectangle's box on the rows' canvas, in px. */
+export interface MarqueeBox {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** The rectangle between the press's point and the pointer's, each edge clamped to `bounds`. */
+export function marqueeRectangle(
+  bounds: MarqueeBounds,
+  origin: CanvasPoint,
+  here: CanvasPoint,
+): MarqueeBox {
+  const left = clamp(Math.min(origin.x, here.x), bounds.left, bounds.right);
+  const right = clamp(Math.max(origin.x, here.x), bounds.left, bounds.right);
+  const top = clamp(Math.min(origin.y, here.y), bounds.top, bounds.bottom);
+  const bottom = clamp(Math.max(origin.y, here.y), bounds.top, bounds.bottom);
+  return { left, top, width: right - left, height: bottom - top };
 }

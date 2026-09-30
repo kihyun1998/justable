@@ -35,8 +35,9 @@ guard is written differently at each site.
   `FALLBACK_PAGE` (1).
 - [Auto-fit](../territory/auto-fit.md) — a ruler that measured nothing answers `null`, never 0.
 - [Marquee](../territory/marquee.md) — a zero view width or height neither marks a press as on a
-  scrollbar nor clamps the pointer; a zero `scrollWidth` or `scrollHeight` bounds the rectangle
-  nowhere (`Infinity`); `marqueeRange` answers `null` for `!(rowHeight > 0)`.
+  scrollbar (`pressOnScrollbar`) nor clamps the pointer (`toCanvas`); a zero `scrollWidth` or
+  `scrollHeight` bounds the rectangle nowhere (`Infinity`, `marqueeFrame`); `marqueeRange` answers
+  `null` for `!(rowHeight > 0)`.
 
 ## What a violation looks like
 
