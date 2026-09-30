@@ -71,7 +71,8 @@ be run by hand.
   reproduces in utilities.
 - **The prefix test renders the grid with its header and a row, and the ruler**, and fails on any
   class not starting `justable:` (the icon set's own `lucide*` markers excepted).
-- **The pure halves are tested apart** — `rowWindow.ts`, `tableKeyboard.ts`, `tableModel.ts` —
+- **The pure halves are tested apart** — `rowWindow.ts`, `tableKeyboard.ts`, `tableModel.ts`,
+  `marquee.ts` —
   because that is where off-by-ones live and where they are quiet: a row missing at the viewport's
   edge reads as a rendering glitch rather than a wrong number, and a component test cannot easily ask
   what End does in an empty list.

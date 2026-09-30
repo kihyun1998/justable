@@ -160,4 +160,5 @@ followed), with the `left: 0` trap found against it.
   and the ratio is not the scale. A real scale that moves the scroller's height by less than a px is
   snapped away.
 - **The marquee still mixes screen and layout px** under a scale, now against a layout row height; see
-  [lengths are layout px](../invariant/lengths-are-layout-px.md). #28 owns its fix, after #26.
+  [lengths are layout px](../invariant/lengths-are-layout-px.md). #28 owns its fix, in the pure
+  functions #26 moved that geometry into.

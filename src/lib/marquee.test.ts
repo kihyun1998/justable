@@ -1,10 +1,18 @@
 /**
- * Which rows a marquee's vertical span touches, in canvas px. Tested apart from the grid:
+ * Which rows a marquee's vertical span touches, and where its press, pointer and rectangle lie, in
+ * canvas px, over plain numbers. Tested apart from the grid:
  * `docs/map/territory/verification-gates.md`.
  */
 import { describe, expect, it } from 'vitest';
 
-import { marqueeRange } from './marquee.js';
+import {
+  marqueeFrame,
+  marqueeRange,
+  marqueeRectangle,
+  marqueeView,
+  pressOnScrollbar,
+  toCanvas,
+} from './marquee.js';
 
 /** 28px rows, ten of them: the canvas is 280px tall. */
 const R = 28;
@@ -67,5 +75,175 @@ describe('marqueeRange', () => {
     expect(touched(0, 100, 0)).toBeNull();
     expect(marqueeRange({ from: 0, to: 100, rowHeight: 0, total: 10 })).toBeNull();
     expect(marqueeRange({ from: 0, to: 100, rowHeight: Number.NaN, total: 10 })).toBeNull();
+  });
+});
+
+/**
+ * A scroller whose border box starts at (100, 50) on screen, with a 2px left and a 3px top border: its
+ * view — the inner box, scrollbars excluded — is 300 × 200 from (102, 53), so its inner right edge is
+ * at x 402 and its inner bottom edge at y 253.
+ */
+const VIEW = marqueeView({
+  boxLeft: 100,
+  boxTop: 50,
+  clientLeft: 2,
+  clientTop: 3,
+  clientWidth: 300,
+  clientHeight: 200,
+});
+
+describe('pressOnScrollbar', () => {
+  it('a press at or past the view’s inner right edge is on the vertical scrollbar', () => {
+    expect(pressOnScrollbar(VIEW, 402, 100)).toBe(true);
+    expect(pressOnScrollbar(VIEW, 410, 100)).toBe(true);
+  });
+
+  it('a press at or past the view’s inner bottom edge is on the horizontal scrollbar', () => {
+    expect(pressOnScrollbar(VIEW, 200, 253)).toBe(true);
+    expect(pressOnScrollbar(VIEW, 200, 260)).toBe(true);
+  });
+
+  it('⚠️ a press just inside either edge is not, the border counted', () => {
+    expect(pressOnScrollbar(VIEW, 401, 100)).toBe(false);
+    expect(pressOnScrollbar(VIEW, 200, 252)).toBe(false);
+    expect(pressOnScrollbar(VIEW, 401, 252)).toBe(false);
+  });
+
+  it('a zero view width or height marks no scrollbar on that axis', () => {
+    const flat = marqueeView({
+      boxLeft: 100,
+      boxTop: 50,
+      clientLeft: 2,
+      clientTop: 3,
+      clientWidth: 0,
+      clientHeight: 0,
+    });
+    expect(pressOnScrollbar(flat, 5000, 100)).toBe(false);
+    expect(pressOnScrollbar(flat, 200, 5000)).toBe(false);
+    // One axis unmeasured leaves the other's scrollbar in place.
+    const narrow = { ...VIEW, width: 0 };
+    expect(pressOnScrollbar(narrow, 5000, 100)).toBe(false);
+    expect(pressOnScrollbar(narrow, 200, 253)).toBe(true);
+  });
+});
+
+/**
+ * The press's frame over `VIEW`: the canvas sits 8px right of the scroller's content edge, and 40px
+ * of leading rows push it down; the content is 300 × 1000; the scroller has scrolled 100px down at
+ * the press, so the canvas's client box is at (102 + 8, 53 + 40 − 100) = (110, −7).
+ */
+const pressFrame = (scrollWidth = 300, scrollHeight = 1000) =>
+  marqueeFrame({
+    view: VIEW,
+    canvasLeft: 110,
+    canvasTop: -7,
+    scrollLeft: 0,
+    scrollTop: 100,
+    scrollWidth,
+    scrollHeight,
+  });
+
+describe('marqueeFrame', () => {
+  it('⚠️ bounds the rectangle to the scroller’s content in canvas px, leading rows above the canvas', () => {
+    expect(pressFrame().bounds).toEqual({ left: -8, top: -40, right: 292, bottom: 960 });
+  });
+
+  it('the bounds do not depend on how far the scroller had scrolled at the press', () => {
+    const unscrolled = marqueeFrame({
+      view: VIEW,
+      canvasLeft: 110,
+      canvasTop: 93,
+      scrollLeft: 0,
+      scrollTop: 0,
+      scrollWidth: 300,
+      scrollHeight: 1000,
+    });
+    expect(unscrolled.bounds).toEqual(pressFrame().bounds);
+  });
+
+  it('a zero scrollWidth or scrollHeight bounds nothing on that side', () => {
+    expect(pressFrame(0, 1000).bounds).toEqual({ left: -8, top: -40, right: Infinity, bottom: 960 });
+    expect(pressFrame(300, 0).bounds).toEqual({ left: -8, top: -40, right: 292, bottom: Infinity });
+  });
+});
+
+describe('toCanvas', () => {
+  it('a point in the view, unscrolled since the press, is its offset from the canvas’s client box', () => {
+    // (200 − 110, 100 + 7)
+    expect(toCanvas(pressFrame(), 200, 100, 0, 100)).toEqual({ x: 90, y: 107 });
+  });
+
+  it('⚠️ a scroll since the press moves the point by exactly the scroll delta', () => {
+    expect(toCanvas(pressFrame(), 200, 100, 0, 160)).toEqual({ x: 90, y: 167 });
+    expect(toCanvas(pressFrame(), 200, 100, 25, 40)).toEqual({ x: 115, y: 47 });
+  });
+
+  it('⚠️ a pointer outside the view counts at the view’s inner edge', () => {
+    // Right and bottom: the inner edges at 402 and 253.
+    expect(toCanvas(pressFrame(), 900, 900, 0, 100)).toEqual({ x: 292, y: 260 });
+    // Left and top: the inner edges at 102 and 53, inside the border.
+    expect(toCanvas(pressFrame(), 0, 0, 0, 100)).toEqual({ x: -8, y: 60 });
+  });
+
+  it('a zero view width or height clamps nothing on that axis', () => {
+    const frame = { ...pressFrame(), view: { ...VIEW, width: 0, height: 0 } };
+    expect(toCanvas(frame, 900, 900, 0, 100)).toEqual({ x: 790, y: 907 });
+    expect(toCanvas(frame, 0, 0, 0, 100)).toEqual({ x: -110, y: 7 });
+    // One axis unmeasured leaves the other's clamp in place.
+    const narrow = { ...pressFrame(), view: { ...VIEW, width: 0 } };
+    expect(toCanvas(narrow, 900, 900, 0, 100)).toEqual({ x: 790, y: 260 });
+    const short = { ...pressFrame(), view: { ...VIEW, height: 0 } };
+    expect(toCanvas(short, 900, 900, 0, 100)).toEqual({ x: 292, y: 907 });
+  });
+});
+
+describe('marqueeRectangle', () => {
+  /** `pressFrame()`'s content: x −8 … 292, y −40 … 960. */
+  const bounds = { left: -8, top: -40, right: 292, bottom: 960 };
+
+  it('spans the press and the pointer, whichever way the drag went', () => {
+    const box = { left: 20, top: 30, width: 80, height: 70 };
+    expect(marqueeRectangle(bounds, { x: 20, y: 30 }, { x: 100, y: 100 })).toEqual(box);
+    expect(marqueeRectangle(bounds, { x: 100, y: 100 }, { x: 20, y: 30 })).toEqual(box);
+  });
+
+  it('⚠️ stays inside the content on all four sides', () => {
+    expect(marqueeRectangle(bounds, { x: 20, y: 30 }, { x: -50, y: -90 })).toEqual({
+      left: -8,
+      top: -40,
+      width: 28,
+      height: 70,
+    });
+    expect(marqueeRectangle(bounds, { x: 20, y: 30 }, { x: 400, y: 1200 })).toEqual({
+      left: 20,
+      top: 30,
+      width: 272,
+      height: 930,
+    });
+  });
+
+  it('an unmeasured side bounds nothing', () => {
+    const open = { ...bounds, right: Infinity, bottom: Infinity };
+    expect(marqueeRectangle(open, { x: 20, y: 30 }, { x: 400, y: 1200 })).toEqual({
+      left: 20,
+      top: 30,
+      width: 380,
+      height: 1170,
+    });
+  });
+});
+
+describe('the frame, the point and the rectangle together', () => {
+  it('a zero scrollWidth or scrollHeight lets the rectangle follow the pointer past the content', () => {
+    const frame = pressFrame(0, 0);
+    const origin = toCanvas(frame, 200, 100, 0, 100);
+    // The pointer at the view's bottom-right corner, after a 2000px scroll down since the press.
+    const here = toCanvas(frame, 402, 253, 0, 2100);
+    expect(marqueeRectangle(frame.bounds, origin, here)).toEqual({
+      left: 90,
+      top: 107,
+      width: 202,
+      height: 2153,
+    });
   });
 });

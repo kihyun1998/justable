@@ -4,8 +4,9 @@
 
 A rectangle dragged over the grid's rows, as a file explorer draws one: the `marquee` prop on
 `TableGrid`, the `useMarquee` hook that follows the drag from a press on the scroller to the release,
-the rectangle element the grid draws on its rows' canvas, and `marqueeRange`, the pure hit-test that
-turns the rectangle's vertical span into the rows it touches. The engine draws and reports
+the rectangle element the grid draws on its rows' canvas, `marqueeRange`, the pure hit-test that
+turns the rectangle's vertical span into the rows it touches, and the pure geometry beside it that
+places the press, the pointer and the rectangle on the canvas. The engine draws and reports
 `{ anchor, head }`; it selects nothing.
 
 ## Governing decisions
@@ -112,6 +113,16 @@ turns the rectangle's vertical span into the rows it touches. The engine draws a
   is at the release, not as it was at the last move.
 - **`event` is the drag's latest mouse event.** A report caused by a scroll, Escape or blur carries
   the last pointer event, so its modifiers and its pointer are still the drag's.
+- **The geometry is pure; the hook only reads the DOM** (#26). `marqueeView` and `pressOnScrollbar`
+  take the scroller's box and client lengths at the press; `marqueeFrame` takes the canvas's client
+  box and the scroller's scroll offset and scroll size at the press, and holds the content bounds;
+  `toCanvas` takes the scroller's scroll offset **now** as an input — the one value read live on
+  every update, which is what keeps the press corner on its row while the consumer's loop scrolls;
+  `marqueeRectangle` clamps the rectangle to the bounds. So each is tested over plain numbers in
+  `marquee.test.ts`, with no stubbed layout, as row windowing tests `visibleRange`. Each sum keeps its
+  order of operations: the rectangle is written as `${n}px`, and a regrouped sum can differ in its
+  last bit. A canvas flush with the content's left edge gives a bound of `-0`, which renders as
+  `0px`.
 - **No marquee before the grid has measured**: the rectangle is only drawn once `box` exists, and the
   press handler needs it.
 - **A disabled grid starts none by its class** (`pointer-events-none`), not by a condition in the
@@ -120,7 +131,7 @@ turns the rectangle's vertical span into the rows it touches. The engine draws a
 
 ## Code
 
-- `src/lib/marquee.ts` — `marqueeRange`, `MarqueeRange`, `MarqueeRangeInput`
+- `src/lib/marquee.ts` — `marqueeRange`, `MarqueeRange`, `MarqueeRangeInput`, `marqueeView`, `MarqueeView`, `MarqueeViewInput`, `pressOnScrollbar`, `marqueeFrame`, `MarqueeFrame`, `MarqueeFrameInput`, `MarqueeBounds`, `toCanvas`, `CanvasPoint`, `marqueeRectangle`, `MarqueeBox`
 - `src/hooks/useMarquee.ts` — `useMarquee`, `MarqueeOptions`, `MarqueeReport`, `MarqueePhase`, `MarqueeParts`, `MarqueeRows`, `swallowNextClick`
 - `src/components/TableGrid.tsx` — `TableGrid`, `marquee`, `marqueeRef`, `gridRef`, `data-table-marquee`
 - `example/FileTable.tsx` — `onMarquee`, `before`
@@ -169,8 +180,10 @@ this imitates; neither was read or measured.
   view is refused, under `scale(0.5)` a press on the real scrollbar is not (read from the code, not
   measured). Since #19 the row height it receives is layout px while its pointer `y` is screen px, so
   under `scale(0.5)` a drag reaches half as far as the pointer (measured) — every mixed site is listed
-  in [lengths are layout px](../invariant/lengths-are-layout-px.md). #26 moves this geometry without
-  the scale; #28 owns the fix, after #26.
+  in [lengths are layout px](../invariant/lengths-are-layout-px.md). #26 moved this geometry into
+  pure functions without the scale; #28 owns the fix, which lands in `marqueeView` (the view's edge,
+  which `pressOnScrollbar` and `toCanvas`'s clamp both read), `toCanvas` (the pointer against the
+  scroll delta) and `marqueeFrame` (the canvas offset and the bounds).
 - **Right to left is not handled.** The scrollbar test looks only past the right and bottom edges; under
   `dir="rtl"` the vertical scrollbar is on the left, and a press on it could start a marquee. Dropped
   by the maintainer, 2026-09-29: nothing in the engine handles right to left, and no consumer asks.
