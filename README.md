@@ -180,7 +180,9 @@ ascending order.
   sorted copy.
 - **Resizing.** Dragging a border calls `onResize(key, px)` with the unclamped width;
   `model.withWidth(layout, key, px)` clamps and stores it. `refusePress(event)` says which presses do
-  *not* start a resize — `(e) => e.button !== 0` allows the primary button only.
+  *not* start a resize — `(e) => e.button !== 0` allows the primary button only. A drag ends at the
+  release of the button that started it, or at the first move that finds that button no longer
+  held.
 - **Hiding.** `model.toggleHidden(layout, key)` hides or shows a `hideable` column;
   `model.visibleColumns(layout)` is what to draw. Pass its length to `TableGrid` as `colCount`.
 - **Auto-fit.** `useColumnAutoFit()` measures the widest cell of a column. Render its `TableRuler`

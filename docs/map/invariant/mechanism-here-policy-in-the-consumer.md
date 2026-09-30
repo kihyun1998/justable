@@ -25,7 +25,8 @@ consumer's policy that the consumer cannot see.
 ## Territories it holds in
 
 - [Column resize](../territory/column-resize.md) — `refusePress` is required; the engine has no
-  button rule. The width is reported unclamped.
+  rule for which button starts a drag — only that the button which started it ends it
+  ([drag lifetime](../territory/drag-lifetime.md)). The width is reported unclamped.
 - [Keyboard movement](../territory/keyboard-movement.md) — `step` answers where and claims the event;
   selection, opening and a lone Space are the consumer's; a space inside a running query is the
   table's.

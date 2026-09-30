@@ -4,6 +4,21 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
+## Unreleased
+
+### Breaking
+
+- **A border drag ends only at the release of the button that started it**, or at the first move
+  whose `buttons` no longer hold that button — as a marquee already did. Before, any button's
+  `mouseup` ended it, and a drag whose release was missed kept following the pointer. A test that
+  drags a border with synthetic events must now send `buttons` on its moves (`buttons: 1` for the
+  primary button): a move without it ends the drag (#10).
+
+### Added
+
+- **`useColumnResize()`'s `begin` takes the pressing `button`** as an optional last argument. Given,
+  the drag takes the release rules above; left out, any button's `mouseup` ends it, as before (#10).
+
 ## 0.2.0 — 2026-09-29
 
 ### Breaking

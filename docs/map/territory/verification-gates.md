@@ -141,6 +141,7 @@ be run by hand.
 - `src/components/TableHeader.test.tsx`
 - `src/components/TableRow.test.tsx`
 - `src/components/TableRuler.test.tsx`
+- `src/hooks/useColumnResize.test.ts`
 - `src/hooks/useTableKeyboard.test.ts`
 - `src/hooks/useTypeAhead.test.ts`
 - `src/lib/tableModel.test.ts`

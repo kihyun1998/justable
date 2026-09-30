@@ -500,6 +500,26 @@ describe('cancelling', () => {
     expect(reports(onMarquee).at(-1)).toEqual(['cancel', { anchor: 1, head: 3 }]);
   });
 
+  it('⚠️ a second press measures from where the first drag’s cancel left the scroll', () => {
+    const onMarquee = vi.fn();
+    const { scroller } = renderGrid({
+      // A consumer that puts the scroll back on cancel.
+      onMarquee: (m) => {
+        onMarquee(m);
+        if (m.phase === 'cancel') scroller.scrollTop = 0;
+      },
+    });
+    press(scroller, 10, 30);
+    moveTo(10, 100);
+    act(() => {
+      scroller.scrollTop = 56;
+      fireEvent.scroll(scroller);
+    });
+    press(scroller, 10, 150);
+    moveTo(10, 100);
+    expect(reports(onMarquee).at(-1)).toEqual(['start', { anchor: 5, head: 3 }]);
+  });
+
   it('⚠️ releasing another button leaves the drag running', () => {
     const { scroller, onMarquee } = renderGrid();
     press(scroller, 10, 30);

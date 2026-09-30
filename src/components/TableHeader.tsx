@@ -68,7 +68,15 @@ export function TableHeader<K extends string>({
     e.preventDefault();
     e.stopPropagation();
     if (refusePress(e)) return;
-    begin(column.key, column.width, e.clientX, scale, grid?.scrollerRef.current ?? null, grid?.holdWidth);
+    begin(
+      column.key,
+      column.width,
+      e.clientX,
+      scale,
+      grid?.scrollerRef.current ?? null,
+      grid?.holdWidth,
+      e.button,
+    );
   };
 
   return (
