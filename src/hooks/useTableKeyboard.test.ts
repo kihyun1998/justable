@@ -6,7 +6,9 @@ import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useTableKeyboard } from './useTableKeyboard.js';
-import { TYPE_AHEAD_MS } from '../lib/tableKeyboard.js';
+
+/** The window most tests type within, in ms. */
+const WINDOW = 500;
 
 const NAMES = ['apple', 'banana', 'cherry', 'citrus', 'date', 'elder', 'fig', 'grape'];
 
@@ -24,9 +26,13 @@ function key(
   };
 }
 
-function setup({ names = NAMES, start = 1_000 }: { names?: readonly string[]; start?: number } = {}) {
+function setup({
+  names = NAMES,
+  start = 1_000,
+  windowMs = WINDOW,
+}: { names?: readonly string[]; start?: number; windowMs?: number } = {}) {
   let clock = start;
-  const { result } = renderHook(() => useTableKeyboard({ now: () => clock }));
+  const { result } = renderHook(() => useTableKeyboard({ windowMs, now: () => clock }));
   return {
     step: (e: ReturnType<typeof key>, focus: number | null) =>
       result.current.step(e, { focus, names }),
@@ -68,7 +74,7 @@ describe('movement keys', () => {
   });
 
   it('an empty list moves nowhere', () => {
-    const { result } = renderHook(() => useTableKeyboard());
+    const { result } = renderHook(() => useTableKeyboard({ windowMs: WINDOW }));
     expect(result.current.step(key('ArrowDown'), { focus: null, names: [] })).toBeNull();
   });
 });
@@ -101,7 +107,7 @@ describe('type-ahead', () => {
   it('⚠️ a pause longer than the window starts a new query', () => {
     const { step, advance } = setup();
     expect(step(key('c'), null)).toEqual({ by: 'typeAhead', to: 2 });
-    advance(TYPE_AHEAD_MS + 1);
+    advance(WINDOW + 1);
     expect(step(key('b'), 2)).toEqual({ by: 'typeAhead', to: 1 });
   });
 
@@ -124,7 +130,7 @@ describe('type-ahead', () => {
   it('within the window the query extends instead', () => {
     const { step, advance } = setup();
     step(key('c'), null);
-    advance(TYPE_AHEAD_MS - 1);
+    advance(WINDOW - 1);
     // "cb" matches nothing.
     expect(step(key('b'), 2)).toEqual({ by: 'typeAhead', to: null });
   });
@@ -146,6 +152,40 @@ describe('type-ahead', () => {
   it('a named key is not type-ahead', () => {
     const { step } = setup();
     expect(step(key('Enter'), 0)).toBeNull();
+  });
+});
+
+describe('the window', () => {
+  /** `c` lands on cherry; `d` after it is "cd", a miss, inside the window, and date past it. */
+  const afterPause = (windowMs: number, pause: number) => {
+    const { step, advance } = setup({ windowMs });
+    step(key('c'), null);
+    advance(pause);
+    return step(key('d'), 2);
+  };
+
+  for (const windowMs of [300, 1000]) {
+    it(`⚠️ is the consumer’s: with ${windowMs} ms, 1 ms inside extends the query, 1 ms past starts one`, () => {
+      expect(afterPause(windowMs, windowMs - 1)).toEqual({ by: 'typeAhead', to: null });
+      expect(afterPause(windowMs, windowMs + 1)).toEqual({ by: 'typeAhead', to: 4 });
+    });
+  }
+
+  it('reaches the type-ahead at its edges too: 0 and NaN keep no query open, Infinity never pauses', () => {
+    expect(afterPause(0, 0)).toEqual({ by: 'typeAhead', to: 4 });
+    expect(afterPause(Number.NaN, 0)).toEqual({ by: 'typeAhead', to: 4 });
+    expect(afterPause(Infinity, 1e9)).toEqual({ by: 'typeAhead', to: null });
+  });
+
+  it('is required', () => {
+    // Never called: `pnpm typecheck` is what runs these lines.
+    const unwritten = () => {
+      // @ts-expect-error: the window has no default.
+      useTableKeyboard();
+      // @ts-expect-error: the window has no default.
+      useTableKeyboard({ now: Date.now });
+    };
+    expect(unwritten).toBeTypeOf('function');
   });
 });
 
@@ -189,7 +229,7 @@ describe('a space', () => {
   it('⚠️ after a pause longer than the window, it is the consumer’s', () => {
     const { step, advance } = setup({ names: FOLDERS });
     type(step, ['n', 'e', 'w']);
-    advance(TYPE_AHEAD_MS + 1);
+    advance(WINDOW + 1);
     const e = key(' ');
     expect(step(e, 0)).toBeNull();
     expect(e.preventDefault).not.toHaveBeenCalled();
@@ -214,7 +254,7 @@ describe('a space', () => {
 
 describe('the link', () => {
   it('is one object for the hook’s life, so the grid can hold it', () => {
-    const { result, rerender } = renderHook(() => useTableKeyboard());
+    const { result, rerender } = renderHook(() => useTableKeyboard({ windowMs: WINDOW }));
     const first = result.current.link;
     rerender();
     expect(result.current.link).toBe(first);

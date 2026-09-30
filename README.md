@@ -86,7 +86,7 @@ export function People({ people }: { people: readonly Person[] }) {
   const [layout, setLayout] = useState<ColumnLayout<Key>>({ widths: {}, hidden: [] });
   const [sort, setSort] = useState<TableSort<Key>>();
   const [focus, setFocus] = useState<number | null>(null);
-  const keyboard = useTableKeyboard();
+  const keyboard = useTableKeyboard({ windowMs: 700 });
 
   const rows = useMemo(() => model.sortRows(people, sort), [people, sort]);
   const columns = model.visibleColumns(layout);
@@ -202,16 +202,19 @@ ascending order.
 
 ## Keyboard
 
-The grid is one tab stop. Pass the `link` from `useTableKeyboard()` to it as `keyboard`, and call
-`step(event, { focus, names })` from a `keydown` handler around it — `names` is each row's text in
-screen order, for type-ahead. `step` answers:
+The grid is one tab stop. Pass the `link` from `useTableKeyboard({ windowMs })` to it as `keyboard`,
+and call `step(event, { focus, names })` from a `keydown` handler around it — `names` is each row's
+text in screen order, for type-ahead. `windowMs` is yours and has no default: how long, in ms, a
+query stays open after its last key. `0` keeps none open, so every letter starts a new query, and so
+does a negative or `NaN` window; `Infinity` lets no pause end one. `step` answers:
 
 - `{ by: 'move', to }` for ↑ ↓ Home End Page Up Page Down (a page is the rows in view);
-- `{ by: 'typeAhead', to }` for a printable key: a row whose name starts with what was typed within
-  700 ms, case-insensitively, or `to: null` when none does. A new query's letter, and the same
-  letter pressed again, search after `focus`, wrapping round, with the `focus` row checked last, so a
-  letter only it matches stays on it; with no `focus` they search from the top. Another letter
-  narrows the query, searching from the `focus` row itself. A space continues a query in progress;
+- `{ by: 'typeAhead', to }` for a printable key: a row whose name starts with what was typed, each
+  key within `windowMs` of the last, case-insensitively, or `to: null` when none does. A new query's
+  letter, and the same letter pressed again, search after `focus`, wrapping round, with the `focus`
+  row checked last, so a letter only it matches stays on it; with no `focus` they search from the
+  top. Another letter narrows the query, searching from the `focus` row itself. A space continues a
+  query in progress;
 - `null` for any other key — Enter, Space, ← → — which is yours to handle.
 
 On a move and on a type-ahead hit, `step` calls `preventDefault` on the event. A type-ahead miss
@@ -327,9 +330,10 @@ while it measures.
 
 For a list with its own markup and movement — a sidebar, a tree:
 
-- `useTypeAhead()` is the table's type-ahead alone: call its `step(event, { focus, names })` from
-  your key handler, and its `end()` whenever the list moves by other means. It answers `{ to }` by
-  the same rules as the grid's type-ahead above.
+- `useTypeAhead({ windowMs })` is the table's type-ahead alone: call its
+  `step(event, { focus, names })` from your key handler, and its `end()` whenever the list moves by
+  other means. It answers `{ to }` by the same rules, and takes the same `windowMs`, as the grid's
+  type-ahead above.
 - `visibleRange({ scrollTop, viewportHeight, rowHeight, total })` is the window of rows to draw, and
   `scrollToReveal(index, { scrollTop, viewportHeight, rowHeight })` the `scrollTop` that brings a row
   into view, or `null` if it already is. Both take equal-height rows.
@@ -354,8 +358,8 @@ For a list with its own markup and movement — a sidebar, a tree:
   - `clampWidth(px, key)` is the clamp `withWidth` applies.
   - `isHidden(layout, key)` tells whether a column is hidden.
   - `sortRows(rows, sort, tieBreak)` orders ties by `tieBreak`.
-- **`useTableKeyboard({ now })` and `useTypeAhead({ now })`**: take the clock the type-ahead window
-  is timed with, for tests.
+- **`useTableKeyboard({ windowMs, now })` and `useTypeAhead({ windowMs, now })`**: `now` is the clock
+  the type-ahead window is timed with, for tests.
 - **`useColumnResize(onResize, onDrag)`**: the border drag `TableHeader` uses, for a handle you
   draw yourself. `begin(key, startWidth, startX, scale?, scroller?, holdWidth?, button?)` starts
   one from your `mousedown`. Pass the event's `button` so that only that button's release ends it.
@@ -368,7 +372,8 @@ For a list with its own markup and movement — a sidebar, a tree:
   `RowPlace`, `TableHeaderProps`, `TableRowProps`, `TableRulerProps`.
 - **Marquee**: types `MarqueeOptions`, `MarqueeReport`, `MarqueePhase`, `MarqueeRange`.
 - **Hooks**: `useTableKeyboard` (types `TableKeyEvent`, `TableKeyStep`, `TableKeyboardLink`),
-  `useTypeAhead` (`TypeAheadAnswer`), `useColumnResize` (`ResizeDrag`), `useColumnAutoFit`.
+  `useTypeAhead` (`TypeAheadAnswer`, `TypeAheadOptions`, the options of both hooks),
+  `useColumnResize` (`ResizeDrag`), `useColumnAutoFit`.
 - **Windowing**: `visibleRange`, `scrollToReveal`, `BLOCK_ROWS`, `UNMEASURED_ROWS`; types
   `RowWindow`, `VisibleRangeInput`, `RevealInput`.
 - **Classes**: `TABLE_GRID` and `TABLE_CELL`, a row's grid layout and a cell — padded, as tall as its

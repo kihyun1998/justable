@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 
 import { type TableKeyEvent, nextFocusIndex } from '../lib/tableKeyboard.js';
-import { useTypeAhead } from './useTypeAhead.js';
+import { type TypeAheadOptions, useTypeAhead } from './useTypeAhead.js';
 
 /** What the grid tells the hook: how many whole rows its viewport shows. */
 export interface TableKeyboardLink {
@@ -16,11 +16,12 @@ export type TableKeyStep = { by: 'move'; to: number } | { by: 'typeAhead'; to: n
 
 /**
  * Keyboard movement for a table: the consumer calls `step` from wherever it receives keys, and
- * decides what a move means (selection, opening). Pass `link` to the grid as `keyboard`.
+ * decides what a move means (selection, opening). Pass `link` to the grid as `keyboard`. Its
+ * type-ahead is `useTypeAhead`'s, with the same options.
  */
-export function useTableKeyboard({ now = Date.now }: { now?: () => number } = {}) {
+export function useTableKeyboard(options: TypeAheadOptions) {
   const link = useRef<TableKeyboardLink>({ rowsPerPage: 0 }).current;
-  const typeAhead = useTypeAhead({ now });
+  const typeAhead = useTypeAhead(options);
 
   /** Answers a key, and claims the event when it moves the row; `null` for a key not the table's. */
   const step = (

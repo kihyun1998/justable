@@ -12,8 +12,20 @@ consumer calls `step` from wherever it receives keys and decides what a move mea
 - **A fresh letter searches after the focused row, wrapping, with that row checked last** — the
   maintainer's call, 2026-09-30, #20, over documenting the old behaviour (a fresh letter searched from
   the row itself, so a focused row that matched kept focus, while README § Keyboard said "the next
-  row"). The call did not cover narrowing, the walk, or `TYPE_AHEAD_MS` (#27); narrowing staying
+  row"). The call did not cover narrowing, the walk, or the window (#27); narrowing staying
   unchanged is a second call of the same day. Theirs to reverse.
+- **The type-ahead window is the consumer's, and required** — the maintainer's call in triage,
+  2026-09-30, #27, over recording 700 ms as the engine's mechanism and over an optional window
+  defaulting to 700. Shown: #9's required marquee `threshold`, also a tolerance on human input;
+  [mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md),
+  which allows only an identity default, and 700 is none; and the references disagreeing (500 and
+  1000 ms, below). The brief also said PenTerm's earlier type-ahead used 1000 ms; PenTerm's history
+  does not bear that out — its type-ahead has used 700 since it was written (`penterm e99f7e6ff`,
+  2026-08-26), and 700 is what came here. Both hooks take `windowMs` and the engine holds no value;
+  the example passes 700, the old fixed value. Shown the correction on 2026-10-01, the maintainer
+  kept the call on the other reasons. It did not cover what a window not above 0 does — that is a
+  derivation, under `## Design model` — nor whether `TypeAheadOptions` is exported, a second call
+  of 2026-10-01: exported, as `MarqueeOptions` is. Theirs to reverse.
 - **Earlier calls are recorded where they were written, in `## Design model`**: #1 (a movement key
   ends the query; Shift+Space inside a running query extends it) and #5 (a miss ends the query;
   type-ahead is its own hook).
@@ -46,25 +58,26 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **Type-ahead is one printable character with no Ctrl, Meta or Alt**, so chords are never eaten
   (Shift is allowed; named keys are all longer than one character).
 - **A space extends a running query and is otherwise the consumer's.** A query is running while it
-  is non-empty and its last character arrived within `TYPE_AHEAD_MS` — one definition, `running`,
-  which also decides whether a letter starts a fresh query. A lone Space is the keyboard's click in a
-  list: taken by type-ahead, plain and Shift+Space reached nothing (`penterm ccd3eee0c`). Refusing
-  every space instead made a name with one inside it (`new folder`) unreachable by typing, and sent
-  the mid-name space to the consumer as a click (#1). "Non-empty" matters because the stored time
-  starts at 0: on a clock near 0, a first key would otherwise read as inside the window.
-- **A movement key ends the query** — the maintainer's call, 2026-09-28, #1. Found while checking the
-  space rule: with a move leaving the query running, `n` ↓ Space inside 700 ms extended the query to
-  "n " instead of reaching the consumer, so a row that selected before the change did not. Shown:
-  a move ends the query (Space after a move is always the consumer's; a letter after a move starts
-  fresh, so `c` ↓ `h` searches "h", not "ch") against exempting only the space (letters keep
+  is non-empty and its last character arrived within the consumer's `windowMs` — one definition,
+  `running`, which also decides whether a letter starts a fresh query. A lone Space is the
+  keyboard's click in a list: taken by type-ahead, plain and Shift+Space reached nothing (`penterm
+  ccd3eee0c`). Refusing every space instead made a name with one inside it (`new folder`)
+  unreachable by typing, and sent the mid-name space to the consumer as a click (#1). "Non-empty"
+  matters because the stored time starts at 0: on a clock near 0, a first key would otherwise read
+  as inside the window.
+- **A movement key ends the query** — the maintainer's call, 2026-09-28, #1. Found while checking
+  the space rule: with a move leaving the query running, `n` ↓ Space inside the window extended the
+  query to "n " instead of reaching the consumer, so a row that selected before the change did not.
+  Shown: a move ends the query (Space after a move is always the consumer's; a letter after a move
+  starts fresh, so `c` ↓ `h` searches "h", not "ch") against exempting only the space (letters keep
   narrowing across a move, at the cost of two definitions of "running") and against leaving the
   narrow regression recorded. Chose the first. Theirs to reverse.
 - **Shift+Space inside a running query extends it too** — the maintainer's call, 2026-09-28, #1.
   Shown: extend (a space typed with Shift held mid-name, the same rule as a letter) against leaving
   it to the consumer (range selection always available, but a shifted space never in a name); the
-  cost named was that a Shift+Space within 700 ms of typing no longer extends a selection. Theirs to
-  reverse.
-- **The query**: a pause over `TYPE_AHEAD_MS` (700) starts a fresh one, which searches **after** the
+  cost named was that a Shift+Space within the window of typing no longer extends a selection.
+  Theirs to reverse.
+- **The query**: a pause over `windowMs` starts a fresh one, which searches **after** the
   focused row, from the top when there is none (#20). The same letter again **walks** to the next
   match, searching after the current row too, rather than asking for "cc" — but only while the whole
   query is that one letter: once it is longer the user is spelling, and `cr` + `r` looks for "crr".
@@ -95,12 +108,21 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   the hook cannot see that list's moves. react-aria also keeps type-ahead as a separate hook reused
   across collections, and keeps it off its public surface; here it is public because a consumer's
   tree needs it. The pure pieces (`typeAheadStep`, `typeAheadIndex`, `nextFocusIndex`) are internal.
-- **The clock is injectable** (`now`), which is how the tests cross the 700 ms window.
+- **A window not above 0 keeps no query open; `Infinity` lets no pause end one.** A derivation, not
+  #27's call. `running` asks `windowMs > 0` before it compares the pause, so `0`, a negative window
+  and `NaN` answer alike: every letter starts a fresh query and a space is always the consumer's.
+  Left to `pause <= windowMs` alone, `0` would still join two keys in the same ms, and a negative
+  window would join keys whenever the clock stepped back further than it; `NaN` would fall out right
+  only because every comparison with it is false. Throwing was left out: the window is read inside a
+  key handler, and an invalid length elsewhere here is inert, not an error (`!(rowHeight > 0)` in
+  [row windowing](row-windowing.md)). `Infinity` needs no case: every finite pause is within it, so
+  a query ends only on a miss, a move or `end()`.
+- **The clock is injectable** (`now`), which is how the tests cross the window.
 
 ## Code
 
-- `src/hooks/useTypeAhead.ts` — `useTypeAhead`, `TypeAheadAnswer`
-- `src/lib/tableKeyboard.ts` — `nextFocusIndex`, `typeAheadIndex`, `typeAheadStep`, `TYPE_AHEAD_MS`, `FALLBACK_PAGE`, `FocusMoveInput`, `TypeAheadStep`, `TableKeyEvent`
+- `src/hooks/useTypeAhead.ts` — `useTypeAhead`, `TypeAheadAnswer`, `TypeAheadOptions`
+- `src/lib/tableKeyboard.ts` — `nextFocusIndex`, `typeAheadIndex`, `typeAheadStep`, `FALLBACK_PAGE`, `FocusMoveInput`, `TypeAheadStep`, `TableKeyEvent`
 - `src/hooks/useTableKeyboard.ts` — `useTableKeyboard`, `TableKeyboardLink`, `TableKeyStep`
 
 ## Reference behaviour
@@ -108,21 +130,25 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - react-aria `useTypeSelect`, read as source at react-spectrum `16eead67e8`,
   `packages/react-aria/src/selection/useTypeSelect.ts`, for #5: a separate hook reused by list,
   grid and tree; a space extends a running search (as here); a miss clears the search (now as here);
-  no walk on a repeated letter and a 1000 ms window (both differ here, by the rules above); a move
+  no walk on a repeated letter (differs here, by the rules above); a move
   does not end the search (differs, by #1's call). Its search, `ListKeyboardDelegate.getKeyForSearch`
   at the same commit, starts **at** the focused key, inclusive, and `useTypeSelect` retries it from
   the first key on a miss: every letter, fresh or narrowing, searches from the focused row itself.
   Narrowing is as here; a fresh letter keeps a focused row that matches, which differs since #20.
+  Its window, for #27, is `const TYPEAHEAD_DEBOUNCE_WAIT_MS = 1000`, private to the module;
+  `AriaTypeSelectOptions` takes no window, so a consumer cannot change it. Here the window is the
+  consumer's and required.
 - The W3C APG listbox example, read as source at w3c/aria-practices `3f094fd`,
   `content/patterns/listbox/examples/js/listbox.js`, `findItemToFocus`, for #20. A fresh letter
   searches after the focused item and wraps, as here. Where a search starts differs in three
-  details: the wrap stops short of
-  the focused item (`findMatchInRange(list, 0, searchIndex)` is exclusive), so a letter only it
-  matches finds nothing, where here it lands on it; with nothing focused `searchIndex` stays 0, so a
-  fresh letter searches from index 1 and item 0 is never a match, where here it searches from the
-  top; and an extended query does the same from index 1, where here narrowing searches from the
-  current row. Its query differs too: every letter is appended (`keysSoFar += character`), so a
-  repeated letter does not walk, and only a 500 ms timer clears it — not a miss, not a move.
+  details: the wrap stops short of the focused item (`findMatchInRange(list, 0, searchIndex)` is
+  exclusive), so a letter only it matches finds nothing, where here it lands on it; with nothing
+  focused `searchIndex` stays 0, so a fresh letter searches from index 1 and item 0 is never a
+  match, where here it searches from the top; and an extended query does the same from index 1,
+  where here narrowing searches from the current row. Its query differs too: every letter is
+  appended (`keysSoFar += character`), so a repeated letter does not walk, and only a 500 ms timer
+  clears it — not a miss, not a move. For #27: the 500 is a literal in `clearKeysSoFarAfterDelay`,
+  and the constructor takes only the listbox node, so nothing sets it.
 
 **None.** otherwise in this repository. The W3C APG grid pattern is what the ←/→ refusal is measured against;
 PenTerm's `explorer-block.md` § Reference behavior records that reading. Windows Explorer is said
@@ -134,7 +160,8 @@ unchecked.
 - [Zero is no measurement](../invariant/zero-is-no-measurement.md) — `rowsPerPage` 0 is read as
   "unmeasured" and pages by `FALLBACK_PAGE`.
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
-  the hook answers where; selection, opening, a lone Space and every modifier's meaning are the consumer's.
+  the hook answers where; selection, opening, a lone Space, every modifier's meaning and the
+  type-ahead window are the consumer's.
 
 ## Blast radius
 

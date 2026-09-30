@@ -6,7 +6,9 @@ import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useTypeAhead } from './useTypeAhead.js';
-import { TYPE_AHEAD_MS } from '../lib/tableKeyboard.js';
+
+/** The window most tests type within, in ms. */
+const WINDOW = 500;
 
 const NAMES = ['apple', 'banana', 'cherry', 'citrus', 'date', 'news.txt', 'new folder'];
 
@@ -14,9 +16,9 @@ function key(k: string, mods: Partial<Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' 
   return { key: k, ctrlKey: false, metaKey: false, altKey: false, ...mods, preventDefault: vi.fn() };
 }
 
-function setup(names: readonly string[] = NAMES) {
+function setup(names: readonly string[] = NAMES, windowMs = WINDOW) {
   let clock = 1_000;
-  const { result } = renderHook(() => useTypeAhead({ now: () => clock }));
+  const { result } = renderHook(() => useTypeAhead({ windowMs, now: () => clock }));
   return {
     step: (e: ReturnType<typeof key>, focus: number | null) =>
       result.current.step(e, { focus, names }),
@@ -80,7 +82,7 @@ describe('useTypeAhead', () => {
   it('a pause longer than the window starts a new query', () => {
     const { step, advance } = setup();
     step(key('c'), null);
-    advance(TYPE_AHEAD_MS + 1);
+    advance(WINDOW + 1);
     expect(step(key('b'), 2)).toEqual({ to: 1 });
   });
 });
@@ -115,7 +117,9 @@ describe('a fresh letter', () => {
   it('after a pause, searches after the row the last query left', () => {
     const { step, advance } = setup(FRUIT);
     expect(step(key('c'), null)).toEqual({ to: 1 });
-    advance(TYPE_AHEAD_MS + 1);
+    expect(step(key('h'), 1)).toEqual({ to: 1 });
+    advance(WINDOW + 1);
+    // Fresh, `c` lands on citrus, after cherry; still running, "chc" would match nothing.
     expect(step(key('c'), 1)).toEqual({ to: 2 });
   });
 
@@ -125,5 +129,61 @@ describe('a fresh letter', () => {
     expect(step(key('c'), 0)).toEqual({ to: 1 });
     expect(step(key('h'), 1)).toEqual({ to: 1 });
     expect(step(key('e'), 1)).toEqual({ to: 0 });
+  });
+});
+
+describe('the window is the consumer’s', () => {
+  const FRUIT = ['apple', 'cherry', 'citrus', 'date'];
+
+  /** `c` lands on cherry; `d` after it is "cd", a miss, inside the window, and date past it. */
+  const afterPause = (windowMs: number, pause: number) => {
+    const { step, advance } = setup(FRUIT, windowMs);
+    step(key('c'), null);
+    advance(pause);
+    return step(key('d'), 1);
+  };
+
+  for (const windowMs of [300, 1000]) {
+    it(`⚠️ with ${windowMs} ms, a letter at or inside it extends the query, and 1 ms past starts one`, () => {
+      expect(afterPause(windowMs, windowMs - 1)).toEqual({ to: null });
+      expect(afterPause(windowMs, windowMs)).toEqual({ to: null });
+      expect(afterPause(windowMs, windowMs + 1)).toEqual({ to: 3 });
+    });
+  }
+
+  it('⚠️ with 0, every character starts a fresh query, even in the same ms', () => {
+    expect(afterPause(0, 0)).toEqual({ to: 3 });
+    const { step } = setup(['news.txt', 'new folder'], 0);
+    step(key('n'), null);
+    expect(step(key(' '), 0)).toBeNull();
+  });
+
+  it('⚠️ a negative or NaN window keeps no query open, even on a clock that goes back', () => {
+    for (const windowMs of [-5, Number.NaN]) {
+      expect(afterPause(windowMs, 0), String(windowMs)).toEqual({ to: 3 });
+      expect(afterPause(windowMs, -10), String(windowMs)).toEqual({ to: 3 });
+    }
+  });
+
+  it('with Infinity, no pause ends a query; a miss still does', () => {
+    expect(afterPause(Infinity, 1e9)).toEqual({ to: null });
+    const { step, advance } = setup(FRUIT, Infinity);
+    step(key('c'), null);
+    advance(1e9);
+    expect(step(key('h'), 1)).toEqual({ to: 1 });
+    expect(step(key('x'), 1)).toEqual({ to: null });
+    // The miss ended "chx": "d" alone lands on date.
+    expect(step(key('d'), 1)).toEqual({ to: 3 });
+  });
+
+  it('is required', () => {
+    // Never called: `pnpm typecheck` is what runs these lines.
+    const unwritten = () => {
+      // @ts-expect-error: the window has no default.
+      useTypeAhead();
+      // @ts-expect-error: the window has no default.
+      useTypeAhead({ now: Date.now });
+    };
+    expect(unwritten).toBeTypeOf('function');
   });
 });

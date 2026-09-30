@@ -10,10 +10,11 @@ and the engine holds **no default** for it.
 
 Checkable: the engine imports nothing but itself, React, React DOM and the icon set (the lint); a
 prop carrying a consumer's choice is either required (`refusePress`, `label`, `resizeLabel`, the
-marquee's `refusePress` and `threshold`) or, when optional, absent means the engine does nothing
-(`onAutoFit`, `onFloorClick`, `cellClassName`, `marquee`). A default that does exist is an
-identity — the value that leaves the prop doing nothing: no scale, not disabled, rows shown, no
-leading rows, not multi-selectable, no scroller, the real clock. The list is the code's:
+marquee's `refusePress` and `threshold`, the type-ahead's `windowMs`) or, when optional, absent
+means the engine does nothing (`onAutoFit`, `onFloorClick`, `cellClassName`, `marquee`). A default
+that does exist is an identity — the value that leaves the prop doing nothing: no scale, not
+disabled, rows shown, no leading rows, not multi-selectable, no scroller, the real clock. The list
+is the code's:
 
 ```sh
 rg -n ' = (false|true|null|1|\[\]|Date\.now)[,)} ]' src/components src/hooks --glob '!*.test.*'
@@ -33,7 +34,7 @@ consumer's policy that the consumer cannot see.
   ([drag lifetime](../territory/drag-lifetime.md)). The width is reported unclamped.
 - [Keyboard movement](../territory/keyboard-movement.md) — `step` answers where and claims the event;
   selection, opening and a lone Space are the consumer's; a space inside a running query is the
-  table's.
+  table's. How long a query stays open, `windowMs`, is required on both hooks.
 - [Column model](../territory/column-model.md) — bounds, first sort direction, comparator and
   hideability are the spec's.
 - [Colour variables](../territory/colour-variables.md) — roles, not colours; no fallback.
@@ -67,10 +68,15 @@ In PenTerm, as the engine was separated from the app:
 - #1 (2026-09-28) — that hand-back was written too wide: refusing every space also gave away the
   space inside a name, which is type-ahead's, so `new folder` could not be typed and its space
   selected a row. A space now extends a running query and is otherwise the consumer's.
+- #27 (2026-09-30) — the type-ahead window had been a fixed 700 ms inside the engine since it came
+  from PenTerm (`6236425`), where it had been 700 since `penterm e99f7e6ff`. A whole-codebase review
+  read it against this note: a tolerance on human input, like the marquee's `threshold`, with no
+  identity value, where the references use 500 and 1000. It is now a required `windowMs`.
 
 The third is the rule broken and found: the engine had quietly decided a key that was the
 consumer's. The fourth is its correction overshooting the other way — the seam runs through one
-key, by whether a query is running, not between keys.
+key, by whether a query is running, not between keys. The fifth is the rule found by reading rather
+than by a break: a number with an obvious "usual" value that no consumer had yet asked to change.
 
 ## Where it will recur
 

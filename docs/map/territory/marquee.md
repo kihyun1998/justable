@@ -174,6 +174,10 @@ this imitates; neither was read or measured.
 ## Known holes / open
 
 - **Touch and pen draw no marquee** — #9 keeps it mouse only.
+- **A `NaN` or negative `threshold` starts a marquee on the first move**, even a move of 0 px: the
+  press is let through while `far <= threshold`, and that is false for any `far` against either.
+  Pinned with a probe of the comparison, 2026-10-01, not in a browser. No rule was chosen for them
+  — #27 chose one for the type-ahead window, and left the marquee's threshold out of its scope.
 - **A scaled copy of the table is not corrected for.** Column resize divides the pointer by `scale`;
   the marquee takes none, so inside a CSS transform the rectangle and the hit-test drift from the
   pointer, and the scrollbar test's edge moves: under `scale(2)` a press in the lower half of the
