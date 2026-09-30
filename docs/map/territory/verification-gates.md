@@ -138,6 +138,7 @@ be run by hand.
 - `src/lint/the-engine-reaches-nothing-outside-itself.test.ts` — `sourceFiles`, `importViolations`, `staysInside`, `colourViolations`, `EXTERNAL`, `ENGINE`
 - `src/components/prefix.test.tsx` — `unprefixed`
 - `src/components/TableGrid.test.tsx`
+- `src/components/TableGrid.marquee.test.tsx`
 - `src/components/TableHeader.test.tsx`
 - `src/components/TableRow.test.tsx`
 - `src/components/TableRuler.test.tsx`
@@ -145,6 +146,7 @@ be run by hand.
 - `src/hooks/useTableKeyboard.test.ts`
 - `src/hooks/useTypeAhead.test.ts`
 - `src/lib/tableModel.test.ts`
+- `src/lib/marquee.test.ts`
 - `src/lib/rowWindow.test.ts`
 - `src/lib/tableKeyboard.test.ts`
 - `src/lib/classNames.test.ts`
