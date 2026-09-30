@@ -130,6 +130,7 @@ under `src/` is named under some note's `## Code`. The territories:
 [verification gates](territory/verification-gates.md).
 The invariants: [drawn columns are tracks are cells](invariant/drawn-columns-are-tracks-are-cells.md) ·
 [zero is no measurement](invariant/zero-is-no-measurement.md) ·
+[lengths are layout px](invariant/lengths-are-layout-px.md) ·
 [row one is the header](invariant/row-one-is-the-header.md) ·
 [mechanism here, policy in the consumer](invariant/mechanism-here-policy-in-the-consumer.md).
 

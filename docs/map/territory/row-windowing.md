@@ -10,7 +10,25 @@ the measurements.
 
 ## Governing decisions
 
-**None.**
+- **The grid works out its own scale** — the maintainer's call, 2026-09-30 (#19), over taking a
+  `scale` prop as column resize does. It deliberately differs from [column resize](column-resize.md);
+  unifying the two was left out. Rounding the row through its own `offsetHeight` was rejected: a
+  fractional row height would come out whole.
+- **The scale's layout side is the scroller's `offsetHeight`, snapped to 1 within a px** — the
+  maintainer's call, 2026-09-30 (#19). Shown: the example's scroller measured in Chrome, 654.203125 on
+  screen against an `offsetHeight` of 654 unscaled (a ratio of 1.00031, which moved the unscaled row
+  step from 28 to 27.991), and 327.1015625 against 654 under `scale(0.5)`; and three options — this
+  one; the unrounded `getComputedStyle` height with the same snap (27.99999 under `scale(0.5)`, at the
+  cost of a box-sizing sum, since the package ships no preflight); and `offsetHeight` with no snap
+  (the unscaled output changes). Theirs to reverse.
+- **`screenScale` stays in `rowWindow.ts` while `measureBox` is its only caller** — the maintainer's
+  call, 2026-09-30 (#19), over a module of its own now. Shown: the review's point that it is a
+  general screen-to-layout ratio, and that #28 would be its second caller. Where it goes when #28
+  arrives was not decided.
+- **The README promises nothing about scaled copies** — the maintainer's call, 2026-09-30 (#19). A
+  paragraph saying a scaled grid needs no prop and picks up a new scale at its next render was
+  written and removed: the second half is a known hole below, not a contract. The CHANGELOG records
+  the fix.
 
 ## Design model
 
@@ -32,6 +50,18 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   that is the [marquee](marquee.md)'s rectangle. It follows the app's root font size
   and row density — 28 px at a 16 px root, 42 px at 24 px (PenTerm). `rowHeightRem` × the root font
   size (16 if unparsable) covers only frames before a row exists.
+- **The row height is in layout px**, whatever transform scales the grid on screen. The row is read
+  with `getBoundingClientRect`, which is after the transform, while `clientHeight`, `scrollTop` and a
+  row's `top` are before it; so `measureBox` divides the row by `screenScale` — the scroller's screen
+  height over its `offsetHeight` — and every consumer of `box` works in one unit without being
+  touched. The `rowHeightRem` fallback is layout px already and is not divided. See
+  [lengths are layout px](../invariant/lengths-are-layout-px.md).
+- **A scale within a px of 1 is exactly 1.** `offsetHeight` is a whole px, so the ratio of an
+  unscaled scroller is not 1: the example's is 654.203125 over 654 in Chrome, which would place rows
+  27.991 apart instead of 28. Snapping keeps an unscaled grid's `box` identical to what the row
+  measures. Under a scale the ratio is exact only to half a px of the scroller's height: under
+  `scale(0.5)` the example places rows 27.9913 apart and draws a canvas of 139,957 px against 140,000
+  unscaled — 0.008 screen px of overlap a row, the same window and the same page.
 - **A zero viewport is no measurement.** `box` stays `null`, rows flow unpositioned and the window is
   the first `UNMEASURED_ROWS` (200, about 120 ms to draw in PenTerm) — a cap, not a guess at what
   fits. Windowing against a zero height would draw one row. See
@@ -67,7 +97,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 ## Code
 
-- `src/lib/rowWindow.ts` — `visibleRange`, `scrollToReveal`, `BLOCK_ROWS`, `UNMEASURED_ROWS`, `VisibleRangeInput`, `RevealInput`
+- `src/lib/rowWindow.ts` — `visibleRange`, `scrollToReveal`, `screenScale`, `BLOCK_ROWS`, `UNMEASURED_ROWS`, `VisibleRangeInput`, `RevealInput`
 - `src/types.ts` — `RowWindow`
 - `src/components/TableGrid.tsx` — `TableGrid`, `measureBox`, `rowHeightRemRef`, `canvasRef`, `rowKey`
 
@@ -80,7 +110,9 @@ followed), with the `left: 0` trap found against it.
 ## Cross-cutting invariants
 
 - [Zero is no measurement](../invariant/zero-is-no-measurement.md) — `visibleRange`,
-  `scrollToReveal` and `measureBox` each treat a zero or unparsable length as absent.
+  `scrollToReveal`, `screenScale` and `measureBox` each treat a zero or unparsable length as absent.
+- [Lengths are layout px](../invariant/lengths-are-layout-px.md) — `measureBox` converts the row's
+  screen height before it enters `box`.
 - [Drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md) — the
   `right: 0` is what keeps a placed row's filler track as wide as the header's.
 - [Row one is the header](../invariant/row-one-is-the-header.md) — the window is in data-row
@@ -110,3 +142,11 @@ followed), with the `left: 0` trap found against it.
   consumer with heavier cells moves it.
 - **Variable row heights are not supported.** Every row is placed at `index × rowHeight` from one
   measured row.
+- **A scale changed with no re-render is picked up at the next render.** A `ResizeObserver` does not
+  fire on a transform, and `measureBox` runs on commit; #19 left an observer for it out.
+- **Only a scale is corrected.** The ratio is taken from heights, so a scale on the vertical axis is
+  what it measures; under a rotation or a skew the bounding rect is the box that encloses the element,
+  and the ratio is not the scale. A real scale that moves the scroller's height by less than a px is
+  snapped away.
+- **The marquee still mixes screen and layout px** under a scale, now against a layout row height; see
+  [lengths are layout px](../invariant/lengths-are-layout-px.md). #28 owns its fix, after #26.

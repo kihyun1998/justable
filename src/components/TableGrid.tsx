@@ -9,7 +9,7 @@ import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import { type MarqueeOptions, useMarquee } from '../hooks/useMarquee.js';
 import type { TableKeyboardLink } from '../hooks/useTableKeyboard.js';
 import { classNames } from '../lib/classNames.js';
-import { scrollToReveal, visibleRange } from '../lib/rowWindow.js';
+import { screenScale, scrollToReveal, visibleRange } from '../lib/rowWindow.js';
 import { type GridScroller, GridScrollerContext } from './gridScroller.js';
 
 /** Where a data row sits. */
@@ -112,9 +112,12 @@ export function TableGrid({
     const first = canvasRef.current?.firstElementChild;
     const row = first === marqueeRef.current ? null : first;
     const rootPx = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    // The row is measured on screen and converted to layout px:
+    // `docs/map/invariant/lengths-are-layout-px.md`.
+    const scale = screenScale(el.getBoundingClientRect().height, el.offsetHeight);
     const next = {
       viewportHeight: el.clientHeight,
-      rowHeight: row?.getBoundingClientRect().height || rowHeightRemRef.current * rootPx,
+      rowHeight: (row?.getBoundingClientRect().height ?? 0) / scale || rowHeightRemRef.current * rootPx,
     };
     setBox((prev) =>
       prev && prev.viewportHeight === next.viewportHeight && prev.rowHeight === next.rowHeight

@@ -102,6 +102,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
   `refusePress` is this territory's policy seam, and the clamp is the model's; `onResizeDrag` is the
   seam for edge scrolling.
+- [Lengths are layout px](../invariant/lengths-are-layout-px.md) — only the pointer is divided by the
+  consumer's `scale`; `scrollLeft` is layout px already.
 
 ## Blast radius
 

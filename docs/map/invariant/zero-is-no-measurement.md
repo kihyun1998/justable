@@ -26,7 +26,8 @@ guard is written differently at each site.
   viewport; `TableGrid` hands `visibleRange` a zero row height while `box` is `null`, so the
   unmeasured window is that function's alone; `measureBox` keeps `box` at `null` for a zero
   `clientHeight`, falls back to `rowHeightRem` for a zero row height and to 16 px for an unparsable
-  root font size.
+  root font size; `screenScale` answers 1 — no scale — for a zero, negative or non-finite screen or
+  layout height.
 - [Keyboard movement](../territory/keyboard-movement.md) — `rowsPerPage` of 0 pages by
   `FALLBACK_PAGE` (1).
 - [Auto-fit](../territory/auto-fit.md) — a ruler that measured nothing answers `null`, never 0.

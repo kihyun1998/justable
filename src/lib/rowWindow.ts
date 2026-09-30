@@ -44,6 +44,19 @@ export function visibleRange({
   return { start, end: Math.min(total, snapped + span + 2 * BLOCK_ROWS) };
 }
 
+/**
+ * Screen px per layout px, from one element's height on screen and in layout. `1` while either
+ * length is unmeasured, or while the two differ by less than one px.
+ */
+export function screenScale(screenHeight: number, layoutHeight: number): number {
+  // Zero is no measurement: `docs/map/invariant/zero-is-no-measurement.md`.
+  if (!(Number.isFinite(screenHeight) && screenHeight > 0)) return 1;
+  if (!(Number.isFinite(layoutHeight) && layoutHeight > 0)) return 1;
+  // The snap to 1 is deliberate: `docs/map/territory/row-windowing.md`.
+  if (Math.abs(screenHeight - layoutHeight) < 1) return 1;
+  return screenHeight / layoutHeight;
+}
+
 export interface RevealInput {
   scrollTop: number;
   viewportHeight: number;

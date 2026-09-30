@@ -73,6 +73,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   `measureAll` answer `null` for a ruler group that measured nothing.
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
   the renderer, the classes and the clamp are the consumer's.
+- [Lengths are layout px](../invariant/lengths-are-layout-px.md) — the ruler's widths are read with
+  `getBoundingClientRect` and not converted; what a scaled copy does to a fit is unmeasured.
 
 ## Blast radius
 

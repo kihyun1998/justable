@@ -193,3 +193,80 @@ describe('the keyboard link', () => {
     expect(link.rowsPerPage).toBe(0);
   });
 });
+
+describe('inside a scaled copy of the table', () => {
+  /**
+   * A grid drawn at half size: every screen height (`getBoundingClientRect`) is half its layout
+   * height, while `clientHeight` and `offsetHeight` stay in layout px. A row is 30 layout px, so it
+   * differs from the `rowHeightRem` fallback (28).
+   */
+  function scaled(scrollerScreen: number, rowScreen: number, run: () => void) {
+    const proto = HTMLElement.prototype;
+    const rect = proto.getBoundingClientRect;
+    const client = Object.getOwnPropertyDescriptor(proto, 'clientHeight');
+    const offset = Object.getOwnPropertyDescriptor(proto, 'offsetHeight');
+    const isScroller = (el: HTMLElement) => el.hasAttribute('data-scroller');
+    proto.getBoundingClientRect = function (this: HTMLElement) {
+      const height = isScroller(this) ? scrollerScreen : this.hasAttribute('data-row') ? rowScreen : 0;
+      return { width: 0, height, x: 0, y: 0, top: 0, left: 0, right: 0, bottom: height, toJSON: () => ({}) };
+    };
+    Object.defineProperty(proto, 'clientHeight', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return isScroller(this) ? 654 : 0;
+      },
+    });
+    Object.defineProperty(proto, 'offsetHeight', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return isScroller(this) ? 654 : 0;
+      },
+    });
+    try {
+      run();
+    } finally {
+      proto.getBoundingClientRect = rect;
+      for (const [name, original] of [['clientHeight', client], ['offsetHeight', offset]] as const) {
+        if (original) Object.defineProperty(proto, name, original);
+        else delete (proto as unknown as Record<string, unknown>)[name];
+      }
+    }
+  }
+
+  const placed = (i: number, place: RowPlace) => <div role="row" data-row={`r${i}`} style={place.style} />;
+
+  const tops = (grid: HTMLElement) =>
+    dataRows(grid)
+      .slice(0, 3)
+      .map((r) => (r as HTMLElement).style.top);
+
+  it('places rows a whole layout row apart and pages by the unscaled page', () => {
+    const link = { rowsPerPage: 0 };
+    let grid!: HTMLElement;
+    scaled(327, 15, () => {
+      grid = renderGrid({ keyboard: link, rows: Array.from({ length: 40 }, (_, i) => `r${i}`), renderRow: placed, scrollerProps: { 'data-scroller': true } });
+    });
+    expect(tops(grid)).toEqual(['0px', '30px', '60px']);
+    expect(link.rowsPerPage).toBe(Math.floor(654 / 30));
+  });
+
+  it('⚠️ leaves the `rowHeightRem` fallback alone, since it is in layout px already', () => {
+    const link = { rowsPerPage: 0 };
+    let grid!: HTMLElement;
+    scaled(327, 0, () => {
+      grid = renderGrid({ keyboard: link, rows: Array.from({ length: 40 }, (_, i) => `r${i}`), renderRow: placed, scrollerProps: { 'data-scroller': true } });
+    });
+    expect(tops(grid)).toEqual(['0px', '28px', '56px']);
+    expect(link.rowsPerPage).toBe(Math.floor(654 / 28));
+  });
+
+  it('⚠️ takes a row as measured on screen while the scroller has no screen height, as before', () => {
+    const link = { rowsPerPage: 0 };
+    let grid!: HTMLElement;
+    scaled(0, 15, () => {
+      grid = renderGrid({ keyboard: link, rows: Array.from({ length: 40 }, (_, i) => `r${i}`), renderRow: placed, scrollerProps: { 'data-scroller': true } });
+    });
+    expect(tops(grid)).toEqual(['0px', '15px', '30px']);
+    expect(link.rowsPerPage).toBe(Math.floor(654 / 15));
+  });
+});
