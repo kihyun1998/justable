@@ -9,7 +9,7 @@ export interface VisibleRangeInput {
   scrollTop: number;
   /** The scroller's visible height, in px. */
   viewportHeight: number;
-  /** One row's measured height, in px — it varies with font size, so never a constant. */
+  /** One row's measured height, in px. */
   rowHeight: number;
   /** How many rows the list has in all. */
   total: number;

@@ -186,8 +186,9 @@ ascending order.
 - **Hiding.** `model.toggleHidden(layout, key)` hides or shows a `hideable` column;
   `model.visibleColumns(layout)` is what to draw. Pass its length to `TableGrid` as `colCount`.
 - **Auto-fit.** `useColumnAutoFit()` measures the widest cell of a column. Render its `TableRuler`
-  while `measuring` is set, and call `measure(key)` from `TableHeader`'s `onAutoFit` — a double-click
-  on the border — then store the result with `withWidth`. `measureAll(keys)` fits several columns
+  with `ref={rulerRef}` and `column={measuring}` while `measuring` is set — without the ref,
+  `measure` answers `null` — and call `measure(key)` from `TableHeader`'s `onAutoFit`, a
+  double-click on the border, then store the result with `withWidth`. `measureAll(keys)` fits several columns
   from one mount of the ruler and answers `{ [key]: px | null }`; store each non-null width the same
   way. See
   [`example/FileTable.tsx`](https://github.com/kihyun1998/justable/blob/main/example/FileTable.tsx).
@@ -211,7 +212,12 @@ screen order, for type-ahead. `step` answers:
   progress; pressing the same letter again moves to the next match;
 - `null` for any other key — Enter, Space, ← → — which is yours to handle.
 
-What a move does — focus only, or select too — is yours: the table selects nothing.
+On a move and on a type-ahead hit, `step` calls `preventDefault` on the event. A type-ahead miss
+ends the query, so the next letter starts a fresh one.
+
+What a move does — focus only, or select too — is yours: the table selects nothing. The grid
+scrolls the `focus` row into view whenever `focus` changes, and again when its height or the row
+height changes.
 
 ## Marquee
 
@@ -248,9 +254,10 @@ The table draws it and tells you which rows it touches; what that selects is you
   a change to it, so apply it over the selection you had at `start` rather than over the last one.
 - **Reports.** `'start'` when the threshold is passed, `'move'` on every pointer move and on every
   scroll that changes the range, `'end'` at the release of the button that started it (or at the
-  first move that finds it no longer held), `'cancel'` on Escape (which then reaches no other
-  handler), when the window loses focus, or when a new press starts over. `event` is the drag's latest mouse event, for its
-  modifiers. A grid removed mid-drag reports nothing more.
+  first move that finds it no longer held), `'cancel'` on Escape, when the window loses focus, or
+  when a new press starts over. The Escape then reaches no handler on the document or an element; a
+  capture listener on `window` itself still hears it. `event` is the drag's
+  latest mouse event, for its modifiers. A grid removed mid-drag reports nothing more.
 - **Scrolling.** The table never scrolls for a drag. `scroller` is the grid's scroll container: scroll
   it from your own loop when the pointer nears an edge, as
   [`example/edgeScroll.ts`](https://github.com/kihyun1998/justable/blob/main/example/edgeScroll.ts)
@@ -323,8 +330,32 @@ For a list with its own markup and movement — a sidebar, a tree:
 - `visibleRange({ scrollTop, viewportHeight, rowHeight, total })` is the window of rows to draw, and
   `scrollToReveal(index, { scrollTop, viewportHeight, rowHeight })` the `scrollTop` that brings a row
   into view, or `null` if it already is. Both take equal-height rows.
-- `BLOCK_ROWS` (8) is how many extra rows are drawn past each edge of the view; `UNMEASURED_ROWS`
-  (200) is how many are drawn before the viewport has been measured.
+- `BLOCK_ROWS` (8): the window's start snaps to a multiple of it, and a whole block is drawn past
+  each edge, so 8 to 15 extra rows sit above the view and as many plus a row or two below.
+  `UNMEASURED_ROWS` (200) is how many are drawn before the viewport has been measured.
+
+## Less common props
+
+- **`TableGrid`**:
+  - `leadingRows`: rows drawn above the data, each told its `aria-rowindex`, never windowed.
+  - `showRows={false}`: draws no data rows, for when you show something else instead.
+  - `wrapScroller`: wraps the scroll container, for example in a context-menu trigger.
+  - `scrollerProps`: extra attributes on the scroll container. They are spread after the grid's
+    own, so a `role` there replaces `rowgroup`.
+- **`TableHeader`**:
+  - `scale`: screen px per table px, for a scaled copy of the table, so a border drag follows the
+    pointer.
+  - `className`: goes on the header row, for its height and type.
+- **`TableRow`**: `cellClassName(key)` and `cellTitle(key)` give each cell a class and a `title`.
+- **The model**:
+  - `clampWidth(px, key)` is the clamp `withWidth` applies.
+  - `isHidden(layout, key)` tells whether a column is hidden.
+  - `sortRows(rows, sort, tieBreak)` orders ties by `tieBreak`.
+- **`useTableKeyboard({ now })` and `useTypeAhead({ now })`**: take the clock the type-ahead window
+  is timed with, for tests.
+- **`useColumnResize(onResize, onDrag)`**: the border drag `TableHeader` uses, for a handle you
+  draw yourself. `begin(key, startWidth, startX, scale?, scroller?, holdWidth?, button?)` starts
+  one from your `mousedown`. Pass the event's `button` so that only that button's release ends it.
 
 ## Exports
 

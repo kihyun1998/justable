@@ -11,9 +11,13 @@ and the engine holds **no default** for it.
 Checkable: the engine imports nothing but itself, React, React DOM and the icon set (the lint); a
 prop carrying a consumer's choice is either required (`refusePress`, `label`, `resizeLabel`, the
 marquee's `refusePress` and `threshold`) or, when optional, absent means the engine does nothing
-(`onAutoFit`, `onFloorClick`, `cellClassName`, `marquee`). The
-defaults that do exist (`scale = 1`, `disabled = false`, `showRows = true`) are identities, not
-choices.
+(`onAutoFit`, `onFloorClick`, `cellClassName`, `marquee`). A default that does exist is an
+identity — the value that leaves the prop doing nothing: no scale, not disabled, rows shown, no
+leading rows, not multi-selectable, no scroller, the real clock. The list is the code's:
+
+```sh
+rg -n ' = (false|true|null|1|\[\]|Date\.now)[,)} ]' src/components src/hooks --glob '!*.test.*'
+```
 
 ## Why it is cross-cutting
 

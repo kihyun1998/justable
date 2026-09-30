@@ -61,7 +61,11 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   end, and Chrome's is not `scrollWidth − clientWidth` under `scrollbar-gutter: stable` with a
   vertical scrollbar: measured 140 against 155, the scrollbar's 15 px. So the drag leaves blank space
   on the right, and the content slides once, at the release. The hold is a `min-width` on the rows'
-  canvas, raised on every read of the drag.
+  canvas, raised on every read of the drag (`holdWidth`, in `TableGrid`'s `gridScroller`). It is
+  written by hand on an element whose JSX sets `style` too — the canvas's `height` — which
+  [header lane](header-lane.md)'s rule for hand-written styles avoids: two owners of one inline
+  style. It holds only because React never writes `min-width` there; a `minWidth` in the canvas's
+  JSX would be reset by every render mid-drag.
 - **The header reaches the grid through a context `TableGrid` provides** (`GridScrollerContext`: the
   scroller and the width hold), since the header is handed to the grid as an element. A header drawn
   outside a grid gets neither: `Δscroll` stays 0, nothing is held, and `onResizeDrag` carries
@@ -84,6 +88,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 ## Code
 
 - `src/hooks/useColumnResize.ts` — `useColumnResize`, `ResizeDrag`
+- `src/components/TableGrid.tsx` — `gridScroller`, `holdWidth`
 - `src/components/TableHeader.tsx` — `TableHeader`, `startResize`, `refusePress`, `onResizeDrag`
 - `src/components/gridScroller.ts` — `GridScrollerContext`
 - `example/edgeScroll.ts` — `useEdgeScroll`

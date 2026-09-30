@@ -50,7 +50,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   own rule, so the release that carries it is **0.2.0**, and its CHANGELOG entry is written at that
   release, as every other entry was, not ahead of it — both the maintainer's calls, 2026-09-29
   (#14), made knowing PenTerm uses `measuring` only as `!== null` and `column={measuring}` (read,
-  not compiled). Theirs to reverse.
+  not compiled). Theirs to reverse. When an entry is written was reversed on 2026-09-30: a change
+  now writes it under `## Unreleased` ([package and release](package-and-release.md)).
 - **The answer is unclamped.** The consumer puts it through the model's `withWidth`.
 - **The wiring is the consumer's.** The hook returns `measuring` (the key, the keys, or `null`) and `rulerRef`;
   the consumer renders `<TableRuler ref={rulerRef} column={measuring} …>` while `measuring` is set and

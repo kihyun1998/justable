@@ -22,8 +22,13 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   `ColumnLayout` holds widths the user set and columns they hid; an absent width means the default.
   `createTableModel` binds the functions to one spec so a consumer can re-export them under its own
   names and its callers never see the spec.
-- **An unknown key throws.** Every function looks its column up by key and throws `unknown column`
-  rather than answering for a column the spec does not have.
+- **An unknown key throws where a column is looked up.** A function that reads a column's spec by
+  key throws `unknown column` rather than answering for a column the spec does not have:
+  `clampWidth`, `columnWidth`, `withWidth`, `nextSort`, and `sortRows` given a sort. `gridTemplate`
+  and `visibleColumns` walk the spec, so they never meet one. The hide functions (`isHidden`,
+  `toggleHidden`) look nothing up: their key is typed `H`, the hideable keys, so an unknown key is
+  refused by the compiler, and one cast past it is stored by `toggleHidden` without a word and hides
+  nothing.
 - **A stored width is clamped and rounded on read and on write; the default is not.** `columnWidth`
   falls back to `defaultWidth` for an absent or non-finite stored value and returns it as written, so
   a spec whose default lies outside its own bounds is drawn at that default until the first drag.

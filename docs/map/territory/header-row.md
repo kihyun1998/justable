@@ -38,7 +38,9 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **Two data attributes are how a consumer finds the header**: `data-table-header` on the row and
   `data-table-resize="<key>"` on each handle. PenTerm's guide tour and its checks select by them, and
   `README.md` names them, with `data-table` and `data-table-ruler`, as stable.
-- **Height and type are the consumer's**, as `className` on the row; labels arrive translated.
+- **Height and type are the consumer's**, as `className` on the row, except what the sort button
+  sets itself: `font-medium`, `text-left`, and `px-2`. The weight is the engine's, and a class on
+  the row cannot change it. Labels arrive translated.
 - **The sort button undoes a browser's button styles itself** — margin, border, background, vertical
   padding, and the font family, size and line height, which it inherits. The package ships no
   preflight, so nothing else will: in a page without one, Chrome drew each header cell as a grey
@@ -82,5 +84,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 ## Known holes / open
 
-- **Renaming a data attribute breaks nothing here.** `README.md` names them as stable, and a
-  consumer's checks select by them, but no test in this repository holds their names.
+- **Renaming a data attribute breaks tests here, by accident rather than by design.**
+  `README.md` names them as stable and a consumer's checks select by them. `TableHeader.test`,
+  `TableRuler.test`, `TableGrid.marquee.test` and `prefix.test` select by `data-table-*` too, so a
+  rename reddens them. Nothing pins the list itself: a new attribute the README does not name goes
+  unnoticed.

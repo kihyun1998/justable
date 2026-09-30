@@ -36,12 +36,19 @@ today.
 - **The release process** — four calls, the maintainer's, 2026-09-29 (#7):
   - **0.x semver**, over 1.0 now: until 1.0 a breaking change to the exports, or to how one behaves,
     bumps the minor; anything else the patch.
-  - **`CHANGELOG.md` written by hand** at release time, over changesets.
+  - **`CHANGELOG.md` written by hand**, over changesets — at release time as decided then;
+    **superseded on when**, below.
   - **CI publishes on a `v*` tag**, over no publishing yet and over a person running `npm publish`.
   - **PenTerm stays on `file:`** while both are developed together, over installing the published
     version; moving it is a later call. That later call was made in PenTerm (`penterm 1a8954d1b`,
     2026-09-29): it installs the published version, pinned exactly.
   The steps are README § Releasing.
+- **A change writes its CHANGELOG entry under `## Unreleased` in the change itself**, and the
+  release turns that section into the version — the maintainer's call, 2026-09-30, over writing
+  every entry at release time (#7, #14). Shown: the two records disagreed — this note and auto-fit's
+  said "at release time, not ahead of it", README § Releasing already said "turn the unreleased
+  entry into that version" — and #10 and #16 had already written `## Unreleased` entries on `main`.
+  Still by hand. Theirs to reverse.
 - **The publish job runs only after every gate passes** (`needs: gates` in `ci.yml`), and first
   checks that the tag names `package.json`'s version (`.github/scripts/check-tag.mjs`: `v0.1.0`
   passes, `v0.1.1`, `0.1.0` and no tag fail). It authenticates with the `NPM_TOKEN` repository
