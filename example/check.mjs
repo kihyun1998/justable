@@ -66,6 +66,47 @@ try {
   const t0 = await tracks();
   check('header and row lay out the same tracks', t0.same, t0);
 
+  // A body cell against its row, and against the same cell centred by the row as before #16.
+  const cells = await page.evaluate(() => {
+    const row = document.querySelector('[role="grid"] [role="rowgroup"] [role="row"][aria-rowindex="3"]');
+    const r = row.getBoundingClientRect();
+    const textMiddle = (cell) => {
+      const text = document.createRange();
+      text.selectNodeContents(cell);
+      const t = text.getBoundingClientRect();
+      return (t.top + t.bottom) / 2;
+    };
+    return [...row.querySelectorAll('[role="gridcell"]')].map((cell) => {
+      const b = cell.getBoundingClientRect();
+      const x = b.left + Math.min(8, b.width / 2);
+      const hits = (y) => document.elementFromPoint(x, y)?.closest('[role="gridcell"]') === cell;
+      const middle = textMiddle(cell);
+      cell.style.alignSelf = 'center';
+      const before = textMiddle(cell);
+      cell.style.alignSelf = '';
+      const text = document.createRange();
+      text.selectNodeContents(cell);
+      return {
+        key: cell.getAttribute('aria-colindex'),
+        edges: hits(r.top + 1.5) && hits(r.bottom - 1.5),
+        moved: +(middle - before).toFixed(2),
+        rightGap: +(b.right - text.getBoundingClientRect().right).toFixed(2),
+        padRight: parseFloat(getComputedStyle(cell).paddingRight),
+        textAlign: getComputedStyle(cell).textAlign,
+        display: getComputedStyle(cell).display,
+      };
+    });
+  });
+  check('a press just inside a body row’s top or bottom edge lands on a cell', cells.every((c) => c.edges), cells);
+  check('a cell’s text sits where the row’s centring put it', cells.every((c) => Math.abs(c.moved) <= 0.5), cells.map((c) => c.moved));
+  const rightAligned = cells.filter((c) => c.textAlign === 'right');
+  check(
+    'a right-aligned cell keeps its text at its right padding',
+    rightAligned.length > 0 && rightAligned.every((c) => Math.abs(c.rightGap - c.padRight) <= 0.5),
+    rightAligned,
+  );
+  check('a body cell stays a block box', cells.every((c) => c.display === 'block'), cells.map((c) => c.display));
+
   const button = await page.$eval('[role="columnheader"] button', (b) => {
     const s = getComputedStyle(b);
     return {

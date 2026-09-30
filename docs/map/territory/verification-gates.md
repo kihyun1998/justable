@@ -100,6 +100,17 @@ be run by hand.
   scrolls to the end and drags a border 20 px left: the column must shrink by 20. It fails when the
   grid never holds its content's width; it does not see the hold rising during a drag, which only the
   jsdom test pins.
+- **Four checks hold a body cell against its row** ([table row](table-row.md)), right after the first
+  track check and before anything sorts, drags or scrolls: a press 1.5 px inside the row's top and
+  bottom edges lands on each cell; each cell's text sits within 0.5 px of where it sits when the cell
+  is given the row's old centring (`align-self: center`, set inline and removed in the same read), so
+  the reference is measured in the same browser and font rather than written down; a right-aligned
+  cell keeps its text at its right padding; every cell computes `display: block`. Proven failing, one
+  mutation of `TABLE_CELL` each: no stretch (the press), stretch alone (the position), a flex cell
+  (the padding and the block), a grid cell (the block). The block check replaced an ellipsis check no
+  cell change could fail — the example ellipses inside a span with its own overflow, which shrinks to
+  the track whatever the cell's display — and a block box is what an ellipsis set on the cell itself,
+  as PenTerm's cells set it, depends on.
 - **The [marquee](marquee.md)'s browser checks run on a page of their own**, so nothing above has
   scrolled or selected: a drag over four rows selects those four and leaves the grid focused, the
   rectangle shows in its bound colours and hides at the release, a drag held past the bottom edge

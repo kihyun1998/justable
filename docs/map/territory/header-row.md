@@ -21,7 +21,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **Only the sorted column carries `aria-sort`.** The sort button's accessible name is the label
   alone; the state is on the `columnheader`.
 - **The whole cell is the sort target.** `self-stretch`, because the grid centres items and a
-  content-height cell left the target short — 20.5 px against 16.5 px (PenTerm). Label left, arrow
+  content-height cell left the target short — 20.5 px against 16.5 px (PenTerm). A body cell stretches
+  the same way since #16 ([table row](table-row.md)). Label left, arrow
   after it, `px-2` keeping the text off the handle.
 - **Rank comes from weight and the arrow's presence, never from dimmed ink.** The ink is its own
   variable, `--table-header-ink`, because the header paints its surface and a surface without a
