@@ -27,7 +27,11 @@ export {
   type TableKeyboardLink,
 } from './hooks/useTableKeyboard.js';
 export type { TableKeyEvent } from './lib/tableKeyboard.js';
-export { useTypeAhead, type TypeAheadAnswer } from './hooks/useTypeAhead.js';
+export {
+  useTypeAhead,
+  type TypeAheadAnswer,
+  type TypeAheadOptions,
+} from './hooks/useTypeAhead.js';
 
 export { TableGrid, type RowPlace, type TableGridProps } from './components/TableGrid.js';
 export { TableHeader, type TableHeaderProps } from './components/TableHeader.js';

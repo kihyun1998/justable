@@ -1,21 +1,27 @@
 import { useRef } from 'react';
-import {
-  TYPE_AHEAD_MS,
-  type TableKeyEvent,
-  typeAheadIndex,
-  typeAheadStep,
-} from '../lib/tableKeyboard.js';
+import { type TableKeyEvent, typeAheadIndex, typeAheadStep } from '../lib/tableKeyboard.js';
 
 /** Where a type-ahead key landed in `names`, or `to: null` when it matched nothing. */
 export interface TypeAheadAnswer {
   to: number | null;
 }
 
+/** The consumer's side of type-ahead. */
+export interface TypeAheadOptions {
+  /**
+   * How long a query stays open after its last character, in ms. At or below 0, or `NaN`: no query
+   * stays open. `Infinity`: no pause ends one.
+   */
+  windowMs: number;
+  /** The clock the window is timed with. */
+  now?: () => number;
+}
+
 /**
  * Type-ahead for any list of names in screen order: the consumer calls `step` from its key handler,
  * and `end` whenever it moves the row by other means. The rules: `docs/map/territory/keyboard-movement.md`.
  */
-export function useTypeAhead({ now = Date.now }: { now?: () => number } = {}) {
+export function useTypeAhead({ windowMs, now = Date.now }: TypeAheadOptions) {
   const state = useRef({ query: '', at: 0 });
 
   /** Ends any running query. */
@@ -29,7 +35,9 @@ export function useTypeAhead({ now = Date.now }: { now?: () => number } = {}) {
     { focus, names }: { focus: number | null; names: readonly string[] },
   ): TypeAheadAnswer | null => {
     const at = now();
-    const running = state.current.query !== '' && at - state.current.at <= TYPE_AHEAD_MS;
+    // A window not above 0 keeps no query open: `docs/map/territory/keyboard-movement.md`.
+    const running =
+      state.current.query !== '' && windowMs > 0 && at - state.current.at <= windowMs;
     // One printable character without a chord modifier. A space only extends a running query.
     if (
       event.key.length !== 1 ||

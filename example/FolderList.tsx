@@ -20,7 +20,7 @@ export function FolderList({
   const [scrollTop, setScrollTop] = useState(0);
   const [viewport, setViewport] = useState(0);
   const [cursor, setCursor] = useState<number | null>(null);
-  const typeAhead = useTypeAhead();
+  const typeAhead = useTypeAhead({ windowMs: 700 });
 
   useLayoutEffect(() => {
     const el = scroller.current;

@@ -12,9 +12,6 @@ export interface TableKeyEvent {
   preventDefault: () => void;
 }
 
-/** How long a type-ahead query stays open, in ms. */
-export const TYPE_AHEAD_MS = 700;
-
 /** How many rows a page moves when the viewport has not been measured. */
 const FALLBACK_PAGE = 1;
 

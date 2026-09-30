@@ -47,7 +47,7 @@ export function People({ people }: { people: readonly Person[] }) {
   const [layout, setLayout] = useState<ColumnLayout<Key>>({ widths: {}, hidden: [] });
   const [sort, setSort] = useState<TableSort<Key>>();
   const [focus, setFocus] = useState<number | null>(null);
-  const keyboard = useTableKeyboard();
+  const keyboard = useTableKeyboard({ windowMs: 700 });
 
   const rows = useMemo(() => model.sortRows(people, sort), [people, sort]);
   const columns = model.visibleColumns(layout);

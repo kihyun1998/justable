@@ -28,9 +28,17 @@ anything else the patch.
   said; the focused row is checked last, so a letter only it matches still lands on it. This holds
   for `useTypeAhead` and for `useTableKeyboard`'s `{ by: 'typeAhead' }` answer. A second, different
   letter still narrows from the row the first one landed on (#20).
+- **`useTableKeyboard` and `useTypeAhead` require the type-ahead window**, `windowMs`: how long, in
+  ms, a query stays open after its last key. There is no default; calling either without it is a
+  type error. The window was a fixed 700 ms, so pass `{ windowMs: 700 }` to keep today's behaviour.
+  A window of `0`, a negative one or `NaN` keeps no query open, and `Infinity` lets no pause end
+  one. Called from JavaScript without it, neither hook throws: the window is `undefined`, no query
+  stays open, and a name with a space in it can no longer be typed. `now` is unchanged (#27).
 
 ### Added
 
+- **`TypeAheadOptions`**, the type of `useTypeAhead`'s and `useTableKeyboard`'s options:
+  `windowMs`, and the optional `now` (#27).
 - **`useColumnResize()`'s `begin` takes the pressing `button`** as an optional last argument. Given,
   the drag takes the release rules above; left out, any button's `mouseup` ends it, as before (#10).
 

@@ -111,6 +111,17 @@ describe('a marquee', () => {
 });
 
 describe('the threshold', () => {
+  it('is required, as the press predicate is', () => {
+    // Never called: `pnpm typecheck` is what runs these lines.
+    const unwritten = (): NonNullable<TableGridProps['marquee']>[] => [
+      // @ts-expect-error: the threshold has no default.
+      { refusePress: () => false, onMarquee: () => {} },
+      // @ts-expect-error: the press predicate has no default.
+      { threshold: 4, onMarquee: () => {} },
+    ];
+    expect(unwritten).toBeTypeOf('function');
+  });
+
   it('a press that moves no further than the threshold reports nothing, and its click goes through', () => {
     const { scroller, onMarquee, onFloorClick } = renderGrid({ threshold: 4 });
     press(scroller, 10, 30);

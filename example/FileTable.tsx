@@ -94,7 +94,7 @@ export function FileTable({
   const [focus, setFocus] = useState<number | null>(null);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [anchor, setAnchor] = useState<number | null>(null);
-  const keyboard = useTableKeyboard();
+  const keyboard = useTableKeyboard({ windowMs: 700 });
   const autoFit = useColumnAutoFit<Key>();
 
   const rows = useMemo(() => model.sortRows(files, sort), [files, sort]);
