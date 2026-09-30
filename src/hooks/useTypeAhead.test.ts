@@ -14,12 +14,12 @@ function key(k: string, mods: Partial<Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' 
   return { key: k, ctrlKey: false, metaKey: false, altKey: false, ...mods, preventDefault: vi.fn() };
 }
 
-function setup() {
+function setup(names: readonly string[] = NAMES) {
   let clock = 1_000;
   const { result } = renderHook(() => useTypeAhead({ now: () => clock }));
   return {
     step: (e: ReturnType<typeof key>, focus: number | null) =>
-      result.current.step(e, { focus, names: NAMES }),
+      result.current.step(e, { focus, names }),
     end: () => result.current.end(),
     advance: (ms: number) => {
       clock += ms;
@@ -82,5 +82,48 @@ describe('useTypeAhead', () => {
     step(key('c'), null);
     advance(TYPE_AHEAD_MS + 1);
     expect(step(key('b'), 2)).toEqual({ to: 1 });
+  });
+});
+
+describe('a fresh letter', () => {
+  const FRUIT = ['apple', 'cherry', 'citrus', 'date'];
+
+  it('⚠️ searches after the focused row, so a focused row that matches does not keep focus', () => {
+    const { step } = setup(FRUIT);
+    const e = key('c');
+    expect(step(e, 1)).toEqual({ to: 2 });
+    expect(e.preventDefault).toHaveBeenCalledTimes(1);
+  });
+
+  it('lands on the focused row when it is the only match, and claims the event', () => {
+    const { step } = setup(FRUIT);
+    const e = key('d');
+    expect(step(e, 3)).toEqual({ to: 3 });
+    expect(e.preventDefault).toHaveBeenCalledTimes(1);
+  });
+
+  it('wraps round to a match before the focused row', () => {
+    const { step } = setup(FRUIT);
+    expect(step(key('a'), 2)).toEqual({ to: 0 });
+  });
+
+  it('with no focused row, lands on the first match from the top', () => {
+    const { step } = setup(['cherry', 'citrus', 'date']);
+    expect(step(key('c'), null)).toEqual({ to: 0 });
+  });
+
+  it('after a pause, searches after the row the last query left', () => {
+    const { step, advance } = setup(FRUIT);
+    expect(step(key('c'), null)).toEqual({ to: 1 });
+    advance(TYPE_AHEAD_MS + 1);
+    expect(step(key('c'), 1)).toEqual({ to: 2 });
+  });
+
+  /** ⚠️ The rule this pins: `docs/map/territory/keyboard-movement.md`. */
+  it('then narrows from the row it landed on, so c h e from cherry goes chive, chive, cherry', () => {
+    const { step } = setup(['cherry', 'chive', 'citrus']);
+    expect(step(key('c'), 0)).toEqual({ to: 1 });
+    expect(step(key('h'), 1)).toEqual({ to: 1 });
+    expect(step(key('e'), 1)).toEqual({ to: 0 });
   });
 });

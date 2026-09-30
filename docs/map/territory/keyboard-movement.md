@@ -3,13 +3,20 @@
 ## What it is
 
 Where a key sends the keyboard's row: arrow, page and end keys, and type-ahead by name. The rules are
-pure functions in `tableKeyboard.ts`; `useTableKeyboard` holds the type-ahead query and its clock,
-claims the event when it moves the row, and exposes a `link` the grid writes its page size into. The
+pure functions in `tableKeyboard.ts`; `useTypeAhead` holds the type-ahead query and its clock;
+`useTableKeyboard`, built on it, claims the event when it moves the row, and exposes a `link` the grid writes its page size into. The
 consumer calls `step` from wherever it receives keys and decides what a move means.
 
 ## Governing decisions
 
-**None.**
+- **A fresh letter searches after the focused row, wrapping, with that row checked last** — the
+  maintainer's call, 2026-09-30, #20, over documenting the old behaviour (a fresh letter searched from
+  the row itself, so a focused row that matched kept focus, while README § Keyboard said "the next
+  row"). The call did not cover narrowing, the walk, or `TYPE_AHEAD_MS` (#27); narrowing staying
+  unchanged is a second call of the same day. Theirs to reverse.
+- **Earlier calls are recorded where they were written, in `## Design model`**: #1 (a movement key
+  ends the query; Shift+Space inside a running query extends it) and #5 (a miss ends the query;
+  type-ahead is its own hook).
 
 ## Design model
 
@@ -57,14 +64,26 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   it to the consumer (range selection always available, but a shifted space never in a name); the
   cost named was that a Shift+Space within 700 ms of typing no longer extends a selection. Theirs to
   reverse.
-- **The query**: a pause over `TYPE_AHEAD_MS` (700) starts a fresh one; the same letter again
-  **walks** to the next match, searching after the current row, rather than asking for "cc" — but only
-  while the whole query is that one letter: once it is longer the user is spelling, and `cr` + `r`
-  looks for "crr". The walk compares ignoring case, as matching does, so `c` then `C` walks too.
-  Another
-  letter **narrows**, searching from the current row itself, so `c` then `h` stays on `cherry`.
+- **The query**: a pause over `TYPE_AHEAD_MS` (700) starts a fresh one, which searches **after** the
+  focused row, from the top when there is none (#20). The same letter again **walks** to the next
+  match, searching after the current row too, rather than asking for "cc" — but only while the whole
+  query is that one letter: once it is longer the user is spelling, and `cr` + `r` looks for "crr".
+  The walk compares ignoring case, as matching does, so `c` then `C` walks too. Another letter
+  **narrows**, searching from the current row itself: in `apple, cherry, citrus` with nothing
+  focused, `c` lands on `cherry` and `h` keeps it there; from `cherry`, `c` lands on `citrus` and `h`
+  wraps back to `cherry`. `typeAheadStep`'s `after` says which of the two searches a key makes.
   Matching is a case-insensitive prefix over `names`, which must be in screen order or the hit lands
   on the wrong row.
+- **"After the row" checks that row last.** `typeAheadIndex` starts at the row after `from` and wraps
+  all the way round, so the focused row is the last candidate rather than excluded: a letter only it
+  matches lands on it, and that is a hit — the event is claimed — not a miss.
+- **One rule for a query that did not walk**: it lands on the first match of the whole query after
+  the row where it started, wrapping, with that row checked last. Narrowing from the row the first
+  letter landed on is what makes that hold: in `cherry, chive, citrus` from `cherry`, `c` `h` `e`
+  lands on `chive`, `chive`, `cherry`. **A query that walked is outside it**, and #20's call did not
+  cover it: narrowing starts from the row the walk reached, so in `cherry, citrus, chive` with
+  nothing focused `c` `c` `h` lands on `cherry`, `citrus`, `chive` — not on `cherry`, the first "ch"
+  from the top. Measured with `useTypeAhead`, 2026-09-30.
 - **A miss ends the query** — the maintainer's call, 2026-09-28, #5. Keeping it meant one typo
   left type-ahead matching nothing until a pause, since the query only grows. Shown beside
   react-aria's `useTypeSelect`, which clears on a miss. The event of a miss is still left alone.
@@ -90,7 +109,20 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   `packages/react-aria/src/selection/useTypeSelect.ts`, for #5: a separate hook reused by list,
   grid and tree; a space extends a running search (as here); a miss clears the search (now as here);
   no walk on a repeated letter and a 1000 ms window (both differ here, by the rules above); a move
-  does not end the search (differs, by #1's call).
+  does not end the search (differs, by #1's call). Its search, `ListKeyboardDelegate.getKeyForSearch`
+  at the same commit, starts **at** the focused key, inclusive, and `useTypeSelect` retries it from
+  the first key on a miss: every letter, fresh or narrowing, searches from the focused row itself.
+  Narrowing is as here; a fresh letter keeps a focused row that matches, which differs since #20.
+- The W3C APG listbox example, read as source at w3c/aria-practices `3f094fd`,
+  `content/patterns/listbox/examples/js/listbox.js`, `findItemToFocus`, for #20. A fresh letter
+  searches after the focused item and wraps, as here. Where a search starts differs in three
+  details: the wrap stops short of
+  the focused item (`findMatchInRange(list, 0, searchIndex)` is exclusive), so a letter only it
+  matches finds nothing, where here it lands on it; with nothing focused `searchIndex` stays 0, so a
+  fresh letter searches from index 1 and item 0 is never a match, where here it searches from the
+  top; and an extended query does the same from index 1, where here narrowing searches from the
+  current row. Its query differs too: every letter is appended (`keysSoFar += character`), so a
+  repeated letter does not walk, and only a 500 ms timer clears it — not a miss, not a move.
 
 **None.** otherwise in this repository. The W3C APG grid pattern is what the ←/→ refusal is measured against;
 PenTerm's `explorer-block.md` § Reference behavior records that reading. Windows Explorer is said
@@ -112,7 +144,6 @@ unchecked.
 
 ## Known holes / open
 
-- **A fresh query searches from the focused row itself**, so on `cherry` a fresh `c` stays there, and
-  README § Keyboard says "the next row". Measured with `useTypeAhead` (2026-09-30). The maintainer's
-  call, 2026-09-30, is to change the behaviour to the README's (#20): a fresh single letter searches
-  after the row.
+- **A `focus` outside `names` has no contract, and a negative one throws** (#30). Narrowing passes
+  `focus - 1`, so `focus = -1` reaches `names[-1]`; an index past the end wraps by modulo. Measured
+  with `typeAheadIndex`, 2026-09-30. No consumer here reaches it.

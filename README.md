@@ -207,9 +207,11 @@ The grid is one tab stop. Pass the `link` from `useTableKeyboard()` to it as `ke
 screen order, for type-ahead. `step` answers:
 
 - `{ by: 'move', to }` for ↑ ↓ Home End Page Up Page Down (a page is the rows in view);
-- `{ by: 'typeAhead', to }` for a printable key: the next row whose name starts with what was typed
-  within 700 ms, case-insensitively, or `to: null` when none does. A space continues a query in
-  progress; pressing the same letter again moves to the next match;
+- `{ by: 'typeAhead', to }` for a printable key: a row whose name starts with what was typed within
+  700 ms, case-insensitively, or `to: null` when none does. A new query's letter, and the same
+  letter pressed again, search after `focus`, wrapping round, with the `focus` row checked last, so a
+  letter only it matches stays on it; with no `focus` they search from the top. Another letter
+  narrows the query, searching from the `focus` row itself. A space continues a query in progress;
 - `null` for any other key — Enter, Space, ← → — which is yours to handle.
 
 On a move and on a type-ahead hit, `step` calls `preventDefault` on the event. A type-ahead miss
@@ -326,7 +328,8 @@ while it measures.
 For a list with its own markup and movement — a sidebar, a tree:
 
 - `useTypeAhead()` is the table's type-ahead alone: call its `step(event, { focus, names })` from
-  your key handler, and its `end()` whenever the list moves by other means.
+  your key handler, and its `end()` whenever the list moves by other means. It answers `{ to }` by
+  the same rules as the grid's type-ahead above.
 - `visibleRange({ scrollTop, viewportHeight, rowHeight, total })` is the window of rows to draw, and
   `scrollToReveal(index, { scrollTop, viewportHeight, rowHeight })` the `scrollTop` that brings a row
   into view, or `null` if it already is. Both take equal-height rows.

@@ -127,8 +127,8 @@ describe('typeAheadIndex', () => {
 });
 
 describe('typeAheadStep', () => {
-  it('a pause starts a new one-letter query', () => {
-    expect(typeAheadStep('cra', 'b', true)).toEqual({ query: 'b', walk: false });
+  it('a pause starts a new one-letter query, searched after the row', () => {
+    expect(typeAheadStep('cra', 'b', true)).toEqual({ query: 'b', after: true });
   });
 
   /**
@@ -136,16 +136,16 @@ describe('typeAheadStep', () => {
    * search for "ccc", which matches nothing and makes the key look broken.
    */
   it('the same letter again walks instead of extending', () => {
-    expect(typeAheadStep('c', 'c', false)).toEqual({ query: 'c', walk: true });
+    expect(typeAheadStep('c', 'c', false)).toEqual({ query: 'c', after: true });
   });
 
   it('the same letter in the other case walks too, as matching ignores case', () => {
-    expect(typeAheadStep('c', 'C', false)).toEqual({ query: 'C', walk: true });
-    expect(typeAheadStep('C', 'c', false)).toEqual({ query: 'c', walk: true });
+    expect(typeAheadStep('c', 'C', false)).toEqual({ query: 'C', after: true });
+    expect(typeAheadStep('C', 'c', false)).toEqual({ query: 'c', after: true });
   });
 
   it('a different letter extends, so c then h narrows onto cherry', () => {
-    expect(typeAheadStep('c', 'h', false)).toEqual({ query: 'ch', walk: false });
+    expect(typeAheadStep('c', 'h', false)).toEqual({ query: 'ch', after: false });
   });
 
   /**
@@ -153,6 +153,6 @@ describe('typeAheadStep', () => {
    * and `cr` + `r` must look for `crr` rather than cycling the c-names.
    */
   it('a repeat inside a longer query is still an extension', () => {
-    expect(typeAheadStep('cr', 'r', false)).toEqual({ query: 'crr', walk: false });
+    expect(typeAheadStep('cr', 'r', false)).toEqual({ query: 'crr', after: false });
   });
 });

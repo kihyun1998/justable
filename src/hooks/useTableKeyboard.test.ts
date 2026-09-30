@@ -81,6 +81,11 @@ describe('type-ahead', () => {
     expect(e.preventDefault).toHaveBeenCalledTimes(1);
   });
 
+  it('a fresh letter searches after the focused row, as useTypeAhead does', () => {
+    const { step } = setup();
+    expect(step(key('c'), 2)).toEqual({ by: 'typeAhead', to: 3 });
+  });
+
   it('the same letter again walks the matches', () => {
     const { step } = setup();
     expect(step(key('c'), null)).toEqual({ by: 'typeAhead', to: 2 });
