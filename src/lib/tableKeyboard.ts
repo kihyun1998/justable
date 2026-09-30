@@ -3,6 +3,15 @@
  * and their reasons: `docs/map/territory/keyboard-movement.md`.
  */
 
+/** The parts of a key event the keyboard hooks read. A React or DOM keyboard event satisfies it. */
+export interface TableKeyEvent {
+  key: string;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  altKey: boolean;
+  preventDefault: () => void;
+}
+
 /** How long a type-ahead query stays open, in ms. */
 export const TYPE_AHEAD_MS = 700;
 

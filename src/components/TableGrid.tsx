@@ -9,7 +9,7 @@ import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import { type MarqueeOptions, useMarquee } from '../hooks/useMarquee.js';
 import type { TableKeyboardLink } from '../hooks/useTableKeyboard.js';
 import { classNames } from '../lib/classNames.js';
-import { UNMEASURED_ROWS, scrollToReveal, visibleRange } from '../lib/rowWindow.js';
+import { scrollToReveal, visibleRange } from '../lib/rowWindow.js';
 import { type GridScroller, GridScrollerContext } from './gridScroller.js';
 
 /** Where a data row sits. */
@@ -60,6 +60,9 @@ export interface TableGridProps {
   /** A rectangle dragged over the rows, reporting the rows it touches; absent, there is none. */
   marquee?: MarqueeOptions;
 }
+
+/** The `aria-rowindex` of the first row after the header: `docs/map/invariant/row-one-is-the-header.md`. */
+const FIRST_BODY_ROW = 2;
 
 export function TableGrid({
   label,
@@ -151,11 +154,11 @@ export function TableGrid({
     box && showRows ? { rowHeight: box.rowHeight, total } : null,
   );
 
-  const rowWindow = box
-    ? visibleRange({ scrollTop, ...box, total })
-    : { start: 0, end: Math.min(total, UNMEASURED_ROWS) };
+  // No box is no measurement, which `visibleRange` answers for itself:
+  // `docs/map/invariant/zero-is-no-measurement.md`.
+  const rowWindow = visibleRange({ scrollTop, viewportHeight: 0, rowHeight: 0, ...box, total });
   const rowId = (index: number) => `${rowIdPrefix}-row-${index}`;
-  const firstDataRow = 2 + leadingRows.length;
+  const firstDataRow = FIRST_BODY_ROW + leadingRows.length;
 
   const drawn: ReactNode[] = [];
   if (showRows) {
@@ -213,7 +216,7 @@ export function TableGrid({
       onMouseDown={marquee ? marqueeDrag.onMouseDown : undefined}
     >
       {leadingRows.map((render, i) => (
-        <Fragment key={i}>{render(2 + i)}</Fragment>
+        <Fragment key={i}>{render(FIRST_BODY_ROW + i)}</Fragment>
       ))}
       {showRows && (
         // `presentation` is deliberate: `docs/map/territory/grid-scaffold.md`.

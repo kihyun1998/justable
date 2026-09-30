@@ -1,6 +1,10 @@
 import { useRef } from 'react';
-import { TYPE_AHEAD_MS, typeAheadIndex, typeAheadStep } from '../lib/tableKeyboard.js';
-import type { TableKeyEvent } from './useTableKeyboard.js';
+import {
+  TYPE_AHEAD_MS,
+  type TableKeyEvent,
+  typeAheadIndex,
+  typeAheadStep,
+} from '../lib/tableKeyboard.js';
 
 /** Where a type-ahead key landed in `names`, or `to: null` when it matched nothing. */
 export interface TypeAheadAnswer {

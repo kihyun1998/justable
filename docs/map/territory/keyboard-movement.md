@@ -81,8 +81,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 ## Code
 
 - `src/hooks/useTypeAhead.ts` — `useTypeAhead`, `TypeAheadAnswer`
-- `src/lib/tableKeyboard.ts` — `nextFocusIndex`, `typeAheadIndex`, `typeAheadStep`, `TYPE_AHEAD_MS`, `FALLBACK_PAGE`, `FocusMoveInput`, `TypeAheadStep`
-- `src/hooks/useTableKeyboard.ts` — `useTableKeyboard`, `TableKeyboardLink`, `TableKeyEvent`, `TableKeyStep`
+- `src/lib/tableKeyboard.ts` — `nextFocusIndex`, `typeAheadIndex`, `typeAheadStep`, `TYPE_AHEAD_MS`, `FALLBACK_PAGE`, `FocusMoveInput`, `TypeAheadStep`, `TableKeyEvent`
+- `src/hooks/useTableKeyboard.ts` — `useTableKeyboard`, `TableKeyboardLink`, `TableKeyStep`
 
 ## Reference behaviour
 

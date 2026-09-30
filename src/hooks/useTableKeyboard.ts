@@ -1,20 +1,11 @@
 import { useRef } from 'react';
 
-import { nextFocusIndex } from '../lib/tableKeyboard.js';
+import { type TableKeyEvent, nextFocusIndex } from '../lib/tableKeyboard.js';
 import { useTypeAhead } from './useTypeAhead.js';
 
 /** What the grid tells the hook: how many whole rows its viewport shows. */
 export interface TableKeyboardLink {
   rowsPerPage: number;
-}
-
-/** The parts of a key event the hook reads. A React or DOM keyboard event satisfies it. */
-export interface TableKeyEvent {
-  key: string;
-  ctrlKey: boolean;
-  metaKey: boolean;
-  altKey: boolean;
-  preventDefault: () => void;
 }
 
 /**

@@ -16,8 +16,8 @@ browser's own count is wrong.
 
 ## Territories it holds in
 
-- [Grid scaffold](../territory/grid-scaffold.md) — `firstDataRow`, `aria-rowcount`, the leading rows'
-  indices.
+- [Grid scaffold](../territory/grid-scaffold.md) — `FIRST_BODY_ROW` (2, the row after the header),
+  `firstDataRow`, `aria-rowcount`, the leading rows' indices.
 - [Header row](../territory/header-row.md) — `aria-rowindex={1}`.
 - [Table row](../territory/table-row.md) — `aria-rowindex` from `rowIndex`.
 - [Row windowing](../territory/row-windowing.md) — the window is in data indices; the offset is added

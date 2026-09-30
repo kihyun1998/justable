@@ -23,8 +23,10 @@ guard is written differently at each site.
 
 - [Row windowing](../territory/row-windowing.md) — `visibleRange` treats `!(rowHeight > 0)` as
   unmeasured and draws the first `UNMEASURED_ROWS`; `scrollToReveal` answers `null` for a zero row or
-  viewport; `measureBox` keeps `box` at `null` for a zero `clientHeight`, falls back to `rowHeightRem`
-  for a zero row height and to 16 px for an unparsable root font size.
+  viewport; `TableGrid` hands `visibleRange` a zero row height while `box` is `null`, so the
+  unmeasured window is that function's alone; `measureBox` keeps `box` at `null` for a zero
+  `clientHeight`, falls back to `rowHeightRem` for a zero row height and to 16 px for an unparsable
+  root font size.
 - [Keyboard movement](../territory/keyboard-movement.md) — `rowsPerPage` of 0 pages by
   `FALLBACK_PAGE` (1).
 - [Auto-fit](../territory/auto-fit.md) — a ruler that measured nothing answers `null`, never 0.
