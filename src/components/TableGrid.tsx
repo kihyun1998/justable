@@ -251,9 +251,9 @@ export function TableGrid({
       aria-disabled={disabled || undefined}
       aria-label={label}
       tabIndex={0}
-      // Removed while the focused row is outside the window: `docs/map/territory/grid-scaffold.md`.
+      // Removed while the focused row is not drawn: `docs/map/territory/grid-scaffold.md`.
       aria-activedescendant={
-        focus !== null && focus >= rowWindow.start && focus < rowWindow.end
+        showRows && focus !== null && focus >= rowWindow.start && focus < rowWindow.end
           ? rowId(focus)
           : undefined
       }

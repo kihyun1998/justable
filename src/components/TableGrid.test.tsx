@@ -101,6 +101,12 @@ describe('TableGrid', () => {
     ).toBe(false);
   });
 
+  it('⚠️ names no row while no data rows are drawn, whatever the focus', () => {
+    const grid = renderGrid({ showRows: false, focus: 1 });
+    expect(dataRows(grid)).toHaveLength(0);
+    expect(grid.hasAttribute('aria-activedescendant')).toBe(false);
+  });
+
   it('draws no data rows when told not to, but keeps the leading ones', () => {
     const grid = renderGrid({
       showRows: false,

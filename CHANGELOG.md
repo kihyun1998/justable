@@ -27,6 +27,11 @@ anything else the patch.
 - **`useColumnResize()`'s `begin` takes the pressing `button`** as an optional last argument. Given,
   the drag takes the release rules above; left out, any button's `mouseup` ends it, as before (#10).
 
+### Fixed
+
+- **`aria-activedescendant` names no row while `showRows` is `false`.** It named the focused row's id
+  though no data row was drawn, so it pointed at an element that did not exist.
+
 ## 0.2.0 — 2026-09-29
 
 ### Breaking
