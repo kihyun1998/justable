@@ -58,7 +58,9 @@ turns the rectangle's vertical span into the rows it touches. The engine draws a
 - **The rectangle stays inside the scroller's content**, read at the press. It is absolutely placed on
   the canvas, and an absolutely placed box past the content's edge enlarges the scroll area — a
   rectangle dragged into the floor would then give the consumer's loop more room to scroll into, every
-  frame, without end. A zero `scrollWidth`/`scrollHeight` is no bound
+  frame, without end. Since #22 the empty-gutter spacer ([header lane](header-lane.md)) makes
+  `scrollWidth` one gutter wider than the rows while it is shown, so the rectangle may reach that far.
+  A zero `scrollWidth`/`scrollHeight` is no bound
   ([zero is no measurement](../invariant/zero-is-no-measurement.md)).
 - **The rectangle is never measured as a row, and is written in the DOM, not through state.**
   `measureBox` measures the canvas's first child as a row, and skips the rectangle. Drawing it after
@@ -154,6 +156,8 @@ this imitates; neither was read or measured.
 - [Package and release](package-and-release.md) — `README.md` § Marquee and § Colours are the
   published contract.
 - [Verification gates](verification-gates.md) — `check:example` drags a marquee in Chrome.
+- [Header lane](header-lane.md) — its empty-gutter spacer widens the `scrollWidth` that bounds the
+  rectangle.
 
 ## Known holes / open
 

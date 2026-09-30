@@ -57,6 +57,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   `className`**, so it can add attributes but cannot replace those three.
 - **`marquee` attaches the scroller's only `mousedown`**, and only when given; what it does is
   [marquee](marquee.md)'s.
+- **The scroller holds one element that is not a row**: the empty-gutter spacer after the canvas,
+  `aria-hidden` and invisible ([header lane](header-lane.md)).
 - **`wrapScroller` wraps the scroller element**, e.g. in a context-menu trigger; a wrapper that
   injects props must pass them through, as [table row](table-row.md) records for rows.
 

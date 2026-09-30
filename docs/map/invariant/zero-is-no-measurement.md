@@ -28,6 +28,8 @@ guard is written differently at each site.
   `clientHeight`, falls back to `rowHeightRem` for a zero row height and to 16 px for an unparsable
   root font size; `screenScale` answers 1 — no scale — for a zero, negative or non-finite screen or
   layout height.
+- [Header lane](../territory/header-lane.md) — a zero gutter pads nothing, and the engine probe
+  counts a shortfall only above half a px.
 - [Keyboard movement](../territory/keyboard-movement.md) — `rowsPerPage` of 0 pages by
   `FALLBACK_PAGE` (1).
 - [Auto-fit](../territory/auto-fit.md) — a ruler that measured nothing answers `null`, never 0.

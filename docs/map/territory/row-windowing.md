@@ -131,6 +131,11 @@ followed), with the `left: 0` trap found against it.
 
 ## Known holes / open
 
+- **"A one-row scroll costs no React render" is contradicted** (#32): `onScroll` sets `scrollTop` as
+  state, and 400 scroll steps of 25 px committed the grid 400 times, on `main` and after #22 alike.
+  The blocks keep the drawn rows the same; they do not skip the render. Which of the note and the
+  code changes is #32's to decide.
+
 - **The frame-time case for blocks and for separate state is unmeasured, and the number that claims
   otherwise is withdrawn.** "p95 18 ms → 51–58 ms" is in PenTerm's note, and was in
   `rowWindow.test.ts` until this map found it, attributed once to measuring in the scroll handler and once to re-rendering on every crossed
