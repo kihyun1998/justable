@@ -374,21 +374,132 @@ try {
   await new Promise((r) => setTimeout(r, 100));
   const pinned = await scrollerOf();
   const wp = await nameWidth();
+  const scrollWidthOf = () =>
+    narrow.evaluate(
+      () => [...document.querySelectorAll('[role="grid"] div')].find((d) => getComputedStyle(d).overflowX === 'auto').scrollWidth,
+    );
+  const heldFrom = await scrollWidthOf();
   const pb = await (await narrow.$('[data-table-resize="name"]')).boundingBox();
   await narrow.mouse.move(pb.x + pb.width / 2, pb.y + pb.height / 2);
   await narrow.mouse.down();
   await narrow.mouse.move(pb.x + pb.width / 2 - 20, pb.y + pb.height / 2, { steps: 4 });
   await new Promise((r) => setTimeout(r, 200));
+  const heldAt = await scrollWidthOf();
   await narrow.mouse.up();
+  await new Promise((r) => setTimeout(r, 100));
+  const released = await narrow.evaluate(() => {
+    const grid = document.querySelector('[role="grid"]');
+    const s = [...grid.querySelectorAll('div')].find((d) => getComputedStyle(d).overflowX === 'auto');
+    const cells = [...grid.querySelectorAll('[role="rowgroup"] [role="row"][aria-rowindex="2"] [role="gridcell"]')];
+    const r = s.getBoundingClientRect();
+    return { scrollport: r.left + s.clientLeft + s.clientWidth, lastCell: cells[cells.length - 1].getBoundingClientRect().right };
+  });
   const wq = await nameWidth();
   const after2 = await scrollerOf();
   check('scrolled to the end, the scroll was pinned there', pinned.left > 0, { scrollLeft: pinned.left });
+  check('a held border drag keeps the content as wide as at the press, no wider', heldAt === heldFrom, {
+    heldFrom,
+    heldAt,
+  });
+  check(
+    'released at the end, the narrower content leaves no blank space past its last cell',
+    Math.abs(released.lastCell - released.scrollport) <= 0.5,
+    released,
+  );
   check(
     'and a border dragged 20 px left shrinks its column by 20',
     Math.abs(wp - 20 - wq) <= 1 && after2.left > 0,
     { before: wp, after: wq, scrollLeft: after2.left },
   );
   await narrow.close();
+
+  // The horizontal end with an empty reserved gutter, which this run's hidden scrollbars leave in
+  // every scroller: a 700 px page scrolls horizontally, a 1280 px one does not.
+  const gutterPage = await browser.newPage();
+  gutterPage.on('pageerror', (e) => errors.push(String(e)));
+  const horizontalEnd = async (width) => {
+    await gutterPage.setViewport({ width, height: 800 });
+    await gutterPage.goto(url, { waitUntil: 'networkidle0' });
+    await gutterPage.waitForSelector('[role="grid"] [role="row"][aria-rowindex="2"] [role="gridcell"]');
+    await gutterPage.evaluate(() => {
+      const s = [...document.querySelector('[role="grid"]').querySelectorAll('div')].find(
+        (d) => getComputedStyle(d).overflowX === 'auto',
+      );
+      s.scrollLeft = s.scrollWidth;
+    });
+    await new Promise((r) => setTimeout(r, 150));
+    return gutterPage.evaluate(() => {
+      const grid = document.querySelector('[role="grid"]');
+      const s = [...grid.querySelectorAll('div')].find((d) => getComputedStyle(d).overflowX === 'auto');
+      const r = s.getBoundingClientRect();
+      const cells = [...grid.querySelectorAll('[role="rowgroup"] [role="row"][aria-rowindex="2"] [role="gridcell"]')];
+      const heads = [...grid.querySelectorAll('[role="columnheader"]')];
+      const right = (el) => el.getBoundingClientRect().right;
+      return {
+        scrollLeft: s.scrollLeft,
+        scrollWidth: s.scrollWidth,
+        clientWidth: s.clientWidth,
+        scrollport: r.left + s.clientLeft + s.clientWidth,
+        lastCell: right(cells[cells.length - 1]),
+        lastHeader: right(heads[heads.length - 1]),
+        row: right(cells[0].parentElement),
+      };
+    });
+  };
+  const narrowEnd = await horizontalEnd(700);
+  check(
+    'scrolled to its horizontal end past an empty gutter, the last cell meets the scrollport’s edge',
+    narrowEnd.scrollLeft > 0 && Math.abs(narrowEnd.lastCell - narrowEnd.scrollport) <= 0.5,
+    narrowEnd,
+  );
+  check(
+    'and the header’s last column ends where the row’s does',
+    Math.abs(narrowEnd.lastHeader - narrowEnd.lastCell) <= 0.5,
+    narrowEnd,
+  );
+  const wideEnd = await horizontalEnd(1280);
+  check(
+    'a grid that fits across does not scroll horizontally, and its rows end at the scrollport',
+    wideEnd.scrollLeft === 0 && wideEnd.scrollWidth === wideEnd.clientWidth && wideEnd.row === wideEnd.scrollport,
+    wideEnd,
+  );
+  await gutterPage.close();
+
+  // The same end with scrollbars drawn: the vertical one fills the gutter, so nothing is withheld
+  // and nothing may be added.
+  const drawnBrowser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    ignoreDefaultArgs: ['--hide-scrollbars'],
+    defaultViewport: { width: 700, height: 800 },
+  });
+  try {
+    const drawn = await drawnBrowser.newPage();
+    drawn.on('pageerror', (e) => errors.push(String(e)));
+    await drawn.goto(url, { waitUntil: 'networkidle0' });
+    await drawn.waitForSelector('[role="grid"] [role="row"][aria-rowindex="2"] [role="gridcell"]');
+    const end = await drawn.evaluate(async () => {
+      const grid = document.querySelector('[role="grid"]');
+      const s = [...grid.querySelectorAll('div')].find((d) => getComputedStyle(d).overflowX === 'auto');
+      s.scrollLeft = s.scrollWidth;
+      await new Promise((r) => setTimeout(r, 150));
+      const cells = [...grid.querySelectorAll('[role="rowgroup"] [role="row"][aria-rowindex="2"] [role="gridcell"]')];
+      const r = s.getBoundingClientRect();
+      return {
+        gutter: s.offsetWidth - s.clientWidth,
+        scrollLeft: s.scrollLeft,
+        scrollport: r.left + s.clientLeft + s.clientWidth,
+        lastCell: cells[cells.length - 1].getBoundingClientRect().right,
+      };
+    });
+    check(
+      'with a scrollbar drawn in the gutter, the horizontal end is the last cell, not past it',
+      end.gutter > 0 && end.scrollLeft > 0 && Math.abs(end.lastCell - end.scrollport) <= 0.5,
+      end,
+    );
+  } finally {
+    await drawnBrowser.close();
+  }
 
   // The same grid drawn at half size by a transform on the grid, against itself unscaled.
   const scaled = await browser.newPage();

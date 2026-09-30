@@ -58,14 +58,18 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   browser pulled `scrollLeft` back to fit, `Δscroll` counted that pull, and the column shrank again:
   measured, a 20 px drag shrank it 245 px. Scrolled to the end, no width keeps the border under the
   pointer, since the content's right edge is pinned to the view. The alternative needed the scroll's
-  end, and Chrome's is not `scrollWidth − clientWidth` under `scrollbar-gutter: stable` with a
-  vertical scrollbar: measured 140 against 155, the scrollbar's 15 px. So the drag leaves blank space
-  on the right, and the content slides once, at the release. The hold is a `min-width` on the rows'
+  end, and Chrome's is not `scrollWidth − clientWidth` under `scrollbar-gutter: stable` while the
+  gutter is empty: measured 140 against 155, the gutter's 15 px, under `check:example`'s hidden
+  scrollbars (#22 found the shortfall is the empty gutter's, not a drawn scrollbar's). Since #22 a
+  spacer extends `scrollWidth` by that gutter, so the end is still not `scrollWidth − clientWidth`.
+  So the drag leaves blank space on the right, and the content slides once, at the release. The hold is a `min-width` on the rows'
   canvas, raised on every read of the drag (`holdWidth`, in `TableGrid`'s `gridScroller`). It is
   written by hand on an element whose JSX sets `style` too — the canvas's `height` — which
   [header lane](header-lane.md)'s rule for hand-written styles avoids: two owners of one inline
   style. It holds only because React never writes `min-width` there; a `minWidth` in the canvas's
-  JSX would be reset by every render mid-drag.
+  JSX would be reset by every render mid-drag. The hold is `scrollWidth` less the empty-gutter spacer
+  ([header lane](header-lane.md)), or it would grow by a gutter on every move; lifting it
+  re-measures the spacer.
 - **The header reaches the grid through a context `TableGrid` provides** (`GridScrollerContext`: the
   scroller and the width hold), since the header is handed to the grid as an element. A header drawn
   outside a grid gets neither: `Δscroll` stays 0, nothing is held, and `onResizeDrag` carries
@@ -119,6 +123,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   moves both drags.
 - [Drag lifetime](drag-lifetime.md) — owns when this drag ends; a change there moves when
   `onResizeDrag` gets `null`.
+- [Header lane](header-lane.md) — the width hold subtracts the empty-gutter spacer, and lifting it
+  re-measures the spacer.
 
 ## Known holes / open
 

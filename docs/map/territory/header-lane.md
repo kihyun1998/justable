@@ -9,7 +9,14 @@ the header rather than beside it.
 
 ## Governing decisions
 
-**None.**
+- **The empty gutter is padded, measured** — the maintainer's call, 2026-09-30 (#22), over
+  `overflow-y: scroll` (an empty track always drawn), over dropping `scrollbar-gutter` (the frame where
+  rows narrow under the header comes back) and over recording it without a fix. The pad is the
+  shortfall the engine shows, never assumed from the gutter width: a pad sized to the gutter was
+  measured to over-scroll Firefox 147 by that amount.
+- **The engine probe lives in `TableGrid.tsx`** — the maintainer's call, 2026-09-30 (#22), over a file
+  of its own (`src/components/emptyGutter.ts`), so the file layout is left to #25's split. Theirs to
+  reverse.
 
 ## Design model
 
@@ -29,17 +36,60 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   zero-height early return, so the lane is aligned while rows still flow unmeasured.
 - **The scroller reserves its gutter** (`scrollbar-gutter: stable`): a classic scrollbar appearing
   would otherwise narrow the rows under a header that did not narrow.
+- **Chromium withholds an empty reserved gutter from the horizontal scroll range.** When the gutter
+  holds no scrollbar — the rows do not overflow vertically, or scrollbars are hidden — the scroll stops
+  one gutter-width short of `scrollWidth − clientWidth`, so the last gutter-width of every row and of
+  the header can never be scrolled into view. A plain block with no justable code does the same, so it
+  is the engine's, not the absolutely placed rows'. Firefox does not withhold it (#22's triage).
+- **So a spacer extends the content by the gutter while that happens.** An invisible, `aria-hidden`
+  block in the scroller's flow, after the canvas (so never the row sample; outside the canvas, so it
+  covers leading rows and `showRows={false}`), as wide as the content plus the gutter. It is 1 px tall
+  with a −1 px top margin: a zero-height absolutely placed box did not extend the scroll range in
+  Chrome 154, and the margin takes the 1 px back, so `scrollHeight` is unchanged (measured: 619 and
+  604 on a short list, as without it). **It is in flow rather than absolutely placed so the scroller
+  stays unpositioned**, which #9's call on the marquee's rectangle relied on
+  ([marquee](marquee.md)): an absolutely placed spacer needed `position: relative` on the scroller.
+  Written by hand, like the lane's padding.
+- **Whether to pad is the engine's answer, measured once per document.** `emptyGutterWithheld`
+  scrolls an offscreen, invisible probe scroller reserving its gutter to its end, once with content
+  shorter than it and once taller, and caches whether each stopped short — by more than half a px,
+  since the shortfall is either 0 or a whole gutter and a fractional zoom rounds the gutter. `measureBox` pads only when
+  the real scroller's gutter is non-zero, the probe says the case it is in (short or tall) is
+  withheld, and the content overflows horizontally. Hidden scrollbars withhold in the tall case too,
+  so "no vertical overflow" alone would miss them. How much is the real scroller's
+  `offsetWidth − clientWidth`, since a consumer's scrollbar styling reaches the grid but not the probe.
+- **The content is measured without the spacer, never by hiding it.** Hiding the spacer to read
+  `scrollWidth` shrank the range for that moment, and Chrome clamped `scrollLeft` back by the gutter
+  on every commit — a drag at the end shrank its column by 35 instead of 20. The content is the
+  widest `scrollWidth` of the scroller's other children, all of which start at its left edge.
+- **The border drag's width hold subtracts the pad** (`holdWidth`: `scrollWidth − spacerPadRef`). It
+  runs on every move of a drag; holding `scrollWidth` as it is, the spacer would be re-measured one
+  gutter wider each time — 898 → 958 px over four moves. **Releasing it re-measures**: the hold is
+  lifted in the DOM with no commit of the grid, and until one the spacer kept the drag's width —
+  60 px of blank space past the last cell after a 60 px drag.
 
 ## Code
 
-- `src/components/TableGrid.tsx` — `TableGrid`, `measureBox`, `laneRef`, `laneInnerRef`
+- `src/components/TableGrid.tsx` — `TableGrid`, `measureBox`, `laneRef`, `laneInnerRef`, `emptyGutterWithheld`, `GutterWithheld`, `spacerRef`, `spacerPadRef`
 
 ## Reference behaviour
 
-**None.**
+Measured on the example at a 700 px viewport, scrolled to the horizontal end, 2026-09-30, before and
+after #22 — max `scrollLeft`, and how far the last cell ends past the scrollport:
+
+| Engine | Short list | Tall list |
+|---|---|---|
+| Chrome 154, scrollbars hidden | 140, 15 px cut → **155, 0** | 140, 15 px cut → **155, 0** |
+| Chrome 154, scrollbars drawn | 140, 15 px cut → **155, 0** | 155, 0 → 155, 0 |
+| Firefox 147, overlay scrollbars (the default here; gutter 0) | 140, 0 → 140, 0 | 140, 0 → 140, 0 |
+| Firefox 147, classic scrollbars (17 px gutter) | 157, 0 → 157, 0 | 157, 0 → 157, 0 |
+
+The header's last column ended where the row's did in every case. Safari is not measured.
 
 ## Cross-cutting invariants
 
+- [Zero is no measurement](../invariant/zero-is-no-measurement.md) — a zero gutter (overlay
+  scrollbars) or a probe that measured nothing pads nothing.
 - [Drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md) — the
   lane's padding and translation are what make the header's tracks and the rows' tracks sit over one
   another; equal track lists are not enough if the boxes they lay out in differ.
@@ -50,10 +100,18 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   timing moves the gutter write too.
 - [Header row](header-row.md) — the content of the lane; its `z-20` and surface colour sit over rows
   scrolled beneath.
-- [Grid scaffold](grid-scaffold.md) — the lane is the grid's first `rowgroup`.
+- [Grid scaffold](grid-scaffold.md) — the lane is the grid's first `rowgroup`; the spacer is an
+  `aria-hidden` child of the scroller, after the canvas.
+- [Column resize](column-resize.md) — the width hold subtracts the spacer.
+- [Marquee](marquee.md) — the rectangle's bound is the scroller's `scrollWidth`, which the spacer
+  extends by the gutter.
 
 ## Known holes / open
 
+- **Safari is unmeasured**, and nothing here runs it.
+- **Right to left is not handled**: the gutter is on the left there, and the spacer extends the right.
+- **The engine probe runs once per document.** A scrollbar mode switched at runtime (overlay to
+  classic, as a platform setting or a plugged-in mouse can) keeps the first answer until a reload.
 - **The gutter is re-measured only when `measureBox` runs** — each commit and each scroller resize.
   A scrollbar that appears without either (a platform setting changed at runtime) is not seen until
   the next.

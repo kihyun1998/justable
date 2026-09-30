@@ -111,6 +111,20 @@ be run by hand.
   cell change could fail — the example ellipses inside a span with its own overflow, which shrinks to
   the track whatever the cell's display — and a block box is what an ellipsis set on the cell itself,
   as PenTerm's cells set it, depends on.
+- **`check:example` runs with Puppeteer's `--hide-scrollbars`, which leaves every reserved gutter
+  empty** — the case in which Chromium withholds the gutter from the horizontal end
+  ([header lane](header-lane.md)). So six checks hold that end (#22). On a page of their own, at
+  700 px and scrolled to the end, the last cell meets the scrollport's edge and the header's last
+  column ends where it does; at 1280 px the grid does not scroll horizontally at all and its rows end
+  at the scrollport. A second Chrome with scrollbars drawn (`ignoreDefaultArgs: ['--hide-scrollbars']`)
+  checks that the vertical scrollbar's filled gutter adds nothing: the end is the last cell, not past
+  it. The scrolled-to-end border drag checks that the content is as wide while held as at the press,
+  and that after the release no blank space is left past the last cell. Proven failing: never showing
+  the spacer (15 px short), padding whenever there is a gutter (15 px past, in the drawn browser), a
+  width hold that keeps the spacer (898 → 958 px while held), no re-measure at the release (20 px
+  blank), and a spacer shown with nothing overflowing (a 1280 px grid that scrolls). Hiding the spacer to
+  measure the content failed the existing 20 px drag check (it shrank by 35). Firefox and a short
+  list are not in the gate: the app draws only the 5000-row grid, and Firefox is measured by hand.
 - **Three checks hold a scaled copy of the grid** ([row windowing](row-windowing.md)), on a page of
   their own, last: the grid is measured unscaled, then under `transform: scale(0.5)` on the grid,
   each after one scroll (the re-render that measures) and Home → PageDown. Unscaled, rows are exactly
