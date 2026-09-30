@@ -15,8 +15,23 @@ the header rather than beside it.
   shortfall the engine shows, never assumed from the gutter width: a pad sized to the gutter was
   measured to over-scroll Firefox 147 by that amount.
 - **The engine probe lives in `TableGrid.tsx`** — the maintainer's call, 2026-09-30 (#22), over a file
-  of its own (`src/components/emptyGutter.ts`), so the file layout is left to #25's split. Theirs to
-  reverse.
+  of its own (`src/components/emptyGutter.ts`), so the file layout is left to #25's split. Settled by
+  #25, below.
+- **The lane measures on its own** — the maintainer's call, 2026-09-30 (#25's triage), over one
+  shared effect calling the row window and the lane in a fixed order: `useHeaderLane` attaches its own
+  layout effect and its own `ResizeObserver`, as [row windowing](row-windowing.md)'s hook does.
+- **The spacer is still not touched at zero height** — the maintainer's call, 2026-09-30 (#25's
+  triage), over running it at any height. Because the lane measures on its own, it carries its own
+  guard: the gutter is written whatever the height, and the spacer is left alone while the scroller's
+  `clientHeight` is 0. It is the one guard the split duplicates, and a site of
+  [zero is no measurement](../invariant/zero-is-no-measurement.md).
+- **The engine probe and the width hold live in the lane hook's module**, not in files of their own —
+  the maintainer's call, 2026-09-30 (#25's triage). `GridScroller` stays the context type the header
+  receives, in `gridScroller.ts`.
+- **The two hooks are `src/hooks/useRowWindow.ts` and `src/hooks/useHeaderLane.ts`** — the
+  maintainer's call, 2026-09-30 (#25), over putting the lane's hook beside `gridScroller.ts` as
+  `src/components/headerLane.ts`. Shown: `useMarquee`, an internal hook of the grid's, already in
+  `src/hooks/`. Neither is exported from `src/index.ts`. Theirs to reverse.
 
 ## Design model
 
@@ -32,8 +47,36 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
     scroller's `offsetWidth − clientWidth` (0 against 15 px on a classic scrollbar, PenTerm).
 - **React never writes either property.** Both are imperative writes on elements whose JSX sets no
   `style` — an inline style is a diff, and two owners of one property lose silently.
-- **The gutter is measured even without a box.** `measureBox` writes the lane's padding before its
-  zero-height early return, so the lane is aligned while rows still flow unmeasured.
+- **The gutter is measured even without a box.** `useHeaderLane`'s `measure` writes the lane's
+  padding at any height, and skips only the spacer at zero height, so the lane is aligned while rows
+  still flow unmeasured.
+- **The row window is measured before the lane.** `TableGrid` calls `useRowWindow` before
+  `useHeaderLane`: React runs a component's layout effects in the order they are declared, and
+  `ResizeObserver` callbacks are delivered in the order the observers were created, so on every commit
+  and every resize the box is read before the spacer is written — as when one function did both. The
+  release of the width hold calls the two in the same order. The order is kept because #25's triage
+  asked for it, on the reason that a spacer write can add a horizontal scrollbar and so change the
+  box's `clientHeight`. Read from the code, showing the spacer cannot: it is shown only when the
+  content already overflows, so the scrollbar is already there. Hiding it at a release can remove one,
+  and then either order reads the box before the scrollbar goes, as before the split. **No check sees
+  the order**: calling the lane first, and measuring it first at the release, left jsdom and
+  `check:example` green (2026-09-30).
+- **The lane reads everything before it writes anything.** The gutter, the height, the probe and the
+  content widths are read first, then the padding and the spacer are written, so the lane adds no
+  layout forced by a read after its own write. That moved the padding write: when one function did
+  both, it came before every other read — the box, the probe, `scrollHeight`, the children's
+  `scrollWidth` — and it now comes after all of them. The padding moves only the lane, so each of
+  those reads sees the same lengths — unless a padding change altered the header's height, and then
+  the scroller resizes and both observers measure again.
+  Measured 2026-09-30 on the example in headless Chrome, scrolling the grid over 60 steps, five runs
+  each before and after the split: one forced layout per commit that changed the DOM in both, none
+  inside the lane's `measure`, and no time difference outside the runs' spread (a median of 780 µs a
+  DOM-changing commit before, 730 after; the lane's half about 20 µs a call). The width hold's
+  release was not traced.
+- **Its observer is attached once and reads only refs**, as the row window's does
+  ([row windowing](row-windowing.md)), so the first closure never goes stale. The width hold, built
+  once, calls the first closures of both — the lane's `measure` and the row window's, handed in as
+  `remeasure` — which is why `remeasure` must read only refs too.
 - **The scroller reserves its gutter** (`scrollbar-gutter: stable`): a classic scrollbar appearing
   would otherwise narrow the rows under a header that did not narrow.
 - **Chromium withholds an empty reserved gutter from the horizontal scroll range.** When the gutter
@@ -53,7 +96,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **Whether to pad is the engine's answer, measured once per document.** `emptyGutterWithheld`
   scrolls an offscreen, invisible probe scroller reserving its gutter to its end, once with content
   shorter than it and once taller, and caches whether each stopped short — by more than half a px,
-  since the shortfall is either 0 or a whole gutter and a fractional zoom rounds the gutter. `measureBox` pads only when
+  since the shortfall is either 0 or a whole gutter and a fractional zoom rounds the gutter. `measure` pads only when
   the real scroller's gutter is non-zero, the probe says the case it is in (short or tall) is
   withheld, and the content overflows horizontally. Hidden scrollbars withhold in the tall case too,
   so "no vertical overflow" alone would miss them. How much is the real scroller's
@@ -70,7 +113,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 ## Code
 
-- `src/components/TableGrid.tsx` — `TableGrid`, `measureBox`, `laneRef`, `laneInnerRef`, `emptyGutterWithheld`, `GutterWithheld`, `spacerRef`, `spacerPadRef`
+- `src/hooks/useHeaderLane.ts` — `useHeaderLane`, `measure`, `HeaderLane`, `HeaderLaneInput`, `laneRef`, `laneInnerRef`, `emptyGutterWithheld`, `GutterWithheld`, `spacerRef`, `spacerPadRef`, `gridScroller`, `holdWidth`, `remeasure`
+- `src/components/TableGrid.tsx` — `TableGrid`, the `onScroll` both hooks share
 
 ## Reference behaviour
 
@@ -96,8 +140,10 @@ The header's last column ended where the row's did in every case. Safari is not 
 
 ## Blast radius
 
-- [Row windowing](row-windowing.md) — shares `measureBox`; a change to its early return or its
-  timing moves the gutter write too.
+- [Row windowing](row-windowing.md) — shares the scroller, the scroll event, the width hold's
+  release (which re-measures the row window first, through `remeasure`) and the read order above: a
+  change to which hook is called first, or to either's timing, moves when the box is read against when
+  the spacer is written.
 - [Header row](header-row.md) — the content of the lane; its `z-20` and surface colour sit over rows
   scrolled beneath.
 - [Grid scaffold](grid-scaffold.md) — the lane is the grid's first `rowgroup`; the spacer is an
@@ -112,6 +158,6 @@ The header's last column ended where the row's did in every case. Safari is not 
 - **Right to left is not handled**: the gutter is on the left there, and the spacer extends the right.
 - **The engine probe runs once per document.** A scrollbar mode switched at runtime (overlay to
   classic, as a platform setting or a plugged-in mouse can) keeps the first answer until a reload.
-- **The gutter is re-measured only when `measureBox` runs** — each commit and each scroller resize.
+- **The gutter is re-measured only when `useHeaderLane`'s `measure` runs** — each commit and each scroller resize.
   A scrollbar that appears without either (a platform setting changed at runtime) is not seen until
   the next.

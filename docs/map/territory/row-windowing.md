@@ -3,10 +3,10 @@
 ## What it is
 
 Drawing only the rows the viewport can see: which index range is drawn (`visibleRange`), where to
-scroll to bring a row fully into view (`scrollToReveal`), and the part of `TableGrid` that measures
+scroll to bring a row fully into view (`scrollToReveal`), and `useRowWindow`, the grid's hook that measures
 the scroller and a row, places the drawn rows on a canvas as tall as all of them, and keeps both in
-step with scrolling and resizing. The arithmetic is pure and in `rowWindow.ts`; the grid supplies
-the measurements.
+step with scrolling and resizing. The arithmetic is pure and in `rowWindow.ts`; the hook supplies
+the measurements, and `TableGrid` draws what it answers.
 
 ## Governing decisions
 
@@ -21,10 +21,14 @@ the measurements.
   one; the unrounded `getComputedStyle` height with the same snap (27.99999 under `scale(0.5)`, at the
   cost of a box-sizing sum, since the package ships no preflight); and `offsetHeight` with no snap
   (the unscaled output changes). Theirs to reverse.
-- **`screenScale` stays in `rowWindow.ts` while `measureBox` is its only caller** — the maintainer's
+- **`screenScale` stays in `rowWindow.ts` while `useRowWindow`'s `measure` is its only caller** — the maintainer's
   call, 2026-09-30 (#19), over a module of its own now. Shown: the review's point that it is a
   general screen-to-layout ratio, and that #28 would be its second caller. Where it goes when #28
   arrives was not decided.
+- **The row window measures on its own** — the maintainer's call, 2026-09-30 (#25's triage), over
+  one effect calling the row window and the [header lane](header-lane.md) in a fixed order: each hook
+  attaches its own layout effect and its own `ResizeObserver`. What that costs, and the order the two
+  keep, is recorded in the header lane's note, which carries the duplicated guard.
 - **The README promises nothing about scaled copies** — the maintainer's call, 2026-09-30 (#19). A
   paragraph saying a scaled grid needs no prop and picks up a new scale at its next render was
   written and removed: the second half is a known hole below, not a contract. The CHANGELOG records
@@ -37,11 +41,11 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **First paint was the cost, not scrolling.** Unwindowed, 5,000 rows took 3,003 ms to draw (about
   0.6 ms a row) while scrolling stayed at 60 fps (PenTerm).
 - **Scroll position and box size are separate state.** `scrollTop` is set from the scroll handler;
-  `box` (viewport height, row height) only from `measureBox`. The first version read
+  `box` (viewport height, row height) only from `measure`. The first version read
   `getComputedStyle` and `getBoundingClientRect` in the scroll handler, and both force style and
   layout on every scroll event (`penterm 5bf00320d`). **No frame-time number supports this** — see
   `## Known holes / open`.
-- **`measureBox` runs after every render and on every resize.** A `useLayoutEffect` with no
+- **`measure` runs after every render and on every resize.** A `useLayoutEffect` with no
   dependency list calls it each commit, and `setBox` returns the previous object when nothing changed,
   so an unchanged measurement costs no re-render. A `ResizeObserver` attached once calls it too; it
   reads only refs (`rowHeightRemRef` included) and calls `setBox`, so the first closure never goes
@@ -52,7 +56,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   size (16 if unparsable) covers only frames before a row exists.
 - **The row height is in layout px**, whatever transform scales the grid on screen. The row is read
   with `getBoundingClientRect`, which is after the transform, while `clientHeight`, `scrollTop` and a
-  row's `top` are before it; so `measureBox` divides the row by `screenScale` — the scroller's screen
+  row's `top` are before it; so `measure` divides the row by `screenScale` — the scroller's screen
   height over its `offsetHeight` — and every consumer of `box` works in one unit without being
   touched. The `rowHeightRem` fallback is layout px already and is not divided. See
   [lengths are layout px](../invariant/lengths-are-layout-px.md).
@@ -99,7 +103,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 - `src/lib/rowWindow.ts` — `visibleRange`, `scrollToReveal`, `screenScale`, `BLOCK_ROWS`, `UNMEASURED_ROWS`, `VisibleRangeInput`, `RevealInput`
 - `src/types.ts` — `RowWindow`
-- `src/components/TableGrid.tsx` — `TableGrid`, `measureBox`, `rowHeightRemRef`, `canvasRef`, `rowKey`
+- `src/hooks/useRowWindow.ts` — `useRowWindow`, `measure`, `RowBox`, `RowWindowInput`, `RowWindowState`, `rowHeightRemRef`, `notARowRef`
+- `src/components/TableGrid.tsx` — `TableGrid`, `canvasRef`, `rowKey`
 
 ## Reference behaviour
 
@@ -110,8 +115,8 @@ followed), with the `left: 0` trap found against it.
 ## Cross-cutting invariants
 
 - [Zero is no measurement](../invariant/zero-is-no-measurement.md) — `visibleRange`,
-  `scrollToReveal`, `screenScale` and `measureBox` each treat a zero or unparsable length as absent.
-- [Lengths are layout px](../invariant/lengths-are-layout-px.md) — `measureBox` converts the row's
+  `scrollToReveal`, `screenScale` and `measure` each treat a zero or unparsable length as absent.
+- [Lengths are layout px](../invariant/lengths-are-layout-px.md) — `measure` converts the row's
   screen height before it enters `box`.
 - [Drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md) — the
   `right: 0` is what keeps a placed row's filler track as wide as the header's.
@@ -122,8 +127,9 @@ followed), with the `left: 0` trap found against it.
 
 - [Grid scaffold](grid-scaffold.md) — `aria-activedescendant` is present only while the focused row
   is inside the window this computes.
-- [Header lane](header-lane.md) — shares `measureBox`: the lane's gutter padding is written in the
-  same function, before the zero-height early return.
+- [Header lane](header-lane.md) — shares the scroller, the scroll event (`TableGrid`'s `onScroll`
+  hands each hook its axis), the width hold's release (which runs `measure` before the lane's), and a
+  read order: `useRowWindow` is called first, so the box is read before the spacer is written.
 - [Keyboard movement](keyboard-movement.md) — its page size comes from this box, and its focus
   changes are revealed by this effect.
 - [Table row](table-row.md) — the placement arrives in the row's `style`, which it must merge under
@@ -148,7 +154,7 @@ followed), with the `left: 0` trap found against it.
 - **Variable row heights are not supported.** Every row is placed at `index × rowHeight` from one
   measured row.
 - **A scale changed with no re-render is picked up at the next render.** A `ResizeObserver` does not
-  fire on a transform, and `measureBox` runs on commit; #19 left an observer for it out.
+  fire on a transform, and `measure` runs on commit; #19 left an observer for it out.
 - **Only a scale is corrected.** The ratio is taken from heights, so a scale on the vertical axis is
   what it measures; under a rotation or a skew the bounding rect is the box that encloses the element,
   and the ratio is not the scale. A real scale that moves the scroller's height by less than a px is

@@ -63,10 +63,12 @@ What they showed on the day this was written, and what does not rot with the num
   `## Governing decisions` in this map was `**None.**`, and the adjacent PenTerm records are named where
   they apply. Since then the maintainer's calls have been recorded in the notes they govern, from #8
   on; which notes still hold none is the sentinel query under Conventions, not a list here.
-- **M3 — `TableGrid.tsx` is about half of the component layer**, and it is three territories that
-  share one function: [grid scaffold](territory/grid-scaffold.md),
-  [row windowing](territory/row-windowing.md) and [header lane](territory/header-lane.md). The
-  function they share is `measureBox`.
+- **M3 — `TableGrid.tsx` was about half of the component layer**, and it was three territories that
+  shared one function, `measureBox`: [grid scaffold](territory/grid-scaffold.md),
+  [row windowing](territory/row-windowing.md) and [header lane](territory/header-lane.md). The last
+  two are now hooks of their own (`useRowWindow`, `useHeaderLane`); what they still share is the
+  scroller, its scroll event, the width hold's release and a read order; each note's
+  `## Blast radius` says how.
 - **M4 — the stale pointers were in source, not prose**: the two comment paths above, and test
   headers citing PenTerm's files by path. The one stale prediction was the lint's alias for PenTerm's
   tree ("while it still lives in PenTerm's tree"), which stayed after the move and permitted an import

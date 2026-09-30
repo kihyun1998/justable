@@ -63,7 +63,8 @@ turns the rectangle's vertical span into the rows it touches. The engine draws a
   A zero `scrollWidth`/`scrollHeight` is no bound
   ([zero is no measurement](../invariant/zero-is-no-measurement.md)).
 - **The rectangle is never measured as a row, and is written in the DOM, not through state.**
-  `measureBox` measures the canvas's first child as a row, and skips the rectangle. Drawing it after
+  `useRowWindow`'s `measure` measures the canvas's first child as a row, and skips the rectangle
+  (`notARowRef`). Drawing it after
   the rows was the first version's way round that, and did not hold: over an empty list the rectangle
   is the first child, and mid-drag the row height became its height — measured, `rowsPerPage` 1 in a
   view of 7 rows. The maintainer's call, 2026-09-29, over moving the rectangle off the canvas, which
