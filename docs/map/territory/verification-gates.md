@@ -111,6 +111,16 @@ be run by hand.
   cell change could fail — the example ellipses inside a span with its own overflow, which shrinks to
   the track whatever the cell's display — and a block box is what an ellipsis set on the cell itself,
   as PenTerm's cells set it, depends on.
+- **Three checks hold a scaled copy of the grid** ([row windowing](row-windowing.md)), on a page of
+  their own, last: the grid is measured unscaled, then under `transform: scale(0.5)` on the grid,
+  each after one scroll (the re-render that measures) and Home → PageDown. Unscaled, rows are exactly
+  one row's `offsetHeight` apart; scaled, they are that far apart within 0.05 px and overlap on
+  screen by no more; and the drawn rows, the page and the canvas (within 0.05 px a row) are the
+  unscaled ones. The tolerance is the precision of a scale built on a whole-px `offsetHeight`.
+  Proven failing: dividing the row by 1 instead of the scale fails the two scaled checks (step 14,
+  7 px overlap, 64 rows drawn, canvas 70,000, the page landing on 48), and dropping the snap to 1
+  fails the unscaled one (step 27.9913) — the scaled checks compare against the unscaled run, so they
+  alone cannot see both runs drift together.
 - **The [marquee](marquee.md)'s browser checks run on a page of their own**, so nothing above has
   scrolled or selected: a drag over four rows selects those four and leaves the grid focused, the
   rectangle shows in its bound colours and hides at the release, a drag held past the bottom edge

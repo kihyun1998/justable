@@ -137,6 +137,8 @@ this imitates; neither was read or measured.
   neither marks a scrollbar nor bounds the rectangle.
 - [Row one is the header](../invariant/row-one-is-the-header.md) — the range is in data-row indices,
   as `focus` and `renderRow` are, not `aria-rowindex`.
+- [Lengths are layout px](../invariant/lengths-are-layout-px.md) — not converted: the pointer's `y` is
+  divided by a layout row height; recorded under `## Known holes / open`.
 
 ## Blast radius
 
@@ -158,7 +160,12 @@ this imitates; neither was read or measured.
 - **Touch and pen draw no marquee** — #9 keeps it mouse only.
 - **A scaled copy of the table is not corrected for.** Column resize divides the pointer by `scale`;
   the marquee takes none, so inside a CSS transform the rectangle and the hit-test drift from the
-  pointer.
+  pointer, and the scrollbar test's edge moves: under `scale(2)` a press in the lower half of the
+  view is refused, under `scale(0.5)` a press on the real scrollbar is not (read from the code, not
+  measured). Since #19 the row height it receives is layout px while its pointer `y` is screen px, so
+  under `scale(0.5)` a drag reaches half as far as the pointer (measured) — every mixed site is listed
+  in [lengths are layout px](../invariant/lengths-are-layout-px.md). #26 moves this geometry without
+  the scale; #28 owns the fix, after #26.
 - **Right to left is not handled.** The scrollbar test looks only past the right and bottom edges; under
   `dir="rtl"` the vertical scrollbar is on the left, and a press on it could start a marquee. Dropped
   by the maintainer, 2026-09-29: nothing in the engine handles right to left, and no consumer asks.

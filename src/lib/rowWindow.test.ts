@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { BLOCK_ROWS, scrollToReveal, visibleRange } from './rowWindow.js';
+import { BLOCK_ROWS, screenScale, scrollToReveal, visibleRange } from './rowWindow.js';
 
 /**
  * The largest step a consumer's drag edge-scroll moves in one frame, in px:
@@ -208,5 +208,25 @@ describe('scrollToReveal', () => {
 
   it('never asks to scroll above the top', () => {
     expect(scrollToReveal(0, { scrollTop: 100, ...V })).toBe(0);
+  });
+});
+
+describe('screenScale', () => {
+  it('is the screen height over the layout height, for a scaled copy', () => {
+    // Measured in Chrome under `scale(0.5)`: the scroller is 327.1015625 on screen and 654 in layout.
+    expect(screenScale(327.1015625, 654)).toBe(327.1015625 / 654);
+  });
+
+  it('⚠️ is exactly 1 while the two differ by less than the layout reading rounds away', () => {
+    // Measured in Chrome unscaled: 654.203125 on screen, an `offsetHeight` of 654.
+    expect(screenScale(654.203125, 654)).toBe(1);
+    expect(screenScale(568.59375, 569)).toBe(1);
+  });
+
+  it('is no measurement, so 1, for a zero, negative or non-finite length', () => {
+    for (const bad of [0, -10, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(screenScale(bad, 654)).toBe(1);
+      expect(screenScale(327, bad)).toBe(1);
+    }
   });
 });

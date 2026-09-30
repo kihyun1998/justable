@@ -390,6 +390,64 @@ try {
   );
   await narrow.close();
 
+  // The same grid drawn at half size by a transform on the grid, against itself unscaled.
+  const scaled = await browser.newPage();
+  scaled.on('pageerror', (e) => errors.push(String(e)));
+  await scaled.goto(url, { waitUntil: 'networkidle0' });
+  await scaled.waitForSelector('[role="grid"] [data-table-header]');
+  const geometry = async () => {
+    // One scroll is the re-render that measures again.
+    await scaled.evaluate(() => {
+      const s = [...document.querySelector('[role="grid"]').querySelectorAll('div')].find(
+        (d) => getComputedStyle(d).overflowY === 'auto',
+      );
+      s.scrollTop = s.scrollTop === 1 ? 2 : 1;
+    });
+    await new Promise((r) => setTimeout(r, 150));
+    await scaled.focus('[role="grid"]');
+    await scaled.keyboard.press('Home');
+    await scaled.keyboard.press('PageDown');
+    return scaled.evaluate(() => {
+      const grid = document.querySelector('[role="grid"]');
+      const canvas = grid.querySelector('[role="presentation"]');
+      const rows = [...canvas.querySelectorAll(':scope > [role="row"][aria-rowindex]')].sort(
+        (a, b) => Number(a.getAttribute('aria-rowindex')) - Number(b.getAttribute('aria-rowindex')),
+      );
+      const id = grid.getAttribute('aria-activedescendant');
+      return {
+        step: Number.parseFloat(rows[1].style.top) - Number.parseFloat(rows[0].style.top),
+        offsetHeight: rows[0].offsetHeight,
+        overlap: rows[0].getBoundingClientRect().bottom - rows[1].getBoundingClientRect().top,
+        drawn: rows.length,
+        canvas: Number.parseFloat(canvas.style.height),
+        paged: Number(document.getElementById(id)?.getAttribute('aria-rowindex')),
+      };
+    });
+  };
+  const plain = await geometry();
+  await scaled.evaluate(() => {
+    const grid = document.querySelector('[role="grid"]');
+    grid.style.transform = 'scale(0.5)';
+    grid.style.transformOrigin = '0 0';
+  });
+  const half = await geometry();
+  check('unscaled, rows are exactly one row’s offsetHeight apart', plain.step === plain.offsetHeight, plain);
+  // Within 0.05 px a row: a whole-px `offsetHeight` bounds the scale's precision,
+  // `docs/map/territory/row-windowing.md`.
+  check(
+    'inside scale(0.5), rows are a whole layout row apart and do not overlap on screen',
+    Math.abs(half.step - half.offsetHeight) <= 0.05 && Math.abs(half.overlap) <= 0.05,
+    half,
+  );
+  check(
+    'inside scale(0.5), the window, the canvas and the page are the unscaled ones',
+    half.drawn === plain.drawn &&
+      Math.abs(half.canvas / plain.canvas - 1) <= 0.05 / plain.step &&
+      half.paged === plain.paged,
+    { plain, half },
+  );
+  await scaled.close();
+
   check('no page errors', errors.length === 0, errors);
 } finally {
   await browser.close();

@@ -31,6 +31,10 @@ anything else the patch.
 
 - **`aria-activedescendant` names no row while `showRows` is `false`.** It named the focused row's id
   though no data row was drawn, so it pointed at an element that did not exist.
+- **Rows no longer overlap inside a scaled copy of the table.** Under a CSS `transform: scale(…)`
+  the grid measured its row on screen but placed rows in the table's own px, so under `scale(0.5)`
+  each row overlapped the next by half, about 1.5× the needed rows were drawn and Page Down moved
+  twice as far. The row is now measured in the table's px; an unscaled grid is unchanged (#19).
 
 ## 0.2.0 — 2026-09-29
 
