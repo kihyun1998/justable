@@ -652,4 +652,6 @@ try {
 
 const failed = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - failed}/${results.length} passed in ${executablePath}`);
-process.exit(failed === 0 && results.length > 0 ? 0 : 1);
+process.exitCode = failed === 0 && results.length > 0 ? 0 : 1;
+// Ends the run with the same code if a handle is still open five seconds on.
+setTimeout(() => process.exit(), 5000).unref();

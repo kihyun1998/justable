@@ -41,7 +41,8 @@ be run by hand.
   its sort. The README's other snippets are not checked.
 - **Node 24 and pnpm 10.28.0 in CI.** pnpm is pinned by `packageManager` in `package.json`;
   `pnpm/action-setup` v6 reads it. Its successor, `pnpm/setup`, requires pnpm 11, so moving to it
-  moves pnpm too. Node 24 is the LTS; the maintainer develops on 26.
+  moves pnpm too. Node 24 is the LTS; the maintainer develops on 26 (26.10.0 from 2026-10-01, past
+  the exit abort's fix — see `check:example`'s exit below).
 
 - **The environment is chosen per file.** Vitest's default is Node; each component and hook test
   opts into jsdom with a `// @vitest-environment jsdom` first line. jsdom lays nothing out, so a grid
@@ -139,6 +140,21 @@ be run by hand.
   reload. Proven failing: with the old options, an edit that throws in `useRowWindow`, made 1.5 s
   into the run and held to its end, fails the run; with `hmr: false` alone it fails too; with both
   options it passes.
+- **`check:example` ends by setting `process.exitCode` and letting the process drain, not by
+  `process.exit()`** (#39). On Windows, Node before 26.7.0 / 24.20.0 can abort while `process.exit()`
+  tears down with V8 still running: `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)`, exit
+  3221226505 (`0xC0000409`), after every check has passed. It is Node's bug — a background task posts
+  to the platform's wake-up handle after it was closed — fixed by nodejs/node#61999. A natural exit
+  disposes V8 before that handle, which is why draining avoids it (read from Node 26.4.0's source,
+  not measured directly). Measured on 2026-10-01, Windows 11, Chrome, `main` after #42, 41/41 every
+  run: Node 26.4.0 with `process.exit()`, 2 aborts in 30 (and 1 in 5 more); Node 26.10.0 with
+  `process.exit()`, 0 in 60; Node 26.4.0 draining, 0 in 60. Draining costs nothing: summary line to
+  exit, 21–120 ms with `process.exit()` and 21–48 ms draining. The maintainer chose both the drain and
+  upgrading the development machine's Node (2026-10-01). An `unref()`'d timer ends the run with the
+  same code if a handle is still open five seconds on; it fired in none of those 60 runs. Proven
+  failing: an open interval plus a failed check exits non-zero at 5.1 s; without `unref()` every run
+  waits 5 s after its summary. The upstream regression test (`fetch` then `process.exit`) did not
+  abort on 26.4.0 in 100 runs, so only this check reproduces it here.
 - **`check:example` runs with Puppeteer's `--hide-scrollbars`, which leaves every reserved gutter
   empty** — the case in which Chromium withholds the gutter from the horizontal end
   ([header lane](header-lane.md)). So six checks hold that end (#22). On a page of their own, at
@@ -260,4 +276,9 @@ be run by hand.
   module the later pages use has not been measured.
 - **The Vitest worker crash** seen once locally on 2026-09-28 did not recur in the first six CI runs.
 - **Windows is not in CI**, and it is where the maintainer develops: a CRLF-only or path-only
-  failure shows locally and not in CI.
+  failure shows locally and not in CI. So does a runtime one: the exit abort above (#39) is
+  Windows-only, and the CI runner never sees it.
+- **The five-second fallback in `check:example` still exits through `process.exit()`**, so on a Node
+  before the fix it can abort. With an open handle and a failed check it did abort (1 of 1), and the
+  run stayed red. In a passing run the abort would turn green red; the fallback has not been seen to
+  fire in a passing run.
