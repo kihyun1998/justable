@@ -342,9 +342,12 @@ For a list with its own markup and movement — a sidebar, a tree:
   `step(event, { focus, names })` from your key handler, and its `end()` whenever the list moves by
   other means. It answers `{ to }` by the same rules, and takes the same `windowMs` and `focus`, as
   the grid's type-ahead above.
-- `visibleRange({ scrollTop, viewportHeight, rowHeight, total })` is the window of rows to draw, and
-  `scrollToReveal(index, { scrollTop, viewportHeight, rowHeight })` the `scrollTop` that brings a row
-  into view, or `null` if it already is. Both take equal-height rows.
+- `visibleRange({ scrollTop, viewportHeight, rowHeight, total, canvasTop })` is the window of rows to
+  draw, and `scrollToReveal(index, { scrollTop, viewportHeight, rowHeight, canvasTop })` the
+  `scrollTop` that brings a row into view, or `null` if it already is. Both take equal-height rows.
+  `canvasTop` (optional, 0) is where row 0 starts in the scroller's content — below any rows drawn
+  above the list. Revealing row 0 upward scrolls to 0, so those rows show with it, when row 0 then
+  fits in the view.
 - `BLOCK_ROWS` (8): the window's start snaps to a multiple of it, and a whole block is drawn past
   each edge, so 8 to 15 extra rows sit above the view and as many plus a row or two below.
   `UNMEASURED_ROWS` (200) is how many are drawn before the viewport has been measured.

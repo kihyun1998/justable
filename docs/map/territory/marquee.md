@@ -138,7 +138,8 @@ places the press, the pointer and the rectangle on the canvas. The engine draws 
   last bit. A canvas flush with the content's left edge gives a bound of `-0`, which renders as
   `0px`.
 - **Inside a scaled copy, the view is screen px and everything on the canvas is layout px** (#28).
-  The scale is `marqueeScale` — `screenScale`, the grid's own measurement
+  The scale is `marqueeScale` — since #46 also the [row window](row-windowing.md)'s, for the
+  canvas's offset — `screenScale`, the grid's own measurement
   ([row windowing](row-windowing.md)), over the longer of the scroller and the canvas — read once at
   the press with the view box, so no consumer has to know it is scaled. `marqueeView` multiplies the scroller's layout lengths into
   screen px — its inner width and height, and its border widths, which were a mixed site the issue

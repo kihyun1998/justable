@@ -270,3 +270,100 @@ describe('inside a scaled copy of the table', () => {
     expect(link.rowsPerPage).toBe(Math.floor(654 / 15));
   });
 });
+
+describe('revealing the focused row below leading rows', () => {
+  /**
+   * A 280px viewport whose canvas starts `canvasTop` px down its content: jsdom lays nothing out, so
+   * the scroller's and the canvas's client boxes are stubbed, unscaled.
+   */
+  let canvasTop = 28;
+  /** Added to every second reading of the canvas's top, as a scaled grid's reading wobbles. */
+  let jitter = 0;
+  let reads = 0;
+  function laidOut(run: () => void) {
+    const proto = HTMLElement.prototype;
+    const rect = proto.getBoundingClientRect;
+    const client = Object.getOwnPropertyDescriptor(proto, 'clientHeight');
+    const isScroller = (el: HTMLElement) => el.hasAttribute('data-scroller');
+    proto.getBoundingClientRect = function (this: HTMLElement) {
+      const isCanvas = this.getAttribute('role') === 'presentation' && isScroller(this.parentElement!);
+      // The canvas's client top is its offset less the scroll, as a browser reports it.
+      const top = isCanvas ? canvasTop + (reads++ % 2) * jitter - this.parentElement!.scrollTop : 0;
+      const height = isScroller(this) ? 280 : 0;
+      return { width: 0, height, x: 0, y: top, top, left: 0, right: 0, bottom: top + height, toJSON: () => ({}) };
+    };
+    Object.defineProperty(proto, 'clientHeight', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return isScroller(this) ? 280 : 0;
+      },
+    });
+    try {
+      run();
+    } finally {
+      proto.getBoundingClientRect = rect;
+      if (client) Object.defineProperty(proto, 'clientHeight', client);
+      else delete (proto as unknown as Record<string, unknown>).clientHeight;
+    }
+  }
+
+  const rows = Array.from({ length: 40 }, (_, i) => `r${i}`);
+  const grid = (focus: number | null) => (
+    <TableGrid
+      label="Things"
+      header={HEADER}
+      colCount={1}
+      total={rows.length}
+      rowKey={(i) => rows[i]!}
+      renderRow={(i: number, place: RowPlace) => (
+        <div role="row" id={place.id} aria-rowindex={place.rowIndex} data-row={rows[i]} style={place.style} />
+      )}
+      leadingRows={[(i) => <div role="row" aria-rowindex={i} data-lead />]}
+      fill
+      focus={focus}
+      rowIdPrefix="t"
+      rowHeightRem={1.75}
+      scrollerProps={{ 'data-scroller': true }}
+    />
+  );
+  const scrollerOf = (container: HTMLElement) =>
+    container.querySelector('[data-scroller]') as HTMLElement;
+
+  afterEach(() => {
+    canvasTop = 28;
+    jitter = 0;
+    reads = 0;
+  });
+
+  it('brings the last row’s bottom to the viewport’s bottom, past the leading rows', () => {
+    laidOut(() => {
+      const { container } = render(grid(39));
+      // No row has a measured box in jsdom, so a row is the `rowHeightRem` fallback, 28px.
+      expect(scrollerOf(container).scrollTop).toBe(28 + 40 * 28 - 280);
+    });
+  });
+
+  /** ⚠️ A sub-px move of the offset is no change: `docs/map/territory/row-windowing.md`. */
+  it('settles when the offset reads differently by less than a px at each measurement', () => {
+    jitter = 0.4;
+    laidOut(() => {
+      const { container } = render(grid(39));
+      expect(scrollerOf(container).scrollTop).toBe(28 + 40 * 28 - 280);
+    });
+  });
+
+  /** ⚠️ The offset alone does not reveal: `docs/map/territory/row-windowing.md`. */
+  it('leaves a list scrolled away where it is when a leading row appears', () => {
+    laidOut(() => {
+      const { container, rerender } = render(grid(39));
+      const scroller = scrollerOf(container);
+      scroller.scrollTop = 0;
+      canvasTop = 56;
+      rerender(grid(39));
+      expect(scroller.scrollTop).toBe(0);
+      // The next move is revealed from the new offset.
+      rerender(grid(38));
+      expect(scroller.scrollTop).toBe(56 + 39 * 28 - 280);
+    });
+  });
+});

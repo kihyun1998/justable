@@ -4,6 +4,24 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
+## Unreleased
+
+### Added
+
+- **`visibleRange` and `scrollToReveal` take an optional `canvasTop`**: where row 0 starts in the
+  scroller's content, below any rows drawn above the list. Omitted, it is 0 and both answer as
+  before (#46).
+
+### Fixed
+
+- **A row revealed below `leadingRows` comes wholly into view.** Revealing the focused row ignored
+  the leading rows' height, so a row reached at the bottom — by an arrow key or a type-ahead jump —
+  stayed hidden below the view by that height (28 px under one 28 px `..` row). The window of drawn
+  rows was shifted by the same height; past eight leading rows, rows at the top of the view went
+  undrawn. Revealing row 0 still scrolls to the very top, showing the leading rows, when row 0
+  then fits in the view; in a view too short for that, it stops at row 0's top. A leading row that
+  appears or goes does not move the list to the focused row (#46).
+
 ## 0.3.0 — 2026-10-01
 
 ### Breaking

@@ -11,7 +11,11 @@ be run by hand.
 
 ## Governing decisions
 
-**None.**
+- **The example draws a leading row only under `?leading=1`** — the maintainer's call, 2026-10-01
+  (#46), over a `..` row always drawn and over no browser check for leading rows. Shown: the
+  example had no grid with leading rows, and `check.mjs` reads `aria-rowindex` 2 as the first data
+  row in the track, gutter and marquee checks, so an always-drawn row would move every one of them.
+  `App` reads the parameter and hands `FileTable` its `parentRow`. Theirs to reverse.
 
 ## Design model
 
@@ -191,6 +195,20 @@ be run by hand.
   Proven failing: the hook's scale forced to 1 fails all three (rows 2–4 selected at the top, as #28
   measured before its fix); the scale taken on the scroller alone fails the second (4731–4733 for
   4732–4735); the view's height left unscaled fails the third.
+- **Three checks hold a reveal below a leading row** ([row windowing](row-windowing.md), #46), on a
+  page of their own opened with `?leading=1`. Each reads layout px only — `offsetTop`, a row's
+  `style.top`, `scrollTop` — so no scale enters the reading; a first version divided screen gaps by
+  an unsnapped ratio and read 0.2 px where there was none. End brings the last row's bottom to the
+  view's bottom; Home scrolls to 0 with the `..` row in view; under `scale(0.5)`, Home, End and two
+  PageUps bring row 4956's top to the view's top, short of the scroll range's end, and the check
+  asserts it is short of it. That last check first ran as End right after the unscaled End: the
+  list was already at the end, the scale shrank the content, the browser clamped `scrollTop`, and
+  the last row stayed in view whatever the reveal computed — it passed with the offset unmeasured
+  and with the scroller's scale. Proven failing, one mutation each: the offset never measured fails
+  End (−28 px) and the scaled PageUp (+28); the scroller's own scale for the offset fails the scaled
+  PageUp (−43); row 0 revealed by nearest edge fails Home (`scrollTop` 28, the `..` row out). None
+  of the three covers a leading row appearing under a scrolled-away list, nor row 0 in a view too
+  short for it; the jsdom tests in `TableGrid.test.tsx` and `rowWindow.test.ts` hold those.
 - **The [marquee](marquee.md)'s browser checks run on a page of their own**, so nothing above has
   scrolled or selected: a drag over four rows selects those four and leaves the grid focused, the
   rectangle shows in its bound colours and hides at the release, a drag held past the bottom edge
@@ -216,7 +234,8 @@ be run by hand.
 
 - `vitest.config.ts`
 - `example/vite.config.ts`
-- `example/FileTable.tsx` — `FileTable`
+- `example/App.tsx` — `App`, `PARENT_ROW`
+- `example/FileTable.tsx` — `FileTable`, `parentRow`
 - `example/FolderList.tsx` — `FolderList`
 - `example/tsconfig.json`
 - `example/check.mjs`

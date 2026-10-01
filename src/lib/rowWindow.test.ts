@@ -175,6 +175,31 @@ describe('visibleRange', () => {
     const huge = visibleRange({ scrollTop: 0, viewportHeight: 200, rowHeight: R, total: 5000 });
     expect(huge.end - huge.start).toBe(small.end - small.start);
   });
+
+  /** ⚠️ Twelve rows above the canvas, past one block: `docs/map/territory/row-windowing.md`. */
+  it('counts the first visible row from the canvas, below the rows above it', () => {
+    const canvasTop = 12 * R;
+    for (let scrollTop = 0; scrollTop <= 900; scrollTop += 7) {
+      const { start, end } = visibleRange({
+        scrollTop,
+        viewportHeight: 200,
+        rowHeight: R,
+        total: 5000,
+        canvasTop,
+      });
+      const firstVisible = Math.floor(Math.max(0, scrollTop - canvasTop) / R);
+      const lastVisible = Math.floor(Math.max(0, scrollTop + 200 - canvasTop) / R);
+      expect(start, `start at ${scrollTop}`).toBeLessThanOrEqual(firstVisible);
+      expect(end, `end at ${scrollTop}`).toBeGreaterThan(lastVisible);
+    }
+  });
+
+  it('starts at the first row while the rows above the canvas are in view', () => {
+    expect(
+      visibleRange({ scrollTop: 300, viewportHeight: 200, rowHeight: R, total: 5000, canvasTop: 12 * R })
+        .start,
+    ).toBe(0);
+  });
 });
 
 describe('scrollToReveal', () => {
@@ -208,6 +233,41 @@ describe('scrollToReveal', () => {
 
   it('never asks to scroll above the top', () => {
     expect(scrollToReveal(0, { scrollTop: 100, ...V })).toBe(0);
+  });
+
+  describe('below rows above the canvas', () => {
+    /** One leading row, as a file list's `..`. */
+    const below = { ...V, canvasTop: 28 };
+
+    it('a row below the viewport comes to the bottom edge, counted from the canvas', () => {
+      expect(scrollToReveal(10, { scrollTop: 0, ...below })).toBe(28 + 11 * 28 - 200);
+    });
+
+    it('a row above the viewport comes to the top edge, counted from the canvas', () => {
+      expect(scrollToReveal(5, { scrollTop: 400, ...below })).toBe(28 + 5 * 28);
+    });
+
+    /** ⚠️ Revealing the first row brings back the rows above it: `docs/map/territory/row-windowing.md`. */
+    it('the first row scrolls to the very top, so the rows above it show again', () => {
+      expect(scrollToReveal(0, { scrollTop: 400, ...V, canvasTop: 84 })).toBe(0);
+      expect(scrollToReveal(0, { scrollTop: 40, ...below })).toBe(0);
+    });
+
+    it('the first row stops at its own top edge when the rows above it leave no room for it', () => {
+      // Row 0 is at 84–112: scrolled to 0, a 50px viewport would still not show it.
+      expect(scrollToReveal(0, { scrollTop: 400, viewportHeight: 50, rowHeight: 28, canvasTop: 84 })).toBe(
+        84,
+      );
+    });
+
+    it('a row on screen once the canvas is pushed down needs no scroll', () => {
+      expect(scrollToReveal(3, { scrollTop: 0, ...below })).toBeNull();
+    });
+
+    it('a row the push moves past the bottom edge is brought fully in', () => {
+      // Row 6 ends at 196 from the canvas, so at 224 in the scroller — past a 200px viewport.
+      expect(scrollToReveal(6, { scrollTop: 0, ...below })).toBe(28 + 7 * 28 - 200);
+    });
   });
 });
 
