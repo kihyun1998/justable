@@ -1,5 +1,10 @@
 import { useRef } from 'react';
-import { type TableKeyEvent, typeAheadIndex, typeAheadStep } from '../lib/tableKeyboard.js';
+import {
+  type TableKeyEvent,
+  rowOrNull,
+  typeAheadIndex,
+  typeAheadStep,
+} from '../lib/tableKeyboard.js';
 
 /** Where a type-ahead key landed in `names`, or `to: null` when it matched nothing. */
 export interface TypeAheadAnswer {
@@ -32,8 +37,10 @@ export function useTypeAhead({ windowMs, now = Date.now }: TypeAheadOptions) {
   /** Answers a type-ahead key and claims the event on a hit; `null` for a key that is not one. */
   const step = (
     event: TableKeyEvent,
-    { focus, names }: { focus: number | null; names: readonly string[] },
+    { focus: given, names }: { focus: number | null; names: readonly string[] },
   ): TypeAheadAnswer | null => {
+    // A `focus` that names no row is searched as none: `docs/map/territory/keyboard-movement.md`.
+    const focus = rowOrNull(given, names.length);
     const at = now();
     // A window not above 0 keeps no query open: `docs/map/territory/keyboard-movement.md`.
     const running =

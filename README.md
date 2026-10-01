@@ -220,6 +220,13 @@ does a negative or `NaN` window; `Infinity` lets no pause end one. `step` answer
 On a move and on a type-ahead hit, `step` calls `preventDefault` on the event. A type-ahead miss
 ends the query, so the next letter starts a fresh one.
 
+`focus` is a row index or `null`, and keeping it pointed at the right row — after a filter, say — is
+yours. A `focus` that names no row — negative, past the end, fractional or `NaN` — is searched from
+the top by type-ahead, as `null` is. A movement key counts from an out-of-range index and clamps
+where it lands, so ↑ from past the end lands on the last row and ↓ from `-1` on the first; from a
+non-integer it moves as from `null`.
+Every `to` that `step` answers is a row index or `null`.
+
 What a move does — focus only, or select too — is yours: the table selects nothing. The grid
 scrolls the `focus` row into view whenever `focus` changes, and again when its height or the row
 height changes.
@@ -333,8 +340,8 @@ For a list with its own markup and movement — a sidebar, a tree:
 
 - `useTypeAhead({ windowMs })` is the table's type-ahead alone: call its
   `step(event, { focus, names })` from your key handler, and its `end()` whenever the list moves by
-  other means. It answers `{ to }` by the same rules, and takes the same `windowMs`, as the grid's
-  type-ahead above.
+  other means. It answers `{ to }` by the same rules, and takes the same `windowMs` and `focus`, as
+  the grid's type-ahead above.
 - `visibleRange({ scrollTop, viewportHeight, rowHeight, total })` is the window of rows to draw, and
   `scrollToReveal(index, { scrollTop, viewportHeight, rowHeight })` the `scrollTop` that brings a row
   into view, or `null` if it already is. Both take equal-height rows.

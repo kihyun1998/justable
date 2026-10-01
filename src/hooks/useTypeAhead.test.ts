@@ -187,3 +187,41 @@ describe('the window is the consumer’s', () => {
     expect(unwritten).toBeTypeOf('function');
   });
 });
+
+/**
+ * ⚠️ A `focus` names a row only as an integer index into `names`. After a filter, `indexOf` answers
+ * -1 for a row no longer in the list, and an old index can point past a shrunk list's end.
+ */
+describe('a focus that names no row', () => {
+  const FRUIT = ['apple', 'cherry', 'citrus', 'date'];
+
+  /** Types `keys` over `names` with the same `focus` on every key, answering each `to`. */
+  const typed = (keys: string[], focus: number | null, names = FRUIT) => {
+    const { step } = setup(names);
+    return keys.map((k) => step(key(k), focus)?.to);
+  };
+
+  /**
+   * Row 0 matches `c`, so a search that starts anywhere but the top misses it — including one from
+   * `names.length`, which wraps to row 1.
+   */
+  it('is searched from the top, as no focus is, by every type-ahead key', () => {
+    const names = ['cherry', 'apple', 'citrus', 'date'];
+    const stale = [-1, names.length, names.length + 5, 1.5, Number.NaN];
+    for (const keys of [['c'], ['c', 'c'], ['c', 'i'], ['c', 'h']]) {
+      for (const focus of stale) {
+        expect(typed(keys, focus, names), `${keys.join('')} from ${focus}`).toEqual(
+          typed(keys, null, names),
+        );
+      }
+    }
+  });
+
+  it('⚠️ narrowing from -1 lands on citrus rather than throwing', () => {
+    expect(typed(['c', 'i'], -1)).toEqual([1, 2]);
+  });
+
+  it('⚠️ a fresh letter from past the end lands on the first match', () => {
+    expect(typed(['c'], 9)).toEqual([1]);
+  });
+});

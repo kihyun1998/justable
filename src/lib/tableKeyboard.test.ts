@@ -79,6 +79,21 @@ describe('nextFocusIndex', () => {
     expect(nextFocusIndex({ key: 'PageDown', focus: 0, total: 10, rowsPerPage: 0 })).toBe(1);
     expect(nextFocusIndex({ key: 'PageUp', focus: 5, total: 10, rowsPerPage: 0 })).toBe(4);
   });
+
+  it('an integer focus outside the list moves as if from the nearest end', () => {
+    expect(move('ArrowUp', 9, 4)).toBe(3);
+    expect(move('PageDown', 9, 4)).toBe(3);
+    expect(move('ArrowDown', -1, 4)).toBe(0);
+  });
+
+  /** ⚠️ Clamping cannot turn 1.5 into a row, so a non-integer `focus` is no focus at all. */
+  it('a non-integer focus moves as no focus does', () => {
+    for (const focus of [1.5, Number.NaN]) {
+      for (const key of ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End']) {
+        expect(move(key, focus, 4), `${key} from ${focus}`).toBe(move(key, null, 4));
+      }
+    }
+  });
 });
 
 describe('typeAheadIndex', () => {

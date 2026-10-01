@@ -17,7 +17,10 @@ const FALLBACK_PAGE = 1;
 
 export interface FocusMoveInput {
   key: string;
-  /** Where focus is now. `null` before the user has moved at all. */
+  /**
+   * Where focus is now. `null` before the user has moved at all. From an integer outside the list,
+   * a key counts from it and clamps where it lands; a non-integer moves as `null` does.
+   */
   focus: number | null;
   /** How many rows there are, in screen order. */
   total: number;
@@ -26,9 +29,15 @@ export interface FocusMoveInput {
 }
 
 /** Where this key moves focus, or `null` if it is not a movement key (←/→ included). */
-export function nextFocusIndex({ key, focus, total, rowsPerPage }: FocusMoveInput): number | null {
+export function nextFocusIndex({
+  key,
+  focus: given,
+  total,
+  rowsPerPage,
+}: FocusMoveInput): number | null {
   if (total <= 0) return null;
 
+  const focus = given !== null && Number.isInteger(given) ? given : null;
   const last = total - 1;
   const clamp = (i: number) => Math.max(0, Math.min(last, i));
   const page = Math.max(FALLBACK_PAGE, Math.floor(rowsPerPage));
@@ -66,6 +75,11 @@ export function typeAheadIndex(
     if (names[i].toLowerCase().startsWith(needle)) return i;
   }
   return null;
+}
+
+/** `focus` when it names one of `total` rows — an integer, `0 <= focus < total` — else `null`. */
+export function rowOrNull(focus: number | null, total: number): number | null {
+  return focus !== null && Number.isInteger(focus) && focus >= 0 && focus < total ? focus : null;
 }
 
 export interface TypeAheadStep {
