@@ -34,7 +34,7 @@ const check = (name, ok, detail) => {
 
 const server = await createServer({
   configFile: fileURLToPath(new URL('./vite.config.ts', import.meta.url)),
-  server: { port: 0 },
+  server: { port: 0, watch: null, hmr: false },
   logLevel: 'error',
 });
 await server.listen();
