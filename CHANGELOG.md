@@ -50,6 +50,12 @@ anything else the patch.
   the grid measured its row on screen but placed rows in the table's own px, so under `scale(0.5)`
   each row overlapped the next by half, about 1.5× the needed rows were drawn and Page Down moved
   twice as far. The row is now measured in the table's px; an unscaled grid is unchanged (#19).
+- **A marquee inside a scaled copy of the table selects the rows under the pointer.** Under a CSS
+  `transform: scale(…)` its geometry mixed screen and table px: under `scale(0.5)` a drag over rows
+  3–6 selected 2–4, and under `scale(2)` a press in the lower part of the view was taken for a press
+  on the scrollbar and started nothing. The marquee now measures the scale as the grid does, and its
+  rectangle, its range and its scrollbar test follow the pointer at any uniform scale; an unscaled
+  marquee is unchanged (#28).
 - **A grid scrolled to its horizontal end shows its last column whole in Chromium.** When the
   scroller's reserved gutter held no scrollbar — a list too short to scroll vertically, or scrollbars
   hidden — Chromium stopped the scroll one gutter-width short, so the last 15 px or so of every row

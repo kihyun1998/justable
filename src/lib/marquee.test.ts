@@ -5,10 +5,13 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { screenScale } from './rowWindow.js';
+
 import {
   marqueeFrame,
   marqueeRange,
   marqueeRectangle,
+  marqueeScale,
   marqueeView,
   pressOnScrollbar,
   toCanvas,
@@ -90,6 +93,7 @@ const VIEW = marqueeView({
   clientTop: 3,
   clientWidth: 300,
   clientHeight: 200,
+  scale: 1,
 });
 
 describe('pressOnScrollbar', () => {
@@ -117,6 +121,7 @@ describe('pressOnScrollbar', () => {
       clientTop: 3,
       clientWidth: 0,
       clientHeight: 0,
+      scale: 1,
     });
     expect(pressOnScrollbar(flat, 5000, 100)).toBe(false);
     expect(pressOnScrollbar(flat, 200, 5000)).toBe(false);
@@ -245,5 +250,142 @@ describe('the frame, the point and the rectangle together', () => {
       width: 202,
       height: 2153,
     });
+  });
+});
+
+/**
+ * `VIEW`'s scroller inside a CSS `scale(s)` whose origin is its border box's top-left corner at
+ * (100, 50): every layout length — the borders, the inner box, the canvas's offset — is `s` times as
+ * long on screen. The layout lengths are `VIEW`'s and `pressFrame`'s.
+ */
+const scaledView = (scale: number) =>
+  marqueeView({
+    boxLeft: 100,
+    boxTop: 50,
+    clientLeft: 2,
+    clientTop: 3,
+    clientWidth: 300,
+    clientHeight: 200,
+    scale,
+  });
+
+describe('inside a scaled copy', () => {
+  it('a scale screenScale snaps to 1 builds the unscaled view', () => {
+    const snapped = marqueeView({
+      boxLeft: 100,
+      boxTop: 50,
+      clientLeft: 2,
+      clientTop: 3,
+      clientWidth: 300,
+      clientHeight: 200,
+      scale: screenScale(200.4, 200),
+    });
+    expect(snapped).toEqual(VIEW);
+  });
+
+  it('⚠️ at 0.5, the scrollbar starts at the inner edge on screen, the border scaled too', () => {
+    // Inner box on screen: (100 + 2·0.5, 50 + 3·0.5) = (101, 51.5), 150 × 100.
+    const view = scaledView(0.5);
+    expect(pressOnScrollbar(view, 251, 100)).toBe(true);
+    expect(pressOnScrollbar(view, 250, 100)).toBe(false);
+    expect(pressOnScrollbar(view, 200, 151.5)).toBe(true);
+    expect(pressOnScrollbar(view, 200, 151)).toBe(false);
+  });
+
+  it('⚠️ at 2, a press in the view’s lower half on screen is not on a scrollbar', () => {
+    // Inner box on screen: (100 + 2·2, 50 + 3·2) = (104, 56), 600 × 400.
+    const view = scaledView(2);
+    expect(pressOnScrollbar(view, 500, 300)).toBe(false);
+    expect(pressOnScrollbar(view, 703, 455)).toBe(false);
+    expect(pressOnScrollbar(view, 704, 300)).toBe(true);
+    expect(pressOnScrollbar(view, 500, 456)).toBe(true);
+  });
+
+  /**
+   * `pressFrame`'s layout — the canvas 8px right of the content's edge and 40px down, the scroller
+   * 100px down at the press — drawn at `scale`: the canvas's client box is the inner box's corner
+   * plus (8, 40 − 100) times the scale.
+   */
+  const scaledFrame = (scale: number, scrollWidth = 300, scrollHeight = 1000) => {
+    const view = scaledView(scale);
+    return marqueeFrame({
+      view,
+      canvasLeft: view.left + 8 * scale,
+      canvasTop: view.top + (40 - 100) * scale,
+      scrollLeft: 0,
+      scrollTop: 100,
+      scrollWidth,
+      scrollHeight,
+    });
+  };
+
+  it('⚠️ the content bounds are in layout px, the same at any scale', () => {
+    // The canvas on screen at 0.5: (101 + 4, 51.5 − 30) = (105, 21.5); at 2: (104 + 16, 56 − 120)
+    // = (120, −64).
+    expect(scaledFrame(0.5).canvasTop).toBe(21.5);
+    expect(scaledFrame(2).canvasLeft).toBe(120);
+    for (const scale of [0.5, 2]) {
+      expect(scaledFrame(scale).bounds, String(scale)).toEqual({
+        left: -8,
+        top: -40,
+        right: 292,
+        bottom: 960,
+      });
+    }
+  });
+
+  it('⚠️ at 0.5, a point is its screen distance from the canvas, doubled, plus the scroll since the press', () => {
+    // ((200 − 105) / 0.5, (100 − 21.5) / 0.5)
+    expect(toCanvas(scaledFrame(0.5), 200, 100, 0, 100)).toEqual({ x: 190, y: 157 });
+    // The scroll is layout px already: 60px more scroll is 60px further down, not 120.
+    expect(toCanvas(scaledFrame(0.5), 200, 100, 25, 160)).toEqual({ x: 215, y: 217 });
+  });
+
+  it('⚠️ at 2, a point is its screen distance from the canvas, halved, plus the scroll since the press', () => {
+    // ((200 − 120) / 2, (100 + 64) / 2)
+    expect(toCanvas(scaledFrame(2), 200, 100, 0, 100)).toEqual({ x: 40, y: 82 });
+    expect(toCanvas(scaledFrame(2), 200, 100, 25, 160)).toEqual({ x: 65, y: 142 });
+  });
+
+  it('⚠️ a pointer outside the view counts at its inner edge on screen, which is the unscaled one in layout', () => {
+    for (const scale of [0.5, 2]) {
+      const frame = scaledFrame(scale);
+      expect(toCanvas(frame, 9000, 9000, 0, 100), String(scale)).toEqual({ x: 292, y: 260 });
+      expect(toCanvas(frame, -9000, -9000, 0, 100), String(scale)).toEqual({ x: -8, y: 60 });
+    }
+  });
+
+  it('⚠️ a drag over rows 3 to 6 on screen touches rows 3 to 6, at 0.5 and at 2', () => {
+    // Rows are 28 layout px; the middle of row 3 is at 98 on the canvas, row 6's at 182.
+    for (const scale of [0.5, 2]) {
+      const frame = scaledFrame(scale);
+      const onScreen = (y: number) => frame.canvasTop + y * scale;
+      const from = toCanvas(frame, 200, onScreen(98), 0, 100).y;
+      const to = toCanvas(frame, 200, onScreen(182), 0, 100).y;
+      const range = marqueeRange({ from, to, rowHeight: 28, total: 40 });
+      expect(range, String(scale)).toEqual({ anchor: 3, head: 6 });
+    }
+  });
+});
+
+describe('marqueeScale', () => {
+  /** Under `scale(0.5)`, as measured in Chrome: a 654.203 px scroller and a 139957 px canvas. */
+  const SCROLLER = { scrollerScreen: 327.1015625, scrollerLayout: 654 };
+
+  it('⚠️ takes a long canvas’s ratio, whose whole-px rounding is the smaller share of its length', () => {
+    const scale = marqueeScale({ ...SCROLLER, canvasScreen: 69978.265625, canvasLayout: 139957 });
+    expect(Math.abs(scale - 0.5)).toBeLessThan(0.00001);
+  });
+
+  it('⚠️ takes the scroller’s ratio for a canvas shorter than the scroller, or empty', () => {
+    const scrollers = 327.1015625 / 654;
+    expect(marqueeScale({ ...SCROLLER, canvasScreen: 42.3, canvasLayout: 84 })).toBe(scrollers);
+    expect(marqueeScale({ ...SCROLLER, canvasScreen: 0, canvasLayout: 0 })).toBe(scrollers);
+  });
+
+  it('is 1 where nothing is measured, as under jsdom', () => {
+    expect(
+      marqueeScale({ scrollerScreen: 0, scrollerLayout: 0, canvasScreen: 0, canvasLayout: 0 }),
+    ).toBe(1);
   });
 });

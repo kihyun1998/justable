@@ -2,6 +2,7 @@
  * Which data rows a marquee touches, and where its points and rectangle lie on the rows' canvas. Only
  * its vertical span decides the rows; the rules and their reasons: `docs/map/territory/marquee.md`.
  */
+import { screenScale } from './rowWindow.js';
 
 /** The rows a marquee touches, by data-row index: `anchor` nearest the press, `head` nearest the pointer. */
 export interface MarqueeRange {
@@ -36,12 +37,38 @@ export function marqueeRange({ from, to, rowHeight, total }: MarqueeRangeInput):
   return from <= to ? { anchor: low, head: high } : { anchor: high, head: low };
 }
 
+export interface MarqueeScaleInput {
+  /** The scroller's height on screen (`getBoundingClientRect`) and in layout (`offsetHeight`). */
+  scrollerScreen: number;
+  scrollerLayout: number;
+  /** The rows' canvas's height on screen and in layout. */
+  canvasScreen: number;
+  canvasLayout: number;
+}
+
+/**
+ * Screen px per layout px: `screenScale` over the longer of the scroller and the canvas. The reason:
+ * `docs/map/territory/marquee.md`.
+ */
+export function marqueeScale({
+  scrollerScreen,
+  scrollerLayout,
+  canvasScreen,
+  canvasLayout,
+}: MarqueeScaleInput): number {
+  return canvasLayout > scrollerLayout
+    ? screenScale(canvasScreen, canvasLayout)
+    : screenScale(scrollerScreen, scrollerLayout);
+}
+
 /** The scroller's inner box on screen — its scrollbars and border excluded — in client px. */
 export interface MarqueeView {
   left: number;
   top: number;
   width: number;
   height: number;
+  /** Screen px per layout px. */
+  scale: number;
 }
 
 export interface MarqueeViewInput {
@@ -54,6 +81,8 @@ export interface MarqueeViewInput {
   /** The scroller's inner width and height. */
   clientWidth: number;
   clientHeight: number;
+  /** Screen px per layout px, as `screenScale` measures it; the `client*` lengths are layout px. */
+  scale: number;
 }
 
 export function marqueeView({
@@ -63,12 +92,14 @@ export function marqueeView({
   clientTop,
   clientWidth,
   clientHeight,
+  scale,
 }: MarqueeViewInput): MarqueeView {
   return {
-    left: boxLeft + clientLeft,
-    top: boxTop + clientTop,
-    width: clientWidth,
-    height: clientHeight,
+    left: boxLeft + clientLeft * scale,
+    top: boxTop + clientTop * scale,
+    width: clientWidth * scale,
+    height: clientHeight * scale,
+    scale,
   };
 }
 
@@ -82,7 +113,10 @@ export function pressOnScrollbar(view: MarqueeView, clientX: number, clientY: nu
   return false;
 }
 
-/** The scroller's content in canvas px; a side with no measured length is `Infinity`. */
+/**
+ * The scroller's content in canvas px, which are layout px; a side with no measured length is
+ * `Infinity`.
+ */
 export interface MarqueeBounds {
   left: number;
   top: number;
@@ -123,9 +157,9 @@ export function marqueeFrame({
   scrollWidth,
   scrollHeight,
 }: MarqueeFrameInput): MarqueeFrame {
-  /** The canvas's offset inside the scroller's content, which leading rows push down. */
-  const offsetLeft = canvasLeft - view.left + scrollLeft;
-  const offsetTop = canvasTop - view.top + scrollTop;
+  /** The canvas's offset in the scroller's content, in layout px; leading rows push it down. */
+  const offsetLeft = (canvasLeft - view.left) / view.scale + scrollLeft;
+  const offsetTop = (canvasTop - view.top) / view.scale + scrollTop;
   return {
     view,
     canvasLeft,
@@ -142,7 +176,7 @@ export function marqueeFrame({
   };
 }
 
-/** A point on the rows' canvas, in px. */
+/** A point on the rows' canvas, in layout px. */
 export interface CanvasPoint {
   x: number;
   y: number;
@@ -152,8 +186,8 @@ const clamp = (value: number, low: number, high: number) => Math.min(high, Math.
 
 /**
  * A client point on the rows' canvas: clamped to the frame's view, less the canvas's client box at the
- * press, plus how far the scroller has scrolled since. `scrollLeft` and `scrollTop` are the scroller's
- * now. A zero view length clamps nothing on its axis.
+ * press and divided by the scale, plus how far the scroller has scrolled since. `scrollLeft` and
+ * `scrollTop` are the scroller's now. A zero view length clamps nothing on its axis.
  */
 export function toCanvas(
   frame: MarqueeFrame,
@@ -166,12 +200,12 @@ export function toCanvas(
   const x = view.width > 0 ? clamp(clientX, view.left, view.left + view.width) : clientX;
   const y = view.height > 0 ? clamp(clientY, view.top, view.top + view.height) : clientY;
   return {
-    x: x - frame.canvasLeft + scrollLeft - frame.scrollLeft,
-    y: y - frame.canvasTop + scrollTop - frame.scrollTop,
+    x: (x - frame.canvasLeft) / view.scale + scrollLeft - frame.scrollLeft,
+    y: (y - frame.canvasTop) / view.scale + scrollTop - frame.scrollTop,
   };
 }
 
-/** The rectangle's box on the rows' canvas, in px. */
+/** The rectangle's box on the rows' canvas, in layout px. */
 export interface MarqueeBox {
   left: number;
   top: number;

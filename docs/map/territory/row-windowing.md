@@ -159,6 +159,7 @@ followed), with the `left: 0` trap found against it.
   what it measures; under a rotation or a skew the bounding rect is the box that encloses the element,
   and the ratio is not the scale. A real scale that moves the scroller's height by less than a px is
   snapped away.
-- **The marquee still mixes screen and layout px** under a scale, now against a layout row height; see
-  [lengths are layout px](../invariant/lengths-are-layout-px.md). #28 owns its fix, in the pure
-  functions #26 moved that geometry into.
+- **The marquee measures its scale with `screenScale` too, on the longer of the scroller and the
+  canvas** (#28): the scroller's ratio, exact to half a px of its height, drifted rows when divided
+  into a distance as long as the scroll ([marquee](marquee.md)). The row height here only divides a
+  row's own height, so the scroller's ratio is enough for it.

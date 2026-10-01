@@ -6,6 +6,7 @@ import {
   marqueeFrame,
   marqueeRange,
   marqueeRectangle,
+  marqueeScale,
   marqueeView,
   pressOnScrollbar,
   toCanvas,
@@ -30,7 +31,7 @@ export interface MarqueeReport {
 export interface MarqueeOptions {
   /** Whether this press on the scroller may start a marquee. A refused press is left untouched. */
   refusePress: (event: ReactMouseEvent) => boolean;
-  /** How far, in px on either axis, the pointer moves before a press becomes a marquee. */
+  /** How far, in screen px on either axis, the pointer moves before a press becomes a marquee. */
   threshold: number;
   onMarquee: (report: MarqueeReport) => void;
 }
@@ -73,6 +74,12 @@ export function useMarquee(
     if (!options || !scroller || !canvas || !rectangle) return;
 
     const box = scroller.getBoundingClientRect();
+    const scale = marqueeScale({
+      scrollerScreen: box.height,
+      scrollerLayout: scroller.offsetHeight,
+      canvasScreen: canvas.getBoundingClientRect().height,
+      canvasLayout: canvas.offsetHeight,
+    });
     const view = marqueeView({
       boxLeft: box.left,
       boxTop: box.top,
@@ -80,6 +87,7 @@ export function useMarquee(
       clientTop: scroller.clientTop,
       clientWidth: scroller.clientWidth,
       clientHeight: scroller.clientHeight,
+      scale,
     });
     if (pressOnScrollbar(view, press.clientX, press.clientY)) return;
     if (options.refusePress(press)) return;

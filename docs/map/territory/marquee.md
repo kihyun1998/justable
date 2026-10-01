@@ -34,6 +34,20 @@ places the press, the pointer and the rectangle on the canvas. The engine draws 
   It did not cover the pointer clamp, which move reports carry, the click swallow's bound and its
   double-click, the rectangle's content bound, Escape reaching no other handler, or which button
   ends a drag — those below are derivations.
+- **#28, the maintainer's calls in triage, 2026-09-30.** Shown: the grid measuring its own scale
+  (#19) against column resize taking a consumer `scale` (#8). The marquee **measures its scale
+  itself**, with `screenScale`, and takes no `scale` prop; `screenScale` stays in row windowing's
+  module and keeps its name; `RowBox` is not widened to carry the scale. Theirs to reverse. Which
+  unit the view's edge is compared in, and converting the borders, are derivations, below.
+- **#28, the maintainer's call while it was built, 2026-10-01: the scale is taken on the longer of
+  the scroller and the canvas.** The triage call named the scroller's lengths; a completeness pass
+  then found the drift below, and the call had not been shown a deep scroll. Shown, with Chrome's
+  numbers: measuring on the longer element (pure functions unchanged, at most 0.5 px at any depth)
+  against dividing only an in-view distance and taking the canvas's offset from `offsetTop` (keeps
+  the scroller, but a whole-px read, a second code path for scale 1, and an `offsetParent` a
+  consumer's CSS can move), against recording the drift as a hole, and against reopening #19 for an
+  unrounded `getComputedStyle` height. Chose the first; a scale within 0.5 px of 1 on a long canvas,
+  such as 0.999, is then a real scale rather than snapped. Theirs to reverse.
 
 ## Design model
 
@@ -123,6 +137,28 @@ places the press, the pointer and the rectangle on the canvas. The engine draws 
   order of operations: the rectangle is written as `${n}px`, and a regrouped sum can differ in its
   last bit. A canvas flush with the content's left edge gives a bound of `-0`, which renders as
   `0px`.
+- **Inside a scaled copy, the view is screen px and everything on the canvas is layout px** (#28).
+  The scale is `marqueeScale` — `screenScale`, the grid's own measurement
+  ([row windowing](row-windowing.md)), over the longer of the scroller and the canvas — read once at
+  the press with the view box, so no consumer has to know it is scaled. `marqueeView` multiplies the scroller's layout lengths into
+  screen px — its inner width and height, and its border widths, which were a mixed site the issue
+  had not listed — so the scrollbar test and the clamp compare the pointer with the real inner edge
+  on screen. `marqueeFrame` and `toCanvas` then divide each whole screen difference by the scale
+  before adding a scroll offset, which is layout px already: dividing the whole difference, not each
+  term, keeps scale 1 bit-identical to the code before. The threshold stays a screen distance. A
+  derivation; the unit of the view was the agent's to choose.
+- **Why the longer element: the scale's rounding grows with the distance it divides.** `screenScale`
+  is exact only to half a px of the whole-px `offsetHeight` it divides by: the example's scroller is
+  654.203 layout px, read as 654, so under `scale(0.5)` its ratio is 0.50016. `toCanvas` divides the
+  pointer's distance from the canvas's top, which is as long as the scroll, so the error grows with
+  it. Measured in Chrome with the scroller's ratio: a drag over four rows selected them at
+  `scrollTop` 0, one row too high at 41,791 and two rows too high at 132,338; the bounds and the
+  rectangle moved with it. The canvas is as long as the list (139,957 px), so half a px is under
+  0.5 px of error at its far end. A canvas shorter than the scroller — a short or empty list — falls
+  back on the scroller, where every distance stays within the view: at most 0.2 px at 0.5. The rows'
+  own step, 27.9914 layout px under `scale(0.5)` where a row is 28, is the grid's: the rows are
+  placed and hit-tested by that same height, so it moves no row. A first version of this note said
+  the error cancelled; that was checked at `scrollTop` 0 only.
 - **No marquee before the grid has measured**: the rectangle is only drawn once `box` exists, and the
   press handler needs it.
 - **A disabled grid starts none by its class** (`pointer-events-none`), not by a condition in the
@@ -131,7 +167,7 @@ places the press, the pointer and the rectangle on the canvas. The engine draws 
 
 ## Code
 
-- `src/lib/marquee.ts` — `marqueeRange`, `MarqueeRange`, `MarqueeRangeInput`, `marqueeView`, `MarqueeView`, `MarqueeViewInput`, `pressOnScrollbar`, `marqueeFrame`, `MarqueeFrame`, `MarqueeFrameInput`, `MarqueeBounds`, `toCanvas`, `CanvasPoint`, `marqueeRectangle`, `MarqueeBox`
+- `src/lib/marquee.ts` — `marqueeRange`, `MarqueeRange`, `MarqueeRangeInput`, `marqueeScale`, `MarqueeScaleInput`, `marqueeView`, `MarqueeView`, `MarqueeViewInput`, `pressOnScrollbar`, `marqueeFrame`, `MarqueeFrame`, `MarqueeFrameInput`, `MarqueeBounds`, `toCanvas`, `CanvasPoint`, `marqueeRectangle`, `MarqueeBox`
 - `src/hooks/useMarquee.ts` — `useMarquee`, `MarqueeOptions`, `MarqueeReport`, `MarqueePhase`, `MarqueeParts`, `MarqueeRows`, `swallowNextClick`
 - `src/components/TableGrid.tsx` — `TableGrid`, `marquee`, `marqueeRef`, `gridRef`, `data-table-marquee`
 - `example/FileTable.tsx` — `onMarquee`, `before`
@@ -151,15 +187,15 @@ this imitates; neither was read or measured.
   neither marks a scrollbar nor bounds the rectangle.
 - [Row one is the header](../invariant/row-one-is-the-header.md) — the range is in data-row indices,
   as `focus` and `renderRow` are, not `aria-rowindex`.
-- [Lengths are layout px](../invariant/lengths-are-layout-px.md) — not converted: the pointer's `y` is
-  divided by a layout row height; recorded under `## Known holes / open`.
+- [Lengths are layout px](../invariant/lengths-are-layout-px.md) — converted (#28): the view is
+  compared in screen px, and every length on the canvas is layout px.
 
 ## Blast radius
 
 - [Grid scaffold](grid-scaffold.md) — owns the scroller the press lands on, the floor click the swallow
   protects, the focus the press moves, and the disabled class.
-- [Row windowing](row-windowing.md) — owns `box` and the canvas; a change to how rows are placed moves
-  the hit-test's origin and band.
+- [Row windowing](row-windowing.md) — owns `box`, the canvas and `screenScale`; a change to how rows
+  are placed, or to how the scale is measured, moves the hit-test's origin and band.
 - [Column resize](column-resize.md) — the sibling drag: its predicate seam and #8, which this extends
   to the vertical axis.
 - [Drag lifetime](drag-lifetime.md) — owns when this drag ends and what interrupts it; a change there
@@ -178,21 +214,16 @@ this imitates; neither was read or measured.
   press is let through while `far <= threshold`, and that is false for any `far` against either.
   Pinned with a probe of the comparison, 2026-10-01, not in a browser. No rule was chosen for them
   — #27 chose one for the type-ahead window, and left the marquee's threshold out of its scope.
-- **A scaled copy of the table is not corrected for.** Column resize divides the pointer by `scale`;
-  the marquee takes none, so inside a CSS transform the rectangle and the hit-test drift from the
-  pointer, and the scrollbar test's edge moves: under `scale(2)` a press in the lower half of the
-  view is refused, under `scale(0.5)` a press on the real scrollbar is not (read from the code, not
-  measured). Since #19 the row height it receives is layout px while its pointer `y` is screen px, so
-  under `scale(0.5)` a drag reaches half as far as the pointer (measured) — every mixed site is listed
-  in [lengths are layout px](../invariant/lengths-are-layout-px.md). #26 moved this geometry into
-  pure functions without the scale; #28 owns the fix, which lands in `marqueeView` (the view's edge,
-  which `pressOnScrollbar` and `toCanvas`'s clamp both read), `toCanvas` (the pointer against the
-  scroll delta) and `marqueeFrame` (the canvas offset and the bounds).
+- **Only a uniform scale is corrected.** The scale is measured on the vertical axis alone, so under
+  `scale(x, y)` with x ≠ y the horizontal lengths — the view's width, its left border, the pointer's
+  `x` — are converted by the vertical factor; under a rotation or a skew the bounding rect is the box
+  that encloses the scroller and the ratio is not a scale. Out of #28's scope, as it is out of
+  [row windowing](row-windowing.md)'s.
 - **Right to left is not handled.** The scrollbar test looks only past the right and bottom edges; under
   `dir="rtl"` the vertical scrollbar is on the left, and a press on it could start a marquee. Dropped
   by the maintainer, 2026-09-29: nothing in the engine handles right to left, and no consumer asks.
-- **The scroller is assumed not to move on screen during a drag**: its view box is read once, at the
-  press.
+- **The scroller is assumed not to move on screen during a drag**: its view box, and its scale, are
+  read once, at the press.
 - **One unexplained `check:example` failure**: in one run of fourteen, "Escape puts the selection back"
   read `[]` right after Escape. Not reproduced in six isolated runs or six further full runs; no cause
   is claimed.
