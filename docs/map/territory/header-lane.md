@@ -160,4 +160,4 @@ The header's last column ended where the row's did in every case. Safari is not 
   classic, as a platform setting or a plugged-in mouse can) keeps the first answer until a reload.
 - **The gutter is re-measured only when `useHeaderLane`'s `measure` runs** — each commit and each scroller resize.
   A scrollbar that appears without either (a platform setting changed at runtime) is not seen until
-  the next.
+  the next. Since #32 a scroll inside a block is not a commit ([row windowing](row-windowing.md)).

@@ -29,6 +29,16 @@ the measurements, and `TableGrid` draws what it answers.
   one effect calling the row window and the [header lane](header-lane.md) in a fixed order: each hook
   attaches its own layout effect and its own `ResizeObserver`. What that costs, and the order the two
   keep, is recorded in the header lane's note, which carries the duplicated guard.
+- **The grid renders only when what it draws changes, fixed in code** — the maintainer's call in
+  triage, 2026-09-30 (#32), over correcting this note to say a scroll step renders and the blocks
+  save only DOM work. Shown: a jsdom `Profiler` over 5,000 rows, a 280 px viewport and 28 px rows,
+  400 scroll steps of 25 px, on `main` at `40f9934` — 400 `update` commits from the scroll offset as
+  state, 400 `nested-update` commits from `setBox`'s updater, 27,872 `renderRow` calls (about twice
+  the ~35 drawn rows a step), 400 measurements; and the issue's headless Chrome count of 400 commits
+  on the example's grid. Two more calls the same day: **the box is still measured after every
+  commit** (when to measure is #34's), and **the change lands inside #25's `useRowWindow`**. The
+  calls did not cover that fewer commits mean fewer measurements — see `## Known holes / open`.
+  Theirs to reverse.
 - **The README promises nothing about scaled copies** — the maintainer's call, 2026-09-30 (#19). A
   paragraph saying a scaled grid needs no prop and picks up a new scale at its next render was
   written and removed: the second half is a known hole below, not a contract. The CHANGELOG records
@@ -40,16 +50,35 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 - **First paint was the cost, not scrolling.** Unwindowed, 5,000 rows took 3,003 ms to draw (about
   0.6 ms a row) while scrolling stayed at 60 fps (PenTerm).
-- **Scroll position and box size are separate state.** `scrollTop` is set from the scroll handler;
-  `box` (viewport height, row height) only from `measure`. The first version read
-  `getComputedStyle` and `getBoundingClientRect` in the scroll handler, and both force style and
+- **The scroll offset is a ref, and the box is state.** The scroll handler writes the offset into
+  `scrollTopRef`; `box` (viewport height, row height) is set only from `measure`. The first version
+  read `getComputedStyle` and `getBoundingClientRect` in the scroll handler, and both force style and
   layout on every scroll event (`penterm 5bf00320d`). **No frame-time number supports this** — see
   `## Known holes / open`.
-- **`measure` runs after every render and on every resize.** A `useLayoutEffect` with no
-  dependency list calls it each commit, and `setBox` returns the previous object when nothing changed,
-  so an unchanged measurement costs no re-render. A `ResizeObserver` attached once calls it too; it
-  reads only refs (`rowHeightRemRef` included) and calls `setBox`, so the first closure never goes
-  stale.
+- **The window is computed in render, from the offset now.** `range` is `visibleRange` over
+  `scrollTopRef`, `box` and `total` on every render, so a render for any reason — a new box, a new
+  `total`, a new `focus` — draws the window for where the scroller is, not where it was at the last
+  render. Holding the window as state instead would draw a stale one for a render: after a scroll
+  inside a block, a new row height puts the current offset and the last drawn one in different
+  blocks (3,100 and 3,000 px at 16 px rows: rows 192 and 184), and a shrunk `total` would hand
+  `renderRow` indices past the end.
+- **A scroll renders only when the window moves (#32).** `onScroll` computes the window for the new
+  offset against `boxRef` and `totalRef` and calls `redraw` only when its `start` or `end` differs
+  from `rangeRef`, the window last rendered. At 25 px steps and 28 px rows that is about one step in
+  nine: in Chrome, on the example's grid (a 654 px viewport), 400 such steps ran `measure` — once a
+  commit — 44 times, once for each of the 44 windows drawn, against 400 on `main` (2026-10-01).
+  `rangeRef` is written during render, as `rowHeightRemRef` is. Everything else that follows the scroll reads the element, not a render: the reveal effect,
+  the [marquee](marquee.md)'s hit-test, and the [header lane](header-lane.md)'s horizontal follow,
+  which the same `onScroll` in `TableGrid` writes to the DOM on every step.
+- **`measure` runs after every commit and on every resize, and changes state only when the box
+  changed.** A `useLayoutEffect` with no dependency list calls it each commit; it compares the new
+  box with `boxRef` and calls `setBox` only when they differ. Comparing inside a `setBox` updater
+  instead (as before #32) renders the grid a second time on most commits: React runs an updater
+  ahead of a render only while the component has no update pending, and after a commit of the
+  grid's own update it has one, so it renders to find the box unchanged. Measured in jsdom on
+  `main`: a `nested-update` after each of 400 scroll steps, after every second rerender from the
+  parent, and a second one at mount. A `ResizeObserver` attached once calls `measure` too; it reads
+  only refs (`rowHeightRemRef`, `boxRef` included), so the first closure never goes stale.
 - **The row height is measured from a drawn row, never assumed** — the canvas's first child, unless
   that is the [marquee](marquee.md)'s rectangle. It follows the app's root font size
   and row density — 28 px at a 16 px root, 42 px at 24 px (PenTerm). `rowHeightRem` × the root font
@@ -73,8 +102,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **The row-height guard is written `!(rowHeight > 0)`, not `rowHeight <= 0`.** `NaN` compares false
   both ways, so only the negated form sends it to the unmeasured branch; rewriting it the natural way
   lets `NaN` through to the division.
-- **The window moves in blocks**, so a one-row scroll usually changes nothing and costs no React
-  render: the first row is snapped down to a multiple of `BLOCK_ROWS` (8) and a whole block is drawn
+- **The window moves in blocks**, so a one-row scroll usually changes nothing and, since #32,
+  costs no React render: the first row is snapped down to a multiple of `BLOCK_ROWS` (8) and a whole block is drawn
   past each edge: `start = snapped − 8`, `end = snapped + span + 16`. The block past the edge is also
   so a drag's edge-scroll step hit-tests a drawn row before the re-render lands.
 - **A consumer's suite depends on that margin.** PenTerm's drag edge-scroll moves up to 48 px a frame
@@ -103,7 +132,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 - `src/lib/rowWindow.ts` — `visibleRange`, `scrollToReveal`, `screenScale`, `BLOCK_ROWS`, `UNMEASURED_ROWS`, `VisibleRangeInput`, `RevealInput`
 - `src/types.ts` — `RowWindow`
-- `src/hooks/useRowWindow.ts` — `useRowWindow`, `measure`, `RowBox`, `RowWindowInput`, `RowWindowState`, `rowHeightRemRef`, `notARowRef`
+- `src/hooks/useRowWindow.ts` — `useRowWindow`, `measure`, `RowBox`, `RowWindowInput`, `RowWindowState`, `rowHeightRemRef`, `notARowRef`, `scrollTopRef`, `boxRef`, `rangeRef`, `redraw`
 - `src/components/TableGrid.tsx` — `TableGrid`, `canvasRef`, `rowKey`
 
 ## Reference behaviour
@@ -137,11 +166,6 @@ followed), with the `left: 0` trap found against it.
 
 ## Known holes / open
 
-- **"A one-row scroll costs no React render" is contradicted** (#32): `onScroll` sets `scrollTop` as
-  state, and 400 scroll steps of 25 px committed the grid 400 times, on `main` and after #22 alike.
-  The blocks keep the drawn rows the same; they do not skip the render. Which of the note and the
-  code changes is #32's to decide.
-
 - **The frame-time case for blocks and for separate state is unmeasured, and the number that claims
   otherwise is withdrawn.** "p95 18 ms → 51–58 ms" is in PenTerm's note, and was in
   `rowWindow.test.ts` until this map found it, attributed once to measuring in the scroll handler and once to re-rendering on every crossed
@@ -154,7 +178,11 @@ followed), with the `left: 0` trap found against it.
 - **Variable row heights are not supported.** Every row is placed at `index × rowHeight` from one
   measured row.
 - **A scale changed with no re-render is picked up at the next render.** A `ResizeObserver` does not
-  fire on a transform, and `measure` runs on commit; #19 left an observer for it out.
+  fire on a transform, and `measure` runs on commit; #19 left an observer for it out. The same holds
+  for a root font-size change, which moves the row height without resizing the scroller. Since #32
+  a scroll inside a block is no longer a render, so such a change waits for a scroll that moves the
+  window, a new `focus`, or a render from the consumer; before, any scroll step picked it up. #32's
+  calls did not cover this, and #34 decides when the box is measured.
 - **Only a scale is corrected.** The ratio is taken from heights, so a scale on the vertical axis is
   what it measures; under a rotation or a skew the bounding rect is the box that encloses the element,
   and the ratio is not the scale. A real scale that moves the scroller's height by less than a px is
