@@ -44,6 +44,14 @@ anything else the patch.
 
 ### Fixed
 
+- **A stale or negative `focus` no longer throws.** A `focus` that names no row — `-1` from
+  `indexOf` after a filter, an index past a shrunk list's end, a fraction, `NaN` — made a narrowing
+  letter throw, and a fractional or `NaN` one made every letter throw; an index past the end
+  searched after a row that did not exist and could skip the first match. Type-ahead now searches
+  such a `focus` from the top, as `null`. A movement key still counts from an out-of-range integer
+  and clamps where it lands, and now moves from a non-integer as from `null` rather than answering
+  `2.5`.
+  This holds for `useTypeAhead` and `useTableKeyboard` (#30).
 - **`aria-activedescendant` names no row while `showRows` is `false`.** It named the focused row's id
   though no data row was drawn, so it pointed at an element that did not exist.
 - **Rows no longer overlap inside a scaled copy of the table.** Under a CSS `transform: scale(…)`

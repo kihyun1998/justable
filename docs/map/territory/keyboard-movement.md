@@ -26,6 +26,16 @@ consumer calls `step` from wherever it receives keys and decides what a move mea
   kept the call on the other reasons. It did not cover what a window not above 0 does — that is a
   derivation, under `## Design model` — nor whether `TypeAheadOptions` is exported, a second call
   of 2026-10-01: exported, as `MarqueeOptions` is. Theirs to reverse.
+- **A `focus` that names no row is searched as `null` by type-ahead; a movement key clamps an
+  out-of-range integer and moves from a non-integer as from `null`** — the maintainer's calls in
+  triage, 2026-09-30, #30, over leaving `focus` the consumer's to keep valid and only saying so in
+  the README. Three calls: type-ahead treats a `focus` naming no row as `null`, on both hooks;
+  movement keeps clamping an out-of-range integer, as it already did; a non-integer moves as `null`.
+  The third was triage's reading of "treat it like out of range" for movement, where clamping
+  leaves `1.5` fractional; shown again on 2026-10-01 with rounding named as the alternative, the
+  maintainer kept it. The calls did not cover what the grid does with a `focus` outside its rows
+  (its reveal and `aria-activedescendant`, [grid scaffold](grid-scaffold.md)), nor what a consumer
+  does with a stale `focus`. Theirs to reverse.
 - **Earlier calls are recorded where they were written, in `## Design model`**: #1 (a movement key
   ends the query; Shift+Space inside a running query extends it) and #5 (a miss ends the query;
   type-ahead is its own hook).
@@ -107,7 +117,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   `end()` on its own moves; **a list with movement of its own must call `end()` itself**, because
   the hook cannot see that list's moves. react-aria also keeps type-ahead as a separate hook reused
   across collections, and keeps it off its public surface; here it is public because a consumer's
-  tree needs it. The pure pieces (`typeAheadStep`, `typeAheadIndex`, `nextFocusIndex`) are internal.
+  tree needs it. The pure pieces (`typeAheadStep`, `typeAheadIndex`, `nextFocusIndex`,
+  `rowOrNull`) are internal.
 - **A window not above 0 keeps no query open; `Infinity` lets no pause end one.** A derivation, not
   #27's call. `running` asks `windowMs > 0` before it compares the pause, so `0`, a negative window
   and `NaN` answer alike: every letter starts a fresh query and a space is always the consumer's.
@@ -117,12 +128,33 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   key handler, and an invalid length elsewhere here is inert, not an error (`!(rowHeight > 0)` in
   [row windowing](row-windowing.md)). `Infinity` needs no case: every finite pause is within it, so
   a query ends only on a miss, a move or `end()`.
+- **A `focus` names a row when it is an integer with `0 ≤ focus < names.length`** (#30). Every
+  `to` that `step` answers is such a row or `null`. Type-ahead takes any other `focus` as `null`
+  (`rowOrNull`, where `useTypeAhead.step` receives it), so a stale index searches from the top and
+  never relative to a row that does not exist. Movement differs on purpose: `nextFocusIndex` counts
+  from an out-of-range integer and clamps where it lands, so in four rows ↑ from `9` lands on 3
+  (`clamp(8)`, not one above the last row) and ↓ from `-1` on 0 (`clamp(0)`, not one below the
+  first), and takes only a non-integer as `null`, since clamping cannot make `1.5` a row. #30's
+  brief worded the clamp as "as if from the nearest end"; its pinned values (↑ from `9` → 3) are the
+  count-then-clamp ones, and that is what the code did before #30 and still does.
+  So `useTableKeyboard` hands the same `focus` to both paths and each applies its own rule.
+- **The check sits on `focus`, not on the search's `from`.** `typeAheadIndex` takes a `from` of
+  `-1` on purpose: narrowing searches from the row itself by passing `focus − 1`, which is `-1` from
+  row 0. A rule rejecting every negative `from` would break that. Before #30, a `focus` of `-1`
+  became a `from` of `-2` on narrowing, and `%` keeps a negative operand's sign, so
+  `names[-1].toLowerCase()` threw; a fractional `focus` read `names[1.5]`, `undefined`, and threw
+  the same way; an index past the end wrapped by modulo and searched after a row that did not
+  exist. Measured with `typeAheadIndex` and `useTypeAhead`, 2026-09-30 and 2026-10-01.
+- **This is not a site of [zero is no measurement](../invariant/zero-is-no-measurement.md).** That
+  fact is about a length read from layout; `focus` is an index the consumer hands in. Both read a
+  value that names nothing as absent, but they share no source and no code, and the other rows of
+  that note (`rowsPerPage` 0) stay where they are.
 - **The clock is injectable** (`now`), which is how the tests cross the window.
 
 ## Code
 
 - `src/hooks/useTypeAhead.ts` — `useTypeAhead`, `TypeAheadAnswer`, `TypeAheadOptions`
-- `src/lib/tableKeyboard.ts` — `nextFocusIndex`, `typeAheadIndex`, `typeAheadStep`, `FALLBACK_PAGE`, `FocusMoveInput`, `TypeAheadStep`, `TableKeyEvent`
+- `src/lib/tableKeyboard.ts` — `nextFocusIndex`, `typeAheadIndex`, `typeAheadStep`, `rowOrNull`, `FALLBACK_PAGE`, `FocusMoveInput`, `TypeAheadStep`, `TableKeyEvent`
 - `src/hooks/useTableKeyboard.ts` — `useTableKeyboard`, `TableKeyboardLink`, `TableKeyStep`
 
 ## Reference behaviour
@@ -171,6 +203,4 @@ unchecked.
 
 ## Known holes / open
 
-- **A `focus` outside `names` has no contract, and a negative one throws** (#30). Narrowing passes
-  `focus - 1`, so `focus = -1` reaches `names[-1]`; an index past the end wraps by modulo. Measured
-  with `typeAheadIndex`, 2026-09-30. No consumer here reaches it.
+**None.**

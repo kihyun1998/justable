@@ -252,6 +252,20 @@ describe('a space', () => {
   });
 });
 
+describe('a focus that names no row', () => {
+  it('type-ahead searches from the top, as useTypeAhead does', () => {
+    const { step } = setup();
+    expect(step(key('c'), -1)).toEqual({ by: 'typeAhead', to: 2 });
+    expect(step(key('i'), -1)).toEqual({ by: 'typeAhead', to: 3 });
+  });
+
+  it('a movement key clamps an integer and takes a non-integer as no focus', () => {
+    const { step } = setup();
+    expect(step(key('ArrowUp'), 20)).toEqual({ by: 'move', to: NAMES.length - 1 });
+    expect(step(key('ArrowDown'), 1.5)).toEqual({ by: 'move', to: 0 });
+  });
+});
+
 describe('the link', () => {
   it('is one object for the hook’s life, so the grid can hold it', () => {
     const { result, rerender } = renderHook(() => useTableKeyboard({ windowMs: WINDOW }));
