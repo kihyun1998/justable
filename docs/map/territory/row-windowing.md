@@ -36,9 +36,18 @@ the measurements, and `TableGrid` draws what it answers.
   state, 400 `nested-update` commits from `setBox`'s updater, 27,872 `renderRow` calls (about twice
   the ~35 drawn rows a step), 400 measurements; and the issue's headless Chrome count of 400 commits
   on the example's grid. Two more calls the same day: **the box is still measured after every
-  commit** (when to measure is #34's), and **the change lands inside #25's `useRowWindow`**. The
+  commit** (narrowing was #34's, declined below), and **the change lands inside #25's
+  `useRowWindow`**. The
   calls did not cover that fewer commits mean fewer measurements — see `## Known holes / open`.
   Theirs to reverse.
+- **The box is measured after every commit, not narrowed** — the maintainer's call in triage,
+  2026-10-01 (#34, closed `wontfix`, `.out-of-scope/measuring-the-box-less-often.md`). Shown: Chrome
+  on the example grid, 20 root font-size steps each with a commit — one layout a step, forced in the
+  commit and none in the frame, 18.5 and 21.1 ms with `measure` after every commit against 20.2 and
+  18.7 ms with it only at mount; a font-size step with no commit also cost one layout, in the frame.
+  So `measure`'s layout is moved, not added. Not shown: WebView2 or PenTerm's own path, where no
+  other read forces layout in the commit. The call did not cover picking up a scale or font-size
+  change made with no render (`## Known holes / open`). Theirs to reverse.
 - **The README promises nothing about scaled copies** — the maintainer's call, 2026-09-30 (#19). A
   paragraph saying a scaled grid needs no prop and picks up a new scale at its next render was
   written and removed: the second half is a known hole below, not a contract. The CHANGELOG records
@@ -182,7 +191,8 @@ followed), with the `left: 0` trap found against it.
   for a root font-size change, which moves the row height without resizing the scroller. Since #32
   a scroll inside a block is no longer a render, so such a change waits for a scroll that moves the
   window, a new `focus`, or a render from the consumer; before, any scroll step picked it up. #32's
-  calls did not cover this, and #34 decides when the box is measured.
+  calls did not cover this, and #34 kept measuring after every commit on cost alone (below), so
+  this gap is open.
 - **Only a scale is corrected.** The ratio is taken from heights, so a scale on the vertical axis is
   what it measures; under a rotation or a skew the bounding rect is the box that encloses the element,
   and the ratio is not the scale. A real scale that moves the scroller's height by less than a px is
