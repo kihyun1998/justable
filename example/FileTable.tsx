@@ -83,10 +83,13 @@ const cellClass = (key: Key) =>
 export function FileTable({
   files,
   disabled,
+  parentRow = false,
   onStatus,
 }: {
   files: readonly FileEntry[];
   disabled: boolean;
+  /** A `..` row drawn above the files, through `leadingRows`. */
+  parentRow?: boolean;
   onStatus: (text: string) => void;
 }) {
   const [layout, setLayout] = useState<ColumnLayout<Key, Hideable>>({ widths: {}, hidden: [] });
@@ -242,6 +245,23 @@ export function FileTable({
           colCount={columns.length}
           total={rows.length}
           rowKey={(i) => rows[i]!.name}
+          leadingRows={
+            parentRow
+              ? [
+                  (rowIndex) => (
+                    <TableRow
+                      rowIndex={rowIndex}
+                      columns={columns}
+                      gridStyle={gridStyle}
+                      className="row"
+                      data-parent-row
+                      cell={(key) => (key === 'name' ? '..' : null)}
+                      cellClassName={cellClass}
+                    />
+                  ),
+                ]
+              : []
+          }
           renderRow={(i, place) => (
             <TableRow
               id={place.id}

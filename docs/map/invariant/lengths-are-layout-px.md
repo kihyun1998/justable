@@ -32,7 +32,10 @@ grid works its scale out itself (#19), and so does the marquee (#28). Unifying t
 
 - [Row windowing](../territory/row-windowing.md) — **converted (#19).** `useRowWindow`'s `measure` divides the first
   drawn row's screen height by `screenScale`, the scroller's own screen height over its
-  `offsetHeight`. The `rowHeightRem` fallback is in layout px already and is not divided.
+  `offsetHeight`. The `rowHeightRem` fallback is in layout px already and is not divided. **Converted
+  (#46):** the canvas's offset — the canvas's client top less the scroller's — is divided by
+  `marqueeScale`, the longer element's, before `scrollTop` is added, since that distance grows with
+  the scroll as the marquee's does.
 - [Column resize](../territory/column-resize.md) — **converted by the consumer's `scale` (#8).**
   Only the pointer is divided; `scrollLeft` is already layout px.
 - [Marquee](../territory/marquee.md) — **converted (#28)**, measuring its scale as the grid does,

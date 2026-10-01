@@ -5,6 +5,7 @@
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import type { CSSProperties, RefObject } from 'react';
 
+import { marqueeScale } from '../lib/marquee.js';
 import { screenScale, scrollToReveal, visibleRange } from '../lib/rowWindow.js';
 import type { RowWindow } from '../types.js';
 import type { TableKeyboardLink } from './useTableKeyboard.js';
@@ -13,11 +14,13 @@ import type { TableKeyboardLink } from './useTableKeyboard.js';
 export interface RowBox {
   viewportHeight: number;
   rowHeight: number;
+  /** The canvas's offset in the scroller's content; leading rows push it down. */
+  canvasTop: number;
 }
 
 export interface RowWindowInput {
   scrollerRef: RefObject<HTMLDivElement | null>;
-  /** The element whose first child is sampled as a row. */
+  /** The element whose first child is sampled as a row, and on which the data rows are placed. */
   canvasRef: RefObject<HTMLDivElement | null>;
   /** A child of the canvas that is never sampled as a row. */
   notARowRef: RefObject<HTMLDivElement | null>;
@@ -80,13 +83,21 @@ export function useRowWindow({
     const rootPx = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     // The row is measured on screen and converted to layout px:
     // `docs/map/invariant/lengths-are-layout-px.md`.
-    const scale = screenScale(el.getBoundingClientRect().height, el.offsetHeight);
+    const view = el.getBoundingClientRect();
+    const scale = screenScale(view.height, el.offsetHeight);
     const next = {
       viewportHeight: el.clientHeight,
       rowHeight: (row?.getBoundingClientRect().height ?? 0) / scale || rowHeightRemRef.current * rootPx,
+      canvasTop: canvasOffset(el, view, canvasRef.current),
     };
     const prev = boxRef.current;
-    if (prev && prev.viewportHeight === next.viewportHeight && prev.rowHeight === next.rowHeight) {
+    // A sub-px move of the offset is no change, deliberately: `docs/map/territory/row-windowing.md`.
+    if (
+      prev &&
+      prev.viewportHeight === next.viewportHeight &&
+      prev.rowHeight === next.rowHeight &&
+      Math.abs(prev.canvasTop - next.canvasTop) < 1
+    ) {
       return;
     }
     boxRef.current = next;
@@ -112,7 +123,8 @@ export function useRowWindow({
     // `docs/map/territory/row-windowing.md`.
     const next = scrollToReveal(focus, { scrollTop: el.scrollTop, ...box });
     if (next !== null) el.scrollTop = next;
-  }, [focus, box]);
+    // Not on `canvasTop` alone, deliberately: `docs/map/territory/row-windowing.md`.
+  }, [focus, box?.viewportHeight, box?.rowHeight]);
 
   useEffect(() => {
     if (box && keyboard) keyboard.rowsPerPage = Math.floor(box.viewportHeight / box.rowHeight);
@@ -133,4 +145,22 @@ export function useRowWindow({
     },
     measure,
   };
+}
+
+/**
+ * The canvas's offset in the scroller's content, in layout px: its client top less the scroller's
+ * inner top, plus the scroll. `0` with no canvas, or while the scroller has no height on screen.
+ */
+function canvasOffset(scroller: HTMLDivElement, view: DOMRect, canvas: HTMLDivElement | null): number {
+  // A zero screen box is no measurement: `docs/map/invariant/zero-is-no-measurement.md`.
+  if (!canvas || !(view.height > 0)) return 0;
+  const at = canvas.getBoundingClientRect();
+  // Scaled over the longer element, as the marquee is: `docs/map/territory/row-windowing.md`.
+  const scale = marqueeScale({
+    scrollerScreen: view.height,
+    scrollerLayout: scroller.offsetHeight,
+    canvasScreen: at.height,
+    canvasLayout: canvas.offsetHeight,
+  });
+  return (at.top - view.top) / scale - scroller.clientTop + scroller.scrollTop;
 }

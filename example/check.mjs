@@ -644,6 +644,67 @@ try {
   );
   await scaled.close();
 
+  // Below a leading `..` row: the focused row is revealed whole, counted from the canvas (#46).
+  const lead = await browser.newPage();
+  lead.on('pageerror', (e) => errors.push(String(e)));
+  await lead.goto(`${url}?leading=1`, { waitUntil: 'networkidle0' });
+  await lead.waitForSelector('[role="grid"] [data-parent-row]');
+  /** Presses `key` on the grid and answers where the focused row and the `..` row sit in the view. */
+  const revealAfter = async (key) => {
+    await lead.focus('[role="grid"]');
+    await lead.keyboard.press(key);
+    await new Promise((r) => setTimeout(r, 150));
+    // Read in layout px: `docs/map/territory/verification-gates.md`.
+    return lead.evaluate(() => {
+      const grid = document.querySelector('[role="grid"]');
+      const s = [...grid.querySelectorAll('div')].find((d) => getComputedStyle(d).overflowY === 'auto');
+      const canvas = s.querySelector('[role="presentation"]');
+      const parent = s.querySelector('[data-parent-row]');
+      const canvasTop = canvas.offsetTop - s.offsetTop - s.clientTop;
+      const focused = document.getElementById(grid.getAttribute('aria-activedescendant'));
+      const rowTop = focused ? canvasTop + Number.parseFloat(focused.style.top) : null;
+      const viewBottom = s.scrollTop + s.clientHeight;
+      const parentTop = parent.offsetTop - s.offsetTop - s.clientTop;
+      return {
+        scrollTop: s.scrollTop,
+        atEnd: s.scrollTop >= s.scrollHeight - s.clientHeight - 1,
+        canvasTop,
+        rowIndex: Number(focused?.getAttribute('aria-rowindex')),
+        topGap: rowTop === null ? null : rowTop - s.scrollTop,
+        bottomGap: rowTop === null ? null : viewBottom - (rowTop + focused.offsetHeight),
+        parentShown: parentTop >= s.scrollTop && parentTop + parent.offsetHeight <= viewBottom,
+      };
+    });
+  };
+  const leadEnd = await revealAfter('End');
+  check(
+    'below a leading row, End brings the last row’s bottom to the view’s bottom',
+    leadEnd.bottomGap !== null && Math.abs(leadEnd.bottomGap) <= 0.5,
+    leadEnd,
+  );
+  const leadHome = await revealAfter('Home');
+  check(
+    'below a leading row, Home scrolls to the very top and shows the leading row',
+    leadHome.scrollTop === 0 && leadHome.parentShown && leadHome.rowIndex === 3,
+    leadHome,
+  );
+  // Under scale(0.5), deep in the list and short of its end: `docs/map/territory/verification-gates.md`.
+  await lead.evaluate(() => {
+    const grid = document.querySelector('[role="grid"]');
+    grid.style.transform = 'scale(0.5)';
+    grid.style.transformOrigin = '0 0';
+  });
+  await revealAfter('Home');
+  await revealAfter('End');
+  await revealAfter('PageUp');
+  const leadScaled = await revealAfter('PageUp');
+  check(
+    'below a leading row inside scale(0.5), PageUp deep in the list brings the row’s top to the view’s top',
+    leadScaled.topGap !== null && Math.abs(leadScaled.topGap) <= 0.5 && !leadScaled.atEnd,
+    leadScaled,
+  );
+  await lead.close();
+
   check('no page errors', errors.length === 0, errors);
 } finally {
   await browser.close();

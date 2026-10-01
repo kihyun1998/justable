@@ -13,6 +13,8 @@ export interface VisibleRangeInput {
   rowHeight: number;
   /** How many rows the list has in all. */
   total: number;
+  /** The rows' canvas's offset in the scroller's content, in px; rows above it push it down. 0 when absent. */
+  canvasTop?: number;
 }
 
 /** Rows drawn while the viewport has never been measured. */
@@ -26,6 +28,7 @@ export function visibleRange({
   viewportHeight,
   rowHeight,
   total,
+  canvasTop = 0,
 }: VisibleRangeInput): RowWindow {
   if (total <= 0) return { start: 0, end: 0 };
 
@@ -34,7 +37,7 @@ export function visibleRange({
     return { start: 0, end: Math.min(total, UNMEASURED_ROWS) };
   }
 
-  const first = Math.floor(Math.max(0, scrollTop) / rowHeight);
+  const first = Math.floor(Math.max(0, scrollTop - canvasTop) / rowHeight);
   // The `+ 1` is deliberate: `docs/map/territory/row-windowing.md`.
   const span = Math.ceil(Math.max(0, viewportHeight) / rowHeight) + 1;
 
@@ -61,22 +64,26 @@ export interface RevealInput {
   scrollTop: number;
   viewportHeight: number;
   rowHeight: number;
+  /** The rows' canvas's offset in the scroller's content, in px; rows above it push it down. 0 when absent. */
+  canvasTop?: number;
 }
 
 /**
  * The `scrollTop` that brings row `index` fully into view, or `null` if it already is. A row
- * straddling an edge counts as not visible.
+ * straddling an edge counts as not visible. Revealing row 0 upward scrolls to 0, so the rows above the
+ * canvas show with it, unless row 0 would then still not be wholly in view.
  */
 export function scrollToReveal(
   index: number,
-  { scrollTop, viewportHeight, rowHeight }: RevealInput,
+  { scrollTop, viewportHeight, rowHeight, canvasTop = 0 }: RevealInput,
 ): number | null {
   if (!(rowHeight > 0) || !(viewportHeight > 0)) return null;
 
-  const top = index * rowHeight;
+  const top = canvasTop + index * rowHeight;
   const bottom = top + rowHeight;
 
-  if (top < scrollTop) return Math.max(0, top);
+  // Row 0 to the very top, deliberately: `docs/map/territory/row-windowing.md`.
+  if (top < scrollTop) return index > 0 || bottom > viewportHeight ? Math.max(0, top) : 0;
   if (bottom > scrollTop + viewportHeight) return Math.max(0, bottom - viewportHeight);
   return null;
 }

@@ -48,6 +48,33 @@ the measurements, and `TableGrid` draws what it answers.
   So `measure`'s layout is moved, not added. Not shown: WebView2 or PenTerm's own path, where no
   other read forces layout in the commit. The call did not cover picking up a scale or font-size
   change made with no render (`## Known holes / open`). Theirs to reverse.
+- **The canvas's offset is an optional input of both public functions** — the maintainer's call in
+  triage, 2026-10-01 (#46), over keeping `visibleRange` and `scrollToReveal` as they were and
+  converting in `useRowWindow` alone. Shown: both are exported, PenTerm imports `visibleRange`, and
+  the hook-only option leaves the exported functions assuming the canvas starts at 0. `canvasTop`
+  defaults to 0, so a call without it answers as before. The name was the agent's. Theirs to reverse.
+- **Revealing row 0 scrolls to 0, showing the rows above the canvas** — the maintainer's call in
+  triage, 2026-10-01 (#46), over strict nearest edge, which stops at `canvasTop` and leaves the
+  leading rows scrolled out. Shown: before #46 this already happened, only through `Math.max(0, top)`
+  with the offset ignored; a file list's `..` row is the case. It covers row 0 revealed upward and
+  nothing else: a row 0 already wholly in view with the leading rows scrolled out is not moved.
+  Theirs to reverse.
+- **…only while row 0 then fits; otherwise to row 0's own top edge** — the maintainer's call,
+  2026-10-01, while #46 was built. The triage call was not shown a viewport shorter than the
+  leading rows plus a row: a completeness pass found `scrollToReveal(0, { scrollTop: 400,
+  viewportHeight: 50, rowHeight: 28, canvasTop: 84 })` answering 0, which leaves row 0 at 84–112,
+  below the view, and the reveal does not run again — against the function's own "fully into view".
+  `main` did the same. Shown: this rule, against keeping 0 always and recording the exception.
+  Theirs to reverse.
+- **A change of the canvas's offset alone does not reveal** — the maintainer's call, 2026-10-01,
+  while #46 was built, over revealing on any change of `box`. Shown, in Chrome: focus on row 39,
+  the list scrolled to 0, a second leading row added — the first version (offset in `box`, reveal
+  on `[focus, box]`) pulled the list to 904, `main` left it at 0; and PenTerm's new folder, which
+  adds a `#new` leading row without clearing the focus, so the input row just drawn would leave the
+  view. The cost, accepted: a focused row at the bottom edge is pushed below it when a leading row
+  appears, as on `main`, until the next move. Theirs to reverse.
+- **The drawn window's shift is fixed under #46 with the reveal** — the maintainer's call in triage,
+  2026-10-01, over a separate issue: one root, one measurement, one site.
 - **The README promises nothing about scaled copies** — the maintainer's call, 2026-09-30 (#19). A
   paragraph saying a scaled grid needs no prop and picks up a new scale at its next render was
   written and removed: the second half is a known hole below, not a contract. The CHANGELOG records
@@ -122,6 +149,28 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **Edges are inclusive on purpose.** `floor` on the first row keeps the row straddling the top edge;
   the span is `ceil(viewport / row) + 1`, so a viewport that is an exact multiple still shows the next
   row's top border. The snapped start is clamped to `total − 1`.
+- **Two origins: the canvas and the scroller's content (#46).** A drawn row's `top` is measured from
+  the canvas; `scrollTop` from the top of the scroller's content, which holds the leading rows
+  above the canvas. So data row `i` sits at `canvasTop + i × rowHeight` in the scroller, and both
+  `visibleRange` (`first = floor((scrollTop − canvasTop) / rowHeight)`) and `scrollToReveal` take
+  `canvasTop`. Before #46 neither did: revealing downward stopped `canvasTop` short — in Chrome, a
+  row reached at the bottom stayed 28 px below the view under one 28 px leading row and 84 px under
+  three — and the window was shifted down by `canvasTop / rowHeight` rows, which the block past the
+  edge hid up to eight rows; under twelve, 33 of 129 scroll offsets left the top visible row undrawn.
+  The [marquee](marquee.md) took the canvas as its origin from the start.
+- **The offset is measured with the box, over the longer element, and a sub-px move is no change.**
+  `measure` takes the canvas's client top less the scroller's, divided by the scale, less the
+  scroller's top border, plus `scrollTop`. That screen distance grows with the scroll, so it is
+  divided by `marqueeScale` — the scale over the longer of the scroller and the canvas — not by the
+  scroller's own ratio, which the row height uses: under `scale(0.5)`, a reveal deep in the
+  example's 5,000 rows landed 43 px off with the scroller's ratio and 0 with the longer one (Chrome,
+  2026-10-01). The reading still moves with the scroll by a fraction of a px — under `scale(0.83)`,
+  83.95 against 84.10 — and a new offset is a new `box` and a render, which measures again; a
+  reading that alternates would render without end, as the row height does under some scales
+  (`## Known holes / open`). So `measure` keeps the old offset while the new one is within 1 px; with
+  a strict comparison, jsdom fed an offset 0.4 px apart at every second reading throws React's
+  *Maximum update depth exceeded*. A scroller with no height on screen (jsdom) answers 0 rather than
+  a distance from a box that was never laid out.
 - **Drawn rows are absolutely placed** at `index × rowHeight` on a canvas `total × rowHeight` tall,
   with `left: 0` **and** `right: 0`. With `left` alone a placed row shrinks to fit and the filler
   track collapses — measured header tracks `510 120 112 128` against row tracks `96 120 112 128`
@@ -130,10 +179,13 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   with it instead of handing an index's state to another row.
 - **Revealing a row is arithmetic.** Under windowing the focused row may have no element to scroll
   into view. `scrollToReveal` returns the `scrollTop` that shows it whole — to the top edge going up,
-  to the bottom edge going down, so a one-row move does not jump the list — or `null` if it already is
+  to the bottom edge going down, so a one-row move does not jump the list; row 0 going up to 0, so
+  the leading rows show with it (#46, above) — or `null` if it already is
   (a straddling row is not visible: half a row is not readable, and the key that just landed there
-  has to show what it landed on). The effect runs on `[focus, box]` and reads the offset from the
-  element, not from state, so a scroll alone does not re-run it and pull the list back.
+  has to show what it landed on). Row 0 goes to 0 only where it then fits, else to its own top edge.
+  The effect runs on `focus` and the box's viewport and row heights — not on its `canvasTop` (#46,
+  above) — and reads the offset from the element, not from state, so a scroll alone does not re-run
+  it and pull the list back.
 - **The page size the keyboard moves by is written here.** When `box` changes, the grid writes
   `floor(viewportHeight / rowHeight)` into the keyboard hook's `link.rowsPerPage`.
 
@@ -141,7 +193,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 - `src/lib/rowWindow.ts` — `visibleRange`, `scrollToReveal`, `screenScale`, `BLOCK_ROWS`, `UNMEASURED_ROWS`, `VisibleRangeInput`, `RevealInput`
 - `src/types.ts` — `RowWindow`
-- `src/hooks/useRowWindow.ts` — `useRowWindow`, `measure`, `RowBox`, `RowWindowInput`, `RowWindowState`, `rowHeightRemRef`, `notARowRef`, `scrollTopRef`, `boxRef`, `rangeRef`, `redraw`
+- `src/hooks/useRowWindow.ts` — `useRowWindow`, `measure`, `canvasOffset`, `RowBox` (`canvasTop` included), `RowWindowInput`, `RowWindowState`, `rowHeightRemRef`, `notARowRef`, `scrollTopRef`, `boxRef`, `rangeRef`, `redraw`
 - `src/components/TableGrid.tsx` — `TableGrid`, `canvasRef`, `rowKey`
 
 ## Reference behaviour
@@ -170,6 +222,8 @@ followed), with the `left: 0` trap found against it.
   read order: `useRowWindow` is called first, so the box is read before the spacer is written.
 - [Keyboard movement](keyboard-movement.md) — its page size comes from this box, and its focus
   changes are revealed by this effect.
+- [Marquee](marquee.md) — `measure` calls its `marqueeScale` for the canvas's offset; a change to
+  that function moves the offset, and with it the window and every reveal.
 - [Table row](table-row.md) — the placement arrives in the row's `style`, which it must merge under
   the grid template rather than replace.
 
@@ -193,6 +247,12 @@ followed), with the `left: 0` trap found against it.
   window, a new `focus`, or a render from the consumer; before, any scroll step picked it up. #32's
   calls did not cover this, and #34 kept measuring after every commit on cost alone (below), so
   this gap is open.
+- **Under some scales the box never settles, on `main` before #46 too.** In Chrome, 5,000 rows under
+  `scale(0.37)` or `scale(0.83)` and a deep scroll or reveal throw React's *Maximum update depth
+  exceeded*: the measured row height alternates between 28.0000257 and 27.9999889 on each `measure`,
+  and the strict comparison takes each as a new box. Unscaled and under `scale(0.5)` it does not
+  happen. Measured 2026-10-01 while #46 was built; #46's offset stays within its 1 px and is not
+  part of it. Not fixed: the row height's comparison is #19's.
 - **Only a scale is corrected.** The ratio is taken from heights, so a scale on the vertical axis is
   what it measures; under a rotation or a skew the bounding rect is the box that encloses the element,
   and the ratio is not the scale. A real scale that moves the scroller's height by less than a px is

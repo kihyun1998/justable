@@ -6,6 +6,8 @@ import { FileTable } from './FileTable.js';
 import { makeFiles } from './files.js';
 
 const FILES = makeFiles(5_000);
+/** `?leading=1` draws a `..` row above the files, as a file explorer does. */
+const PARENT_ROW = new URLSearchParams(location.search).has('leading');
 
 export function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -42,7 +44,7 @@ export function App() {
       </section>
 
       <section className="pane">
-        <FileTable files={FILES} disabled={disabled} onStatus={setStatus} />
+        <FileTable files={FILES} disabled={disabled} parentRow={PARENT_ROW} onStatus={setStatus} />
       </section>
 
       <footer className="status">{status}</footer>
