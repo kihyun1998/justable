@@ -55,7 +55,8 @@ today.
   secret, the maintainer's choice over npm trusted publishing, and checks it with `npm whoami` before
   publishing. `--provenance` attaches a build attestation, which needs the job's `id-token: write`.
 - **The published tarball** is 36 files: `dist/`, `README.md`, `LICENSE` and `package.json`
-  (`npm pack --dry-run`, 2026-09-29); 40 files at 0.2.0, the same day. CI builds `dist/` fresh, so no file a local build left behind
+  (`npm pack --dry-run`, 2026-09-29); 40 files at 0.2.0, the same day; 46 at 0.3.0 (2026-10-01), the `.js`
+  and `.d.ts` of `useDrag`, `useHeaderLane` and `useRowWindow`. CI builds `dist/` fresh, so no file a local build left behind
   can ship.
 
 ## Code

@@ -4,7 +4,7 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
-## Unreleased
+## 0.3.0 — 2026-10-01
 
 ### Breaking
 
@@ -60,7 +60,7 @@ anything else the patch.
   `2.5`.
   This holds for `useTypeAhead` and `useTableKeyboard` (#30).
 - **`aria-activedescendant` names no row while `showRows` is `false`.** It named the focused row's id
-  though no data row was drawn, so it pointed at an element that did not exist.
+  though no data row was drawn, so it pointed at an element that did not exist (#23).
 - **Rows no longer overlap inside a scaled copy of the table.** Under a CSS `transform: scale(…)`
   the grid measured its row on screen but placed rows in the table's own px, so under `scale(0.5)`
   each row overlapped the next by half, about 1.5× the needed rows were drawn and Page Down moved
