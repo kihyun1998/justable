@@ -41,7 +41,8 @@ be run by hand.
   its sort. The README's other snippets are not checked.
 - **Node 24 and pnpm 10.28.0 in CI.** pnpm is pinned by `packageManager` in `package.json`;
   `pnpm/action-setup` v6 reads it. Its successor, `pnpm/setup`, requires pnpm 11, so moving to it
-  moves pnpm too. Node 24 is the LTS; the maintainer develops on 26.
+  moves pnpm too. Node 24 is the LTS; the maintainer develops on 26 (26.10.0 from 2026-10-01, past
+  the exit abort's fix — see `check:example`'s exit below).
 
 - **The environment is chosen per file.** Vitest's default is Node; each component and hook test
   opts into jsdom with a `// @vitest-environment jsdom` first line. jsdom lays nothing out, so a grid
