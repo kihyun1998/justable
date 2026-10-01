@@ -557,6 +557,91 @@ try {
       half.paged === plain.paged,
     { plain, half },
   );
+
+  // A marquee in the scaled copy, pressed and released on each row's third cell, away from the name.
+  /** Scrolls the scaled grid to `fraction` of its scroll range, waits for the redraw, and answers the
+   * first row wholly in view. */
+  const scrollScaledTo = async (fraction) => {
+    await scaled.evaluate((f) => {
+      const s = [...document.querySelector('[role="grid"]').querySelectorAll('div')].find(
+        (d) => getComputedStyle(d).overflowY === 'auto',
+      );
+      s.scrollTop = (s.scrollHeight - s.clientHeight) * f;
+    }, fraction);
+    await new Promise((r) => setTimeout(r, 150));
+    return scaled.evaluate(() => {
+      const s = [...document.querySelector('[role="grid"]').querySelectorAll('div')].find(
+        (d) => getComputedStyle(d).overflowY === 'auto',
+      );
+      const box = s.getBoundingClientRect();
+      const inView = [...s.querySelectorAll('[role="row"][aria-rowindex]')]
+        .filter((r) => r.getBoundingClientRect().top >= box.top)
+        .map((r) => Number(r.getAttribute('aria-rowindex')));
+      return { scrollTop: s.scrollTop, first: Math.min(...inView) };
+    });
+  };
+  const cellCentre = (rowIndex) =>
+    scaled.$eval(`[role="grid"] [role="row"][aria-rowindex="${rowIndex}"]`, (r) => {
+      const b = r.querySelectorAll('[role="gridcell"]')[2].getBoundingClientRect();
+      return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    });
+  const scaledSelected = () =>
+    scaled.$$eval('[role="row"][aria-selected="true"]', (rs) => rs.map((r) => Number(r.getAttribute('aria-rowindex'))));
+  const scaledDrag = async (from, to) => {
+    const a = await cellCentre(from);
+    const b = await cellCentre(to);
+    await scaled.mouse.move(a.x, a.y);
+    await scaled.mouse.down();
+    await scaled.mouse.move(b.x, b.y, { steps: 6 });
+    const shown = await scaled.$eval('[data-table-marquee]', (m) => getComputedStyle(m).display);
+    await scaled.mouse.up();
+    return { shown, selected: await scaledSelected(), a, b };
+  };
+  await scrollScaledTo(0);
+  const halfDrag = await scaledDrag(3, 6);
+  check(
+    'inside scale(0.5), a marquee over four rows selects those four',
+    halfDrag.shown === 'block' && halfDrag.selected.join() === '3,4,5,6',
+    halfDrag,
+  );
+  const deep = await scrollScaledTo(0.95);
+  const deepDrag = await scaledDrag(deep.first + 2, deep.first + 5);
+  const deepRows = [2, 3, 4, 5].map((n) => deep.first + n).join();
+  check(
+    'inside scale(0.5), scrolled near the end, a marquee over four rows selects those four',
+    deep.scrollTop > 100_000 && deepDrag.shown === 'block' && deepDrag.selected.join() === deepRows,
+    { deep, deepDrag },
+  );
+
+  // The scroller capped at 250 layout px, and the grid drawn at twice the size.
+  await scaled.evaluate(() => {
+    const grid = document.querySelector('[role="grid"]');
+    const s = [...grid.querySelectorAll('div')].find((d) => getComputedStyle(d).overflowY === 'auto');
+    s.style.maxHeight = '250px';
+    grid.style.transform = 'scale(2)';
+  });
+  await scrollScaledTo(0);
+  // The rows below the view's top plus its layout height, and inside the view on screen.
+  const band = await scaled.evaluate(() => {
+    const s = [...document.querySelector('[role="grid"]').querySelectorAll('div')].find(
+      (d) => getComputedStyle(d).overflowY === 'auto',
+    );
+    const box = s.getBoundingClientRect();
+    const unconverted = box.top + s.clientTop + s.clientHeight;
+    const rows = [...s.querySelectorAll('[role="row"][aria-rowindex]')]
+      .map((r) => ({ index: Number(r.getAttribute('aria-rowindex')), b: r.getBoundingClientRect() }))
+      .filter(({ b }) => b.top > unconverted && b.bottom < Math.min(innerHeight, box.bottom) - 4)
+      .map(({ index }) => index)
+      .sort((x, y) => x - y);
+    return { rows, unconverted, viewBottom: box.bottom, innerHeight };
+  });
+  const lowRow = band.rows[0];
+  const doubleDrag = band.rows.length < 2 ? null : await scaledDrag(lowRow, lowRow + 1);
+  check(
+    'inside scale(2), a press low in the view on screen starts a marquee over the rows dragged',
+    doubleDrag !== null && doubleDrag.shown === 'block' && doubleDrag.selected.join() === `${lowRow},${lowRow + 1}`,
+    { band, doubleDrag },
+  );
   await scaled.close();
 
   check('no page errors', errors.length === 0, errors);

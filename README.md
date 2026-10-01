@@ -249,7 +249,8 @@ The table draws it and tells you which rows it touches; what that selects is you
   press on anything in a row that takes focus itself, such as an input. A press on the scrollbar
   never starts one.
 - **The threshold.** Nothing happens until the pointer has moved more than `threshold` px on either
-  axis. A press that moves less is an ordinary click. After a real drag, the click the browser sends
+  axis — px on screen, so inside a scaled copy of the table it is not scaled. A press that moves less
+  is an ordinary click. After a real drag, the click the browser sends
   for the release reaches neither your row's `onClick` nor `onFloorClick`, nor does the double-click
   that follows when the drag began as a second click.
 - **The range.** `{ anchor, head }`, in the same row indexes as `focus` and `renderRow`: `anchor` is

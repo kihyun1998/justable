@@ -143,6 +143,17 @@ be run by hand.
   7 px overlap, 64 rows drawn, canvas 70,000, the page landing on 48), and dropping the snap to 1
   fails the unscaled one (step 27.9913) — the scaled checks compare against the unscaled run, so they
   alone cannot see both runs drift together.
+- **Three more drag a [marquee](marquee.md) in that scaled copy** (#28), on each row's third cell,
+  away from the name, and each asserts the rectangle showed. Under `scale(0.5)`, at `scrollTop` 0, a
+  drag over rows 3–6 selects 3–6; scrolled to 95 % of the list (past 100,000 px), a drag over four
+  rows selects those four. Then the scroller is capped at 250 layout px and the grid drawn at
+  `scale(2)`: a press on a row past the view's top plus its layout height, yet inside the view on
+  screen, starts a marquee over the two rows dragged. That check finds its band wherever the grid
+  is scrolled — the grid reveals its focused row after the resize, so it runs deep in the list. The
+  cap is what makes the band exist inside an 800 px page; uncapped, the check found no row to press.
+  Proven failing: the hook's scale forced to 1 fails all three (rows 2–4 selected at the top, as #28
+  measured before its fix); the scale taken on the scroller alone fails the second (4731–4733 for
+  4732–4735); the view's height left unscaled fails the third.
 - **The [marquee](marquee.md)'s browser checks run on a page of their own**, so nothing above has
   scrolled or selected: a drag over four rows selects those four and leaves the grid focused, the
   rectangle shows in its bound colours and hides at the release, a drag held past the bottom edge
