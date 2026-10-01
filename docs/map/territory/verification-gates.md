@@ -127,6 +127,18 @@ be run by hand.
   cell change could fail — the example ellipses inside a span with its own overflow, which shrinks to
   the track whatever the cell's display — and a block box is what an ellipsis set on the cell itself,
   as PenTerm's cells set it, depends on.
+- **`check:example` serves the example with no file watcher and no HMR** (`server.watch: null`,
+  `server.hmr: false`, its own inline options; `vite.config.ts` and `pnpm example` keep both) (#42).
+  The dev server otherwise swaps an edit under `src/` into the page under test: on 2026-10-01 another
+  session's refactor in the same checkout failed 10 of 30 runs, with React's hook-order error,
+  Puppeteer's "Execution context was destroyed" and single FAILs. **`watch: null` is the option that
+  holds**: with no watcher Vite never invalidates a module it has transformed, so a page opened after
+  an edit still gets the code from load time, and the check opens five more pages after its first.
+  `hmr: false` alone stops updates to the open page, but a new page is served the edited file (a
+  probe, 2026-10-01, Vite 8.3.1); it stays because without it there is no WebSocket server to push a
+  reload. Proven failing: with the old options, an edit that throws in `useRowWindow`, made 1.5 s
+  into the run and held to its end, fails the run; with `hmr: false` alone it fails too; with both
+  options it passes.
 - **`check:example` runs with Puppeteer's `--hide-scrollbars`, which leaves every reserved gutter
   empty** — the case in which Chromium withholds the gutter from the horizontal end
   ([header lane](header-lane.md)). So six checks hold that end (#22). On a page of their own, at
@@ -243,6 +255,9 @@ be run by hand.
   and a specifier resolving to another drive (an absolute `path.relative`). Neither shape exists in
   the tree.
 - **`check:example`'s "no browser" exit has not been exercised** on a machine without one.
+- **Without a watcher, the check is pinned only to modules already requested.** A module first
+  requested after an edit is read from disk as it is then. Whether the first page requests every
+  module the later pages use has not been measured.
 - **The Vitest worker crash** seen once locally on 2026-09-28 did not recur in the first six CI runs.
 - **Windows is not in CI**, and it is where the maintainer develops: a CRLF-only or path-only
   failure shows locally and not in CI.
