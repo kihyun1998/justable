@@ -2,7 +2,7 @@
  * The grid's row window: the scroller's offset and box, the range of rows drawn from them, where a
  * drawn row sits, the focused row brought back into view, and the page size written to the keyboard.
  */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import type { CSSProperties, RefObject } from 'react';
 
 import { screenScale, scrollToReveal, visibleRange } from '../lib/rowWindow.js';
@@ -53,9 +53,23 @@ export function useRowWindow({
   const rowHeightRemRef = useRef(rowHeightRem);
   rowHeightRemRef.current = rowHeightRem;
 
-  // Scroll and size are separate state, deliberately: `docs/map/territory/row-windowing.md`.
-  const [scrollTop, setScrollTop] = useState(0);
+  // The offset is a ref and the box is state, deliberately: `docs/map/territory/row-windowing.md`.
+  const scrollTopRef = useRef(0);
   const [box, setBox] = useState<RowBox | null>(null);
+  const boxRef = useRef(box);
+  const totalRef = useRef(total);
+  totalRef.current = total;
+  /** Renders the grid again; called only when the drawn window moves. */
+  const [, redraw] = useReducer((n: number) => n + 1, 0);
+
+  // No box is no measurement, which `visibleRange` answers for itself:
+  // `docs/map/invariant/zero-is-no-measurement.md`.
+  const windowAt = (scrollTop: number, at: RowBox | null, rows: number) =>
+    visibleRange({ scrollTop, viewportHeight: 0, rowHeight: 0, ...at, total: rows });
+
+  const range = windowAt(scrollTopRef.current, box, total);
+  const rangeRef = useRef(range);
+  rangeRef.current = range;
 
   const measure = () => {
     const el = scrollerRef.current;
@@ -71,11 +85,12 @@ export function useRowWindow({
       viewportHeight: el.clientHeight,
       rowHeight: (row?.getBoundingClientRect().height ?? 0) / scale || rowHeightRemRef.current * rootPx,
     };
-    setBox((prev) =>
-      prev && prev.viewportHeight === next.viewportHeight && prev.rowHeight === next.rowHeight
-        ? prev
-        : next,
-    );
+    const prev = boxRef.current;
+    if (prev && prev.viewportHeight === next.viewportHeight && prev.rowHeight === next.rowHeight) {
+      return;
+    }
+    boxRef.current = next;
+    setBox(next);
   };
 
   useLayoutEffect(measure);
@@ -105,14 +120,17 @@ export function useRowWindow({
 
   return {
     box,
-    // No box is no measurement, which `visibleRange` answers for itself:
-    // `docs/map/invariant/zero-is-no-measurement.md`.
-    range: visibleRange({ scrollTop, viewportHeight: 0, rowHeight: 0, ...box, total }),
+    range,
     // `right: 0` as well as `left` is deliberate:
     // `docs/map/invariant/drawn-columns-are-tracks-are-cells.md`.
     place: (index) =>
       box ? { position: 'absolute', top: index * box.rowHeight, left: 0, right: 0 } : undefined,
-    onScroll: setScrollTop,
+    onScroll: (scrollTop) => {
+      scrollTopRef.current = scrollTop;
+      const next = windowAt(scrollTop, boxRef.current, totalRef.current);
+      const drawn = rangeRef.current;
+      if (next.start !== drawn.start || next.end !== drawn.end) redraw();
+    },
     measure,
   };
 }

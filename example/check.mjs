@@ -507,7 +507,7 @@ try {
   await scaled.goto(url, { waitUntil: 'networkidle0' });
   await scaled.waitForSelector('[role="grid"] [data-table-header]');
   const geometry = async () => {
-    // One scroll is the re-render that measures again.
+    // The one-px scroll renders nothing; Home's focus change is the render that measures again.
     await scaled.evaluate(() => {
       const s = [...document.querySelector('[role="grid"]').querySelectorAll('div')].find(
         (d) => getComputedStyle(d).overflowY === 'auto',

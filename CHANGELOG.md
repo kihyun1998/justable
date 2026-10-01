@@ -44,6 +44,13 @@ anything else the patch.
 
 ### Fixed
 
+- **The grid no longer renders on every scroll step, or twice a commit.** A scroll step rendered the
+  grid even when the rows drawn stayed the same, and measuring the box after a commit rendered it a
+  second time to find nothing changed, so `renderRow` ran about twice for each drawn row. Over 400
+  scroll steps of 25 px with 28 px rows, the grid now commits only on the steps that move the drawn
+  window (about one in nine) and never a second time. A scale or root font-size change made without
+  a render is now picked up at the next render that is one, and a scroll inside a block no longer
+  is (#32).
 - **A stale or negative `focus` no longer throws.** A `focus` that names no row — `-1` from
   `indexOf` after a filter, an index past a shrunk list's end, a fraction, `NaN` — made a narrowing
   letter throw, and a fractional or `NaN` one made every letter throw; an index past the end

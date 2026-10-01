@@ -48,6 +48,14 @@ be run by hand.
   test sees the unmeasured state unless it stubs a length — `TableGrid.test.tsx` stubs
   `HTMLElement.prototype.clientHeight` to reach the measured one — and a disabled grid is visible to
   a test only as `aria-disabled` and a class name, since jsdom compiles no CSS.
+- **When the grid renders is a jsdom test of its own** (`TableGrid.renders.test.tsx`, #32): a
+  `Profiler` counts commits by phase, so a `nested-update` is told from an `update`, and it replaces
+  `ResizeObserver` with one it can fire, since jsdom has none. One rerender from the parent is not
+  enough to see a wasted render from a state updater: React runs an updater ahead of a render while
+  the grid has no update pending, which held on every other rerender on `main`, so the case
+  rerenders four times. A case that checks the window is computed from the offset now needs a new
+  row height: within one row height, the offset now and the last one drawn are in the same block
+  whenever no render happened between them.
 - **The header lane's jsdom test is a file of its own** (`TableGrid.lane.test.tsx`), because the
   engine probe caches its answer per document and a test file shares one: the first grid rendered
   decides the probe for the rest of the file. It stubs `scrollLeft` to 0, since jsdom keeps an
@@ -135,7 +143,8 @@ be run by hand.
   list are not in the gate: the app draws only the 5000-row grid, and Firefox is measured by hand.
 - **Three checks hold a scaled copy of the grid** ([row windowing](row-windowing.md)), on a page of
   their own, last: the grid is measured unscaled, then under `transform: scale(0.5)` on the grid,
-  each after one scroll (the re-render that measures) and Home → PageDown. Unscaled, rows are exactly
+  each after Home → PageDown, whose first focus change is the render that measures (a one-px
+  scroll was, until #32 made a scroll inside a block render nothing). Unscaled, rows are exactly
   one row's `offsetHeight` apart; scaled, they are that far apart within 0.05 px and overlap on
   screen by no more; and the drawn rows, the page and the canvas (within 0.05 px a row) are the
   unscaled ones. The tolerance is the precision of a scale built on a whole-px `offsetHeight`.
@@ -194,6 +203,7 @@ be run by hand.
 - `src/components/TableGrid.test.tsx`
 - `src/components/TableGrid.marquee.test.tsx`
 - `src/components/TableGrid.lane.test.tsx`
+- `src/components/TableGrid.renders.test.tsx`
 - `src/components/TableHeader.test.tsx`
 - `src/components/TableRow.test.tsx`
 - `src/components/TableRuler.test.tsx`
