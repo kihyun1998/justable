@@ -93,7 +93,7 @@ export function useMarquee(
     if (options.refusePress(press)) return;
 
     press.preventDefault();
-    parts.grid.current?.focus({ preventScroll: true });
+    parts.grid.current?.focus({ preventScroll: true, focusVisible: false });
 
     drag.begin(press.button, scroller, (end) => {
       const { threshold } = options;

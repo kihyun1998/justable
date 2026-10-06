@@ -11,6 +11,14 @@ places the press, the pointer and the rectangle on the canvas. The engine draws 
 
 ## Governing decisions
 
+- **A marquee press focuses the grid with `focusVisible: false`** — the maintainer's call,
+  2026-10-06, #58, as the issue proposed. Shown: the table under `## Design model` (the press and
+  the first key after it, for each way of focusing) against keeping the browser's own focus by not
+  preventing the press's default and stopping text selection another way — the same ring as a
+  refused press in every browser, at the cost of a larger change and re-checking what the prevented
+  default also stopped. Chose the first, accepting that the keyboard does not bring the ring back
+  after a marquee press. The call did not cover a grid focus style of the engine's own, nor Firefox
+  or Safari. Theirs to reverse.
 - **#9, the maintainer's calls in a grilling, 2026-09-29.** Shown: the engine's existing seams
   ([mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md)),
   column resize's `refusePress` and #8's rule that the engine never scrolls for a drag. Each is a
@@ -93,6 +101,20 @@ places the press, the pointer and the rectangle on the canvas. The engine draws 
   alone, default included. An allowed press loses its default, so the browser starts no text
   selection, and **the grid is focused by hand** (`preventScroll`), because a press whose default is
   prevented does not move focus — without it the keyboard would stop answering after a drag.
+  **That focus says `focusVisible: false`** (#58): Chromium matches `:focus-visible` on a script focus
+  no pointer focus preceded, so a mouse press drew the grid's keyboard ring. Measured in Chrome 154 on
+  a `tabindex` box whose `mousedown` prevents its default, 2026-10-06:
+
+  | how the box got focus | `:focus-visible` at once | after ↓ |
+  |---|---|---|
+  | the browser's own mouse focus (a refused press) | false | true |
+  | `focus({ preventScroll })` (before #58) | true | true |
+  | `focus({ preventScroll, focusVisible: false })` | false | **false** |
+  | Tab | true | — |
+
+  So the two press paths agree at the press and part at the first key: after a marquee press the
+  keyboard does not bring the ring back, where after a refused press it does. A browser that ignores
+  `focusVisible` draws the ring as before #58. Firefox and Safari were not measured.
 - **Nothing is reported below the threshold**: more than `threshold` px on either axis starts it. A
   press that never passes it leaves no trace, and its click is the consumer's.
 - **Every pointer move is reported, even one that keeps the range.** The consumer's edge-scroll loop

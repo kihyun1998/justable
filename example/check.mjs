@@ -281,6 +281,8 @@ try {
   const afterRelease = await rectangle();
   const dragged = await selectedRows();
   const focusOnGrid = await mq.evaluate(() => document.activeElement?.getAttribute('role') === 'grid');
+  // The page's first press, so no focus the grid held before can decide whether it shows a ring.
+  const ringAfterPress = await mq.evaluate(() => document.querySelector('[role="grid"]').matches(':focus-visible'));
   check('a marquee over four rows selects those four, and the release’s click does not undo it', dragged.join() === '3,4,5,6', dragged);
   check(
     'the rectangle shows in its colours while dragged, and goes at the release',
@@ -288,6 +290,9 @@ try {
     { during, afterRelease },
   );
   check('the grid keeps keyboard focus after a marquee', focusOnGrid);
+  check('a marquee press focuses the grid without the keyboard focus ring', focusOnGrid && !ringAfterPress, {
+    ringAfterPress,
+  });
 
   // Held past the bottom edge: the example's loop scrolls, and the range follows the scroll.
   const s0 = await scrollerTop();
