@@ -117,12 +117,16 @@ be run by hand.
   widths, which it must since the name column was dragged 100 px wider just before, and then that a
   double-click on every border changes none of them — the sort
   button free of browser button styles, windowing, the sort cycle, type-ahead through a space, Space
-  after a move, the theme through the colour variables, and a border held past the scroller's right
-  edge scrolling the grid while the column keeps pace. It **exits 1 when no browser is found**,
+  after a move, a click ending the type-ahead query, the theme through the colour variables, and a
+  border held past the scroller's right edge scrolling the grid while the column keeps pace. It **exits 1 when no browser is found**,
   since a run that inspected nothing is not a pass. Proven failing: removing the button reset,
   dropping a placed row's `right: 0`, and refusing the space mid-query each fail it. The type-ahead
   check first asserts that "new" lands on `news.txt` — without that, `new folder` came first and the
-  check passed with the space refused. The edge-scroll checks run on a 700 px page, so the table
+  check passed with the space refused. The click check first asserts that "c" lands on
+  `Cherry.png`, then clicks `new folder` and types "i": it lands on an `invoice-` row, where a query
+  left running narrows "ci" to `citrus.csv` — proven failing by removing the example's `end()` on a
+  click (#55). It also asserts that "c" to "i" took under the example's 700 ms window, since a run
+  slow enough to let the query expire would pass with `end()` removed. The edge-scroll checks run on a 700 px page, so the table
   overflows before the name column reaches its maximum; they first assert that the grid scrolled, and
   read width and scroll after the release, once the loop has stopped. Proven failing: removing the
   scroll term, removing the release's last read, and unwiring the example's loop. A further check

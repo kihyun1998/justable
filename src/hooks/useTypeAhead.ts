@@ -29,10 +29,10 @@ export interface TypeAheadOptions {
 export function useTypeAhead({ windowMs, now = Date.now }: TypeAheadOptions) {
   const state = useRef({ query: '', at: 0 });
 
-  /** Ends any running query. */
-  const end = () => {
+  /** Ends any running query. One function for the hook's life. */
+  const end = useRef(() => {
     state.current = { query: '', at: 0 };
-  };
+  }).current;
 
   /** Answers a type-ahead key and claims the event on a hit; `null` for a key that is not one. */
   const step = (

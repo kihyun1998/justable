@@ -4,6 +4,14 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
+## Unreleased
+
+### Added
+
+- **`useTableKeyboard` returns `end`** beside `step` and `link`: its type-ahead's `end`, for a
+  consumer that moves the row by other means — a click, a list replaced — so the next letter starts
+  a fresh query. `end`, here and on `useTypeAhead`, is now one function for the hook's life (#55).
+
 ## 0.3.1 — 2026-10-06
 
 ### Added

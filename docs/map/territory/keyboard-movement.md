@@ -5,7 +5,8 @@
 Where a key sends the keyboard's row: arrow, page and end keys, and type-ahead by name. The rules are
 pure functions in `tableKeyboard.ts`; `useTypeAhead` holds the type-ahead query and its clock;
 `useTableKeyboard`, built on it, claims the event when it moves the row, and exposes a `link` the grid writes its page size into. The
-consumer calls `step` from wherever it receives keys and decides what a move means.
+consumer calls `step` from wherever it receives keys and decides what a move means, and `end` when it
+moves the row by other means.
 
 ## Governing decisions
 
@@ -36,6 +37,15 @@ consumer calls `step` from wherever it receives keys and decides what a move mea
   maintainer kept it. The calls did not cover what the grid does with a `focus` outside its rows
   (its reveal and `aria-activedescendant`, [grid scaffold](grid-scaffold.md)), nor what a consumer
   does with a stale `focus`. Theirs to reverse.
+- **`useTableKeyboard` returns `end`, and `end` is one function for the hook's life on both
+  hooks** — the maintainer's call, 2026-10-06, #55. Shown: returning `end` as the issue proposed,
+  with or without fixing its identity, and with or without the example calling it on a click. The
+  identity was not in the issue: `end` was a new closure each render, so an effect listing it as a
+  dependency would run after every render — and every type-ahead hit renders, through the
+  consumer's `setFocus` — ending each query after one letter. Chose both, and the example. The call
+  did not cover the engine noticing a replaced list by itself (that would be policy here, against
+  [mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md)),
+  nor `step`'s identity, which is still new each render. Theirs to reverse.
 - **Earlier calls are recorded where they were written, in `## Design model`**: #1 (a movement key
   ends the query; Shift+Space inside a running query extends it) and #5 (a miss ends the query;
   type-ahead is its own hook).
@@ -115,7 +125,13 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   ends the query, a space only extends a running one), and pieces cannot carry that: PenTerm's folder
   sidebar had copied them and missed both rules from #1. `useTableKeyboard` is built on it and calls
   `end()` on its own moves; **a list with movement of its own must call `end()` itself**, because
-  the hook cannot see that list's moves. react-aria also keeps type-ahead as a separate hook reused
+  the hook cannot see that list's moves. The table's consumer is such a list whenever a click, a
+  marquee or a replaced list moves its row, so `useTableKeyboard` returns the same instance's `end`
+  (#55): measured in PenTerm's 탐색기 on 0.3.0 with `windowMs` 700, `d` into the folder `docs`,
+  Enter, then `b` at once searched `db` in `a.md` … `d.md` and matched nothing; after 800 ms it
+  landed on `b.md`. `end` is held in a ref, as `link` is, so its identity outlives renders. The
+  example calls it on a row's click and at a marquee's end, never from `step`'s answer, which would
+  end every query after one letter. react-aria also keeps type-ahead as a separate hook reused
   across collections, and keeps it off its public surface; here it is public because a consumer's
   tree needs it. The pure pieces (`typeAheadStep`, `typeAheadIndex`, `nextFocusIndex`,
   `rowOrNull`) are internal.
@@ -200,6 +216,8 @@ unchecked.
 - [Grid scaffold](grid-scaffold.md) — the consumer feeds the answer back as the grid's `focus`,
   which drives `aria-activedescendant`.
 - [Row windowing](row-windowing.md) — writes `rowsPerPage`, and reveals the row a move lands on.
+- [Verification gates](verification-gates.md) — `check:example` types through a space, moves, and
+  clicks a row between two letters, so `end()` on the example's click is held in Chrome.
 
 ## Known holes / open
 

@@ -37,6 +37,7 @@ function setup({
     step: (e: ReturnType<typeof key>, focus: number | null) =>
       result.current.step(e, { focus, names }),
     link: result.current.link,
+    end: () => result.current.end(),
     advance: (ms: number) => {
       clock += ms;
     },
@@ -117,6 +118,33 @@ describe('type-ahead', () => {
     expect(step(key('ArrowDown'), 2)).toEqual({ by: 'move', to: 3 });
     // "d" alone lands on date; "cd" would match nothing.
     expect(step(key('d'), 3)).toEqual({ by: 'typeAhead', to: 4 });
+  });
+
+  it('⚠️ end() ends the query, so the next letter after a list is replaced starts a new one', () => {
+    let clock = 1_000;
+    const { result } = renderHook(() => useTableKeyboard({ windowMs: WINDOW, now: () => clock }));
+    const folder = ['bin', 'docs', 'src'];
+    expect(result.current.step(key('d'), { focus: null, names: folder })).toEqual({
+      by: 'typeAhead',
+      to: 1,
+    });
+    result.current.end();
+    clock += 1;
+    // "b" alone lands on b.md; "db" would match nothing.
+    const docs = ['a.md', 'b.md', 'c.md', 'd.md'];
+    expect(result.current.step(key('b'), { focus: null, names: docs })).toEqual({
+      by: 'typeAhead',
+      to: 1,
+    });
+  });
+
+  it('end() stops a running query, so a space after it is the consumer’s', () => {
+    const { step, end } = setup();
+    expect(step(key('c'), null)).toEqual({ by: 'typeAhead', to: 2 });
+    end();
+    const e = key(' ');
+    expect(step(e, 2)).toBeNull();
+    expect(e.preventDefault).not.toHaveBeenCalled();
   });
 
   it('a miss clears the query, so the next letter starts over', () => {
@@ -272,5 +300,15 @@ describe('the link', () => {
     const first = result.current.link;
     rerender();
     expect(result.current.link).toBe(first);
+  });
+});
+
+describe('end', () => {
+  it('is one function for the hook’s life, so an effect can depend on it', () => {
+    const { result, rerender } = renderHook(() => useTableKeyboard({ windowMs: WINDOW }));
+    const first = result.current.end;
+    expect(first).toBeTypeOf('function');
+    rerender();
+    expect(result.current.end).toBe(first);
   });
 });
