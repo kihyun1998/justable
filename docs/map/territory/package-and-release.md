@@ -68,7 +68,7 @@ today.
 - **The published tarball** is 36 files: `dist/`, `README.md`, `LICENSE` and `package.json`
   (`npm pack --dry-run`, 2026-09-29); 40 files at 0.2.0, the same day; 46 at 0.3.0 (2026-10-01), the `.js`
   and `.d.ts` of `useDrag`, `useHeaderLane` and `useRowWindow`; 46 at 0.3.1 (2026-10-06, counted with `pnpm pack`, no
-  file added or removed). CI builds `dist/` fresh, so no file a local build left behind
+  file added or removed); 46 at 0.3.2 (2026-10-06, `npm pack --dry-run`). CI builds `dist/` fresh, so no file a local build left behind
   can ship.
 
 ## Code
