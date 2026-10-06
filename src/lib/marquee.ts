@@ -2,7 +2,7 @@
  * Which data rows a marquee touches, and where its points and rectangle lie on the rows' canvas. Only
  * its vertical span decides the rows; the rules and their reasons: `docs/map/territory/marquee.md`.
  */
-import { screenScale } from './rowWindow.js';
+import { canvasOffset } from './rowWindow.js';
 
 /** The rows a marquee touches, by data-row index: `anchor` nearest the press, `head` nearest the pointer. */
 export interface MarqueeRange {
@@ -35,30 +35,6 @@ export function marqueeRange({ from, to, rowHeight, total }: MarqueeRangeInput):
   const low = Math.max(0, first);
   const high = Math.min(total - 1, last);
   return from <= to ? { anchor: low, head: high } : { anchor: high, head: low };
-}
-
-export interface MarqueeScaleInput {
-  /** The scroller's height on screen (`getBoundingClientRect`) and in layout (`offsetHeight`). */
-  scrollerScreen: number;
-  scrollerLayout: number;
-  /** The rows' canvas's height on screen and in layout. */
-  canvasScreen: number;
-  canvasLayout: number;
-}
-
-/**
- * Screen px per layout px: `screenScale` over the longer of the scroller and the canvas. The reason:
- * `docs/map/territory/marquee.md`.
- */
-export function marqueeScale({
-  scrollerScreen,
-  scrollerLayout,
-  canvasScreen,
-  canvasLayout,
-}: MarqueeScaleInput): number {
-  return canvasLayout > scrollerLayout
-    ? screenScale(canvasScreen, canvasLayout)
-    : screenScale(scrollerScreen, scrollerLayout);
 }
 
 /** The scroller's inner box on screen — its scrollbars and border excluded — in client px. */
@@ -158,8 +134,18 @@ export function marqueeFrame({
   scrollHeight,
 }: MarqueeFrameInput): MarqueeFrame {
   /** The canvas's offset in the scroller's content, in layout px; leading rows push it down. */
-  const offsetLeft = (canvasLeft - view.left) / view.scale + scrollLeft;
-  const offsetTop = (canvasTop - view.top) / view.scale + scrollTop;
+  const offsetLeft = canvasOffset({
+    canvasEdge: canvasLeft,
+    viewEdge: view.left,
+    scale: view.scale,
+    scroll: scrollLeft,
+  });
+  const offsetTop = canvasOffset({
+    canvasEdge: canvasTop,
+    viewEdge: view.top,
+    scale: view.scale,
+    scroll: scrollTop,
+  });
   return {
     view,
     canvasLeft,

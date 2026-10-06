@@ -5,8 +5,7 @@
 import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import type { CSSProperties, RefObject } from 'react';
 
-import { marqueeScale } from '../lib/marquee.js';
-import { scrollToReveal, visibleRange } from '../lib/rowWindow.js';
+import { canvasOffset, longScale, scrollToReveal, visibleRange } from '../lib/rowWindow.js';
 import type { RowWindow } from '../types.js';
 import type { TableKeyboardLink } from './useTableKeyboard.js';
 
@@ -87,7 +86,7 @@ export function useRowWindow({
       // The row's height is read in layout px, not on screen:
       // `docs/map/invariant/lengths-are-layout-px.md`.
       rowHeight: rowLayoutHeight(row) || rowHeightRemRef.current * rootPx,
-      canvasTop: canvasOffset(el, view, canvasRef.current),
+      canvasTop: canvasTopOf(el, view, canvasRef.current),
     };
     const prev = boxRef.current;
     // A sub-px move of the offset is no change, deliberately: `docs/map/territory/row-windowing.md`.
@@ -172,19 +171,24 @@ function rowLayoutHeight(row: Element | null | undefined): number {
 }
 
 /**
- * The canvas's offset in the scroller's content, in layout px: its client top less the scroller's
- * inner top, plus the scroll. `0` with no canvas, or while the scroller has no height on screen.
+ * The canvas's top offset in the scroller's content, in layout px, read from the elements. `0` with
+ * no canvas, or while the scroller has no height on screen.
  */
-function canvasOffset(scroller: HTMLDivElement, view: DOMRect, canvas: HTMLDivElement | null): number {
+function canvasTopOf(scroller: HTMLDivElement, view: DOMRect, canvas: HTMLDivElement | null): number {
   // A zero screen box is no measurement: `docs/map/invariant/zero-is-no-measurement.md`.
   if (!canvas || !(view.height > 0)) return 0;
   const at = canvas.getBoundingClientRect();
   // Scaled over the longer element, as the marquee is: `docs/map/territory/row-windowing.md`.
-  const scale = marqueeScale({
+  const scale = longScale({
     scrollerScreen: view.height,
     scrollerLayout: scroller.offsetHeight,
     canvasScreen: at.height,
     canvasLayout: canvas.offsetHeight,
   });
-  return (at.top - view.top) / scale - scroller.clientTop + scroller.scrollTop;
+  return canvasOffset({
+    canvasEdge: at.top,
+    viewEdge: view.top + scroller.clientTop * scale,
+    scale,
+    scroll: scroller.scrollTop,
+  });
 }

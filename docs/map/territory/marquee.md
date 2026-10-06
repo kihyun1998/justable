@@ -138,9 +138,9 @@ places the press, the pointer and the rectangle on the canvas. The engine draws 
   last bit. A canvas flush with the content's left edge gives a bound of `-0`, which renders as
   `0px`.
 - **Inside a scaled copy, the view is screen px and everything on the canvas is layout px** (#28).
-  The scale is `marqueeScale` — since #46 also the [row window](row-windowing.md)'s, for the
-  canvas's offset — `screenScale`, the grid's own measurement
-  ([row windowing](row-windowing.md)), over the longer of the scroller and the canvas — read once at
+  The scale is `longScale` — in the [row window](row-windowing.md)'s module since #48, and the row
+  window's too for the canvas's offset since #46 — `screenScale`, the grid's own measurement, over
+  the longer of the scroller and the canvas — read once at
   the press with the view box, so no consumer has to know it is scaled. `marqueeView` multiplies the scroller's layout lengths into
   screen px — its inner width and height, and its border widths, which were a mixed site the issue
   had not listed — so the scrollbar test and the clamp compare the pointer with the real inner edge
@@ -169,7 +169,7 @@ places the press, the pointer and the rectangle on the canvas. The engine draws 
 
 ## Code
 
-- `src/lib/marquee.ts` — `marqueeRange`, `MarqueeRange`, `MarqueeRangeInput`, `marqueeScale`, `MarqueeScaleInput`, `marqueeView`, `MarqueeView`, `MarqueeViewInput`, `pressOnScrollbar`, `marqueeFrame`, `MarqueeFrame`, `MarqueeFrameInput`, `MarqueeBounds`, `toCanvas`, `CanvasPoint`, `marqueeRectangle`, `MarqueeBox`
+- `src/lib/marquee.ts` — `marqueeRange`, `MarqueeRange`, `MarqueeRangeInput`, `marqueeView`, `MarqueeView`, `MarqueeViewInput`, `pressOnScrollbar`, `marqueeFrame`, `MarqueeFrame`, `MarqueeFrameInput`, `MarqueeBounds`, `toCanvas`, `CanvasPoint`, `marqueeRectangle`, `MarqueeBox`
 - `src/hooks/useMarquee.ts` — `useMarquee`, `MarqueeOptions`, `MarqueeReport`, `MarqueePhase`, `MarqueeParts`, `MarqueeRows`, `swallowNextClick`
 - `src/components/TableGrid.tsx` — `TableGrid`, `marquee`, `marqueeRef`, `gridRef`, `data-table-marquee`
 - `example/FileTable.tsx` — `onMarquee`, `before`
@@ -196,7 +196,10 @@ this imitates; neither was read or measured.
 
 - [Grid scaffold](grid-scaffold.md) — owns the scroller the press lands on, the floor click the swallow
   protects, the focus the press moves, and the disabled class.
-- [Row windowing](row-windowing.md) — owns `box`, the canvas and `screenScale`; a change to how rows
+- [Row windowing](row-windowing.md) — owns `box`, the canvas, `screenScale`, `longScale` and
+  `canvasOffset`, which `marqueeFrame` takes its offsets from (#48), and repeats `marqueeView`'s
+  border fold (`box + border × scale`) in its own `canvasTopOf`, so a change to one is a change to
+  both; a change to how rows
   are placed or the row height is read moves the hit-test's band, and a change to how the scale is
   measured moves its origin (since #47 the row height takes no scale).
 - [Column resize](column-resize.md) — the sibling drag: its predicate seam and #8, which this extends

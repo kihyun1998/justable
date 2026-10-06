@@ -26,7 +26,24 @@ the measurements, and `TableGrid` draws what it answers.
   general screen-to-layout ratio, and that #28 would be its second caller. Where it goes when #28
   arrives was not decided. **The premise is gone**: since #47 `measure` does not call it at all, and
   `marqueeScale` — itself built on it — is its only caller. Where it lives, and what `marqueeScale`
-  is called, were deferred to #48 by the maintainer (2026-10-01, #47's triage).
+  is called, were deferred to #48 by the maintainer (2026-10-01, #47's triage). #48 kept it here
+  and moved `marqueeScale` in beside it as `longScale`, with `canvasOffset` (the maintainer's calls
+  in #48's triage), so the module now holds the scale and the offset the row window and the marquee
+  both measure with.
+- **The canvas's offset is computed by one function, in the marquee's order of operations** — the maintainer's
+  call, 2026-10-06 (#48), over the row window's order, which would have changed `marqueeFrame`'s
+  input. `canvasOffset` takes the canvas's edge less the view's inner edge — the border already in
+  it, at the scale — divides by the scale and adds the scroll. Shown: the two former forms are
+  equal in algebra and differ in their last bits only where the scroller has a border and the scale
+  is inexact — in 8–24 % of 100,000 random inputs under `scale(0.83)` and `scale(0.37)` with a 1 or
+  2 px border, in none with no border or at `scale(1)` or `scale(0.5)` — and then by about
+  10⁻¹² px. So the marquee's results are unchanged to the bit, and the row window's are unchanged
+  to the bit wherever the scroller has no border or the scale is exact, and otherwise within
+  10⁻⁹ px: the triage's "unchanged, to the bit" was relaxed to that. Theirs to reverse. What the
+  call did not cover: the view edge `canvasOffset` is handed is folded in two places, by
+  `marqueeView` for the marquee and by `canvasTopOf` for the row window — the same sum,
+  `box + border × scale`, which #48 created, since the hook used to subtract the border in layout
+  px after dividing. Sharing it means changing `marqueeView`, which #48 left alone.
 - **The row height is read in layout px, from the row's computed height** — the maintainer's call in
   triage, 2026-10-01 (#47), over a tolerance on the box comparison and over doing both. Shown: a
   static page in Chrome, absolutely placed 28 px rows in a scroller under a transform, sampled at 66
@@ -161,7 +178,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   unscaled scroller is not 1: the example's is 654.203125 over 654 in Chrome. Snapping keeps an
   unscaled grid's readings identical to the lengths themselves. Under a scale the ratio is exact only
   to half a px of the scroller's height, which is why a distance longer than the element measured
-  takes the longer one (`marqueeScale`, below). Before #47 this bounded the row too: the unsnapped
+  takes the longer one (`longScale`, below). Before #47 this bounded the row too: the unsnapped
   ratio placed rows 27.991 apart instead of 28, and under `scale(0.5)` the example placed them
   27.9913 apart on a canvas of 139,957 px against 140,000 unscaled. Under a transform both are now
   exact: step 28 and canvas 140,000 under `scale(0.5)`, step 28 at six depths under `scale(0.37)`
@@ -194,9 +211,10 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   edge hid up to eight rows; under twelve, 33 of 129 scroll offsets left the top visible row undrawn.
   The [marquee](marquee.md) took the canvas as its origin from the start.
 - **The offset is measured with the box, over the longer element, and a sub-px move is no change.**
-  `measure` takes the canvas's client top less the scroller's, divided by the scale, less the
-  scroller's top border, plus `scrollTop`. That screen distance grows with the scroll, so it is
-  divided by `marqueeScale` — the scale over the longer of the scroller and the canvas — not by the
+  `measure` takes the canvas's client top less the scroller's inner top on screen — its box top
+  plus its top border at the scale — divides by the scale and adds `scrollTop`: `canvasOffset`,
+  which the marquee's frame uses too (#48). That screen distance grows with the scroll, so it is
+  divided by `longScale` — the scale over the longer of the scroller and the canvas — not by the
   scroller's own ratio: under `scale(0.5)`, a reveal deep in the
   example's 5,000 rows landed 43 px off with the scroller's ratio and 0 with the longer one (Chrome,
   2026-10-01). The reading still moves with the scroll by a fraction of a px — under `scale(0.83)`,
@@ -226,9 +244,9 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 ## Code
 
-- `src/lib/rowWindow.ts` — `visibleRange`, `scrollToReveal`, `screenScale`, `BLOCK_ROWS`, `UNMEASURED_ROWS`, `VisibleRangeInput`, `RevealInput`
+- `src/lib/rowWindow.ts` — `visibleRange`, `scrollToReveal`, `screenScale`, `longScale`, `canvasOffset`, `BLOCK_ROWS`, `UNMEASURED_ROWS`, `VisibleRangeInput`, `RevealInput`, `LongScaleInput`, `CanvasOffsetInput`
 - `src/types.ts` — `RowWindow`
-- `src/hooks/useRowWindow.ts` — `useRowWindow`, `measure`, `rowLayoutHeight`, `lengthPx`, `canvasOffset`, `RowBox` (`canvasTop` included), `RowWindowInput`, `RowWindowState`, `rowHeightRemRef`, `notARowRef`, `scrollTopRef`, `boxRef`, `rangeRef`, `redraw`
+- `src/hooks/useRowWindow.ts` — `useRowWindow`, `measure`, `rowLayoutHeight`, `lengthPx`, `canvasTopOf`, `RowBox` (`canvasTop` included), `RowWindowInput`, `RowWindowState`, `rowHeightRemRef`, `notARowRef`, `scrollTopRef`, `boxRef`, `rangeRef`, `redraw`
 - `src/components/TableGrid.tsx` — `TableGrid`, `canvasRef`, `rowKey`
 
 ## Reference behaviour
@@ -258,8 +276,9 @@ followed), with the `left: 0` trap found against it.
   read order: `useRowWindow` is called first, so the box is read before the spacer is written.
 - [Keyboard movement](keyboard-movement.md) — its page size comes from this box, and its focus
   changes are revealed by this effect.
-- [Marquee](marquee.md) — `measure` calls its `marqueeScale` for the canvas's offset; a change to
-  that function moves the offset, and with it the window and every reveal.
+- [Marquee](marquee.md) — depends on this module since #48: it takes its scale from `longScale` and
+  its frame's offsets from `canvasOffset`, which `measure` uses for the canvas's top. A change to
+  either moves the marquee's hit-test and the row window's offset, window and reveals together.
 - [Table row](table-row.md) — the placement arrives in the row's `style`, which it must merge under
   the grid template rather than replace.
 

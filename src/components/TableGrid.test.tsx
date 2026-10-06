@@ -325,36 +325,48 @@ describe('the row height the grid measures', () => {
 describe('revealing the focused row below leading rows', () => {
   /**
    * A 280px viewport whose canvas starts `canvasTop` px down its content: jsdom lays nothing out, so
-   * the scroller's and the canvas's client boxes are stubbed, unscaled.
+   * the scroller's and the canvas's client boxes are stubbed, below `border` and at `scale`.
    */
   let canvasTop = 28;
   /** Added to every second reading of the canvas's top, as a scaled grid's reading wobbles. */
   let jitter = 0;
   let reads = 0;
+  /** The scroller's top border, in layout px, and the screen px per layout px the grid is drawn at. */
+  let border = 0;
+  let scale = 1;
   function laidOut(run: () => void) {
     const proto = HTMLElement.prototype;
     const rect = proto.getBoundingClientRect;
-    const client = Object.getOwnPropertyDescriptor(proto, 'clientHeight');
+    const lengths = ['clientHeight', 'offsetHeight', 'clientTop'] as const;
+    const originals = lengths.map((name) => Object.getOwnPropertyDescriptor(proto, name));
     const isScroller = (el: HTMLElement) => el.hasAttribute('data-scroller');
     proto.getBoundingClientRect = function (this: HTMLElement) {
       const isCanvas = this.getAttribute('role') === 'presentation' && isScroller(this.parentElement!);
-      // The canvas's client top is its offset less the scroll, as a browser reports it.
-      const top = isCanvas ? canvasTop + (reads++ % 2) * jitter - this.parentElement!.scrollTop : 0;
-      const height = isScroller(this) ? 280 : 0;
+      // The canvas's client top is its offset less the scroll, below the border, all on screen.
+      const top = isCanvas
+        ? (border + canvasTop + (reads++ % 2) * jitter - this.parentElement!.scrollTop) * scale
+        : 0;
+      const height = isScroller(this) ? 280 * scale : 0;
       return { width: 0, height, x: 0, y: top, top, left: 0, right: 0, bottom: top + height, toJSON: () => ({}) };
     };
-    Object.defineProperty(proto, 'clientHeight', {
-      configurable: true,
-      get(this: HTMLElement) {
-        return isScroller(this) ? 280 : 0;
-      },
-    });
+    const layout = { clientHeight: () => 280, offsetHeight: () => 280, clientTop: () => border };
+    for (const name of lengths) {
+      Object.defineProperty(proto, name, {
+        configurable: true,
+        get(this: HTMLElement) {
+          return isScroller(this) ? layout[name]() : 0;
+        },
+      });
+    }
     try {
       run();
     } finally {
       proto.getBoundingClientRect = rect;
-      if (client) Object.defineProperty(proto, 'clientHeight', client);
-      else delete (proto as unknown as Record<string, unknown>).clientHeight;
+      lengths.forEach((name, i) => {
+        const original = originals[i];
+        if (original) Object.defineProperty(proto, name, original);
+        else delete (proto as unknown as Record<string, unknown>)[name];
+      });
     }
   }
 
@@ -384,12 +396,32 @@ describe('revealing the focused row below leading rows', () => {
     canvasTop = 28;
     jitter = 0;
     reads = 0;
+    border = 0;
+    scale = 1;
   });
 
   it('brings the last row’s bottom to the viewport’s bottom, past the leading rows', () => {
     laidOut(() => {
       const { container } = render(grid(39));
       // No row has a measured box in jsdom, so a row is the `rowHeightRem` fallback, 28px.
+      expect(scrollerOf(container).scrollTop).toBe(28 + 40 * 28 - 280);
+    });
+  });
+
+  it('measures the offset below a scroller border', () => {
+    border = 2;
+    laidOut(() => {
+      const { container } = render(grid(39));
+      expect(scrollerOf(container).scrollTop).toBe(28 + 40 * 28 - 280);
+    });
+  });
+
+  /** ⚠️ The border is folded into the view edge on screen: `docs/map/territory/row-windowing.md`. */
+  it('⚠️ measures it below a border inside a scaled copy, the border taken at the scale', () => {
+    border = 2;
+    scale = 0.5;
+    laidOut(() => {
+      const { container } = render(grid(39));
       expect(scrollerOf(container).scrollTop).toBe(28 + 40 * 28 - 280);
     });
   });

@@ -10,8 +10,9 @@ is converted before it meets a layout length. Both are read from the browser's l
 been applied.
 
 Checkable: every `getBoundingClientRect` and every pointer coordinate under `src/` either meets
-only other screen lengths (a drag's threshold is one pointer distance against another; the marquee's
-view edge, a layout length multiplied by the scale into screen px) or passes through a division by a
+only other screen lengths (a drag's threshold is one pointer distance against another; the view
+edge the marquee and the row window take the canvas's offset from, a layout border multiplied by the
+scale into screen px) or passes through a division by a
 scale before it meets `scrollTop`, `scrollLeft`, `clientWidth`, `clientHeight`, `offsetHeight`, a
 width or a `top`. The sites below say which, and where a site does
 neither.
@@ -37,8 +38,10 @@ grid works its scale out itself (#19), and so does the marquee (#28). Unifying t
   the scroller's own screen height over its `offsetHeight` — a conversion that was correct in units
   and still unstable, because the row's screen height moves with its sub-px position and the quotient
   never settled. **Converted (#46):** the canvas's offset — the canvas's client top less the
-  scroller's — is divided by `marqueeScale`, the longer element's, before `scrollTop` is added, since
-  that distance grows with the scroll as the marquee's does. It is now this territory's only screen
+  scroller's inner top on screen, its top border multiplied into screen px by the scale (#48) — is
+  divided by `longScale`, the longer element's, before `scrollTop` is added, since
+  that distance grows with the scroll as the marquee's does; one function does it for both,
+  `canvasOffset` (#48). It is now this territory's only screen
   reading.
 - [Column resize](../territory/column-resize.md) — **converted by the consumer's `scale` (#8).**
   Only the pointer is divided; `scrollLeft` is already layout px.

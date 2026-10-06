@@ -29,7 +29,7 @@ guard is written differently at each site.
   root font size; `rowLayoutHeight` answers 0 for a computed height that is not a positive length,
   which is what sends `measure` to that fallback (#47); `screenScale` answers 1 — no scale — for a
   zero, negative or non-finite screen or
-  layout height; `canvasOffset` answers 0 while the scroller has no height on screen (#46).
+  layout height; the hook's `canvasTopOf` answers 0 while the scroller has no height on screen (#46).
 - [Header lane](../territory/header-lane.md) — a zero gutter pads nothing, the engine probe
   counts a shortfall only above half a px, and `useHeaderLane`'s `measure` leaves the spacer alone
   for a zero `clientHeight` — its own guard since #25, duplicating the row window's.
