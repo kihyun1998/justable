@@ -54,7 +54,7 @@ today.
   passes, `v0.1.1`, `0.1.0` and no tag fail). It authenticates with the `NPM_TOKEN` repository
   secret, the maintainer's choice over npm trusted publishing, and checks it with `npm whoami` before
   publishing. `--provenance` attaches a build attestation, which needs the job's `id-token: write`.
-  It has published every release, each from its `v*` tag's run — 0.1.0 through 0.3.1, six by
+  It has published every release, each from its `v*` tag's run — 0.1.0 through 0.3.2, seven by
   2026-10-06 (`gh run list`; the registry's `time`); 0.1.0 took a second run after the first was
   refused the name, and 0.3.1 a second attempt after the token was (both below). Before the first,
   a dry run on throwaway tags (2026-09-29, deleted after) saw a tag not naming the version fail at
