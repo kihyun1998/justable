@@ -26,6 +26,24 @@ if (!executablePath) {
   process.exit(1);
 }
 
+/**
+ * The drawn data rows on `page`, read once: the step between the first two, the first one's
+ * `offsetHeight` and computed `height`, the first two's overlap on screen, and how many are drawn.
+ */
+const drawnRows = (page) =>
+  page.evaluate(() => {
+    const rows = [
+      ...document.querySelectorAll('[role="grid"] [role="presentation"] > [role="row"][aria-rowindex]'),
+    ].sort((a, b) => Number(a.getAttribute('aria-rowindex')) - Number(b.getAttribute('aria-rowindex')));
+    return {
+      step: Number.parseFloat(rows[1].style.top) - Number.parseFloat(rows[0].style.top),
+      offsetHeight: rows[0].offsetHeight,
+      computed: getComputedStyle(rows[0]).height,
+      overlap: rows[0].getBoundingClientRect().bottom - rows[1].getBoundingClientRect().top,
+      drawn: rows.length,
+    };
+  });
+
 const results = [];
 const check = (name, ok, detail) => {
   results.push({ name, ok });
@@ -518,22 +536,16 @@ try {
     await scaled.focus('[role="grid"]');
     await scaled.keyboard.press('Home');
     await scaled.keyboard.press('PageDown');
-    return scaled.evaluate(() => {
+    const { step, offsetHeight, overlap, drawn } = await drawnRows(scaled);
+    const { canvas, paged } = await scaled.evaluate(() => {
       const grid = document.querySelector('[role="grid"]');
-      const canvas = grid.querySelector('[role="presentation"]');
-      const rows = [...canvas.querySelectorAll(':scope > [role="row"][aria-rowindex]')].sort(
-        (a, b) => Number(a.getAttribute('aria-rowindex')) - Number(b.getAttribute('aria-rowindex')),
-      );
       const id = grid.getAttribute('aria-activedescendant');
       return {
-        step: Number.parseFloat(rows[1].style.top) - Number.parseFloat(rows[0].style.top),
-        offsetHeight: rows[0].offsetHeight,
-        overlap: rows[0].getBoundingClientRect().bottom - rows[1].getBoundingClientRect().top,
-        drawn: rows.length,
-        canvas: Number.parseFloat(canvas.style.height),
+        canvas: Number.parseFloat(grid.querySelector('[role="presentation"]').style.height),
         paged: Number(document.getElementById(id)?.getAttribute('aria-rowindex')),
       };
     });
+    return { step, offsetHeight, overlap, drawn, canvas, paged };
   };
   const plain = await geometry();
   await scaled.evaluate(() => {
@@ -654,18 +666,8 @@ try {
   try {
     for (const fraction of [0, 0.25, 0.5, 0.75, 0.97]) {
       await scrollScaledTo(fraction);
-      inexact.push(
-        await scaled.evaluate(() => {
-          const grid = document.querySelector('[role="grid"]');
-          const rows = [...grid.querySelectorAll('[role="presentation"] > [role="row"][aria-rowindex]')].sort(
-            (a, b) => Number(a.getAttribute('aria-rowindex')) - Number(b.getAttribute('aria-rowindex')),
-          );
-          return {
-            step: Number.parseFloat(rows[1].style.top) - Number.parseFloat(rows[0].style.top),
-            offsetHeight: rows[0].offsetHeight,
-          };
-        }),
-      );
+      const { step, offsetHeight } = await drawnRows(scaled);
+      inexact.push({ step, offsetHeight });
     }
   } catch (e) {
     sweepThrew = String(e);
@@ -740,6 +742,50 @@ try {
     leadScaled,
   );
   await lead.close();
+
+  // The row height under each box model, on rows restyled in place: `docs/map/territory/verification-gates.md`.
+  const boxed = await browser.newPage();
+  boxed.on('pageerror', (e) => errors.push(String(e)));
+  await boxed.goto(url, { waitUntil: 'networkidle0' });
+  await boxed.waitForSelector('[role="grid"] [data-table-header]');
+  /**
+   * Gives every `.row` the declarations `css`, has the grid render so it measures, and answers the
+   * row step with the row's `offsetHeight` and computed `height`.
+   */
+  const rowUnder = async (css) => {
+    await boxed.evaluate((css) => {
+      let sheet = document.getElementById('check-row-box');
+      if (!sheet) {
+        sheet = document.createElement('style');
+        sheet.id = 'check-row-box';
+        document.head.append(sheet);
+      }
+      sheet.textContent = `[role="grid"] .row { ${css} }`;
+    }, css);
+    await boxed.focus('[role="grid"]');
+    await boxed.keyboard.press('Home');
+    await boxed.keyboard.press('PageDown');
+    await new Promise((r) => setTimeout(r, 150));
+    const { step, offsetHeight, computed } = await drawnRows(boxed);
+    return { step, offsetHeight, computed };
+  };
+  const borderBox = await rowUnder(
+    'box-sizing: border-box; height: 32.5px; padding: 6px 0 2px; border-bottom: 1px solid currentColor',
+  );
+  check(
+    'a border-box row with padding and a border is placed at its height, not its height plus them',
+    borderBox.step === 32.5 && Math.abs(borderBox.offsetHeight - 32.5) < 1,
+    borderBox,
+  );
+  const contentBox = await rowUnder(
+    'box-sizing: content-box; height: 20.5px; padding: 6px 0 2px; border-top: 2px solid currentColor; border-bottom: 1px solid currentColor',
+  );
+  check(
+    'a content-box row is placed at its height plus its padding and borders',
+    contentBox.step === 31.5 && Math.abs(contentBox.offsetHeight - 31.5) < 1,
+    contentBox,
+  );
+  await boxed.close();
 
   check('no page errors', errors.length === 0, errors);
 } finally {
