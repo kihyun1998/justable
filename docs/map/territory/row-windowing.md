@@ -42,7 +42,9 @@ the measurements, and `TableGrid` draws what it answers.
   4 px of vertical padding, both compute `height` as **`28px`** — Chrome resolves `height` to the
   border box where `box-sizing` is `border-box`, not to the content box. So an unconditional sum
   reads such a row 1 px and 8 px too tall. A `content-box` row of `height: 26px` with 1 px borders
-  computes `26px` and needs the sum.
+  computes `26px` and needs the sum. Held in a browser by `check:example` since #50
+  ([verification gates](verification-gates.md)). The jsdom test holds the rule but not the browser
+  fact it rests on, since jsdom hands back the `height` it was given.
 - **The row window measures on its own** — the maintainer's call, 2026-09-30 (#25's triage), over
   one effect calling the row window and the [header lane](header-lane.md) in a fixed order: each hook
   attaches its own layout effect and its own `ResizeObserver`. What that costs, and the order the two

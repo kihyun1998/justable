@@ -230,6 +230,29 @@ be run by hand.
   PageUp (−43); row 0 revealed by nearest edge fails Home (`scrollTop` 28, the `..` row out). None
   of the three covers a leading row appearing under a scrolled-away list, nor row 0 in a view too
   short for it; the jsdom tests in `TableGrid.test.tsx` and `rowWindow.test.ts` hold those.
+- **Two checks hold the row height's box model** ([row windowing](row-windowing.md), #50), on a
+  page of their own, unscaled — a loop the inexact-scale check provokes cannot fail them too, and
+  the rule takes no scale. A stylesheet injected into that page gives every `.row` a box model, then
+  Home → PageDown makes the commit that measures: a style change alone is picked up only at the next
+  render ([row windowing](row-windowing.md)'s known hole). A `border-box` row of `height: 32.5px`
+  with 6 px of top padding, 2 px of bottom padding and a 1 px bottom border must be placed 32.5
+  apart; a `content-box` row of `height: 20.5px` with the same padding and borders of 2 px on top
+  and 1 px below must be placed 31.5 apart. Each also asserts the row's `offsetHeight` is within a
+  px of that height, so a sheet that never applied cannot pass at the example's own 28. The numbers
+  are chosen so that every wrong rule lands somewhere else: not 28, which is also the `rowHeightRem`
+  fallback (1.75 × 16); fractional, which a whole-px `offsetHeight` reading rounds (33 and 32);
+  top and bottom unequal, which a rule summing one side twice gets wrong; and the second unlike the
+  first, so a second reading that never landed leaves the first's 32.5 and fails. Proven failing,
+  each mutation applied and confirmed before the run — of `rowLayoutHeight`: the sum made
+  unconditional fails the first (step 41.5); the sum never made fails the second (20.5); the
+  fallback forced fails both (28); the row's `offsetHeight` read for its height fails both (33,
+  43); the top padding summed twice fails the second (35.5) — and of the check: no render forced
+  for the second fails it (32.5, the first's), and the sheet's selector matching nothing fails both
+  (`offsetHeight` 28). A first version of the check, with whole and symmetric heights of 32, passed
+  under the `offsetHeight` reading, a side summed twice, and a second reading that never landed.
+  The page adds 1.2–2.6 s to the gate (27.14 → 29.71 s and 27.46 → 28.64 s, interleaved,
+  2026-10-06, measured on that first version, which makes the same steps; the machine ran slower
+  than for #47's timing, so only the pairs compare).
 - **The [marquee](marquee.md)'s browser checks run on a page of their own**, so nothing above has
   scrolled or selected: a drag over four rows selects those four and leaves the grid focused, the
   rectangle shows in its bound colours and hides at the release, a drag held past the bottom edge
