@@ -126,7 +126,9 @@ be run by hand.
   `Cherry.png`, then clicks `new folder` and types "i": it lands on an `invoice-` row, where a query
   left running narrows "ci" to `citrus.csv` — proven failing by removing the example's `end()` on a
   click (#55). It also asserts that "c" to "i" took under the example's 700 ms window, since a run
-  slow enough to let the query expire would pass with `end()` removed. The edge-scroll checks run on a 700 px page, so the table
+  slow enough to let the query expire would pass with `end()` removed. The first marquee check on
+  its fresh page also reads the grid's `:focus-visible` after that page's first press: false, and
+  true with `focusVisible: false` removed from `useMarquee` (#58). The edge-scroll checks run on a 700 px page, so the table
   overflows before the name column reaches its maximum; they first assert that the grid scrolled, and
   read width and scroll after the release, once the loop has stopped. Proven failing: removing the
   scroll term, removing the release's last read, and unwiring the example's loop. A further check

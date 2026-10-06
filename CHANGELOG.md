@@ -4,6 +4,15 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
+## Unreleased
+
+### Fixed
+
+- **A marquee press no longer draws the grid's keyboard focus ring.** The press focuses the grid
+  from script, which Chromium took as possibly from the keyboard; it now passes
+  `focusVisible: false`. Tab still shows the ring. After a marquee press, a key does not bring the
+  ring back, where after a press the marquee refused it does (#58).
+
 ## 0.3.2 — 2026-10-06
 
 ### Added

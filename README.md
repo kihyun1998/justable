@@ -259,7 +259,8 @@ The table draws it and tells you which rows it touches; what that selects is you
   `refusePress(event)` says no — a press on a file's name may be yours to drag, a right-click your
   context menu. A refused press is left entirely alone. An allowed one loses its default — the browser
   selects no text — and focuses the grid, whether or not it goes on to become a marquee, so refuse a
-  press on anything in a row that takes focus itself, such as an input. A press on the scrollbar
+  press on anything in a row that takes focus itself, such as an input. That focus asks the browser
+  not to show the keyboard focus ring (`focusVisible: false`); Tab still shows it. A press on the scrollbar
   never starts one.
 - **The threshold.** Nothing happens until the pointer has moved more than `threshold` px on either
   axis — px on screen, so inside a scaled copy of the table it is not scaled. A press that moves less
