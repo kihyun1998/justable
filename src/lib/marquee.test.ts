@@ -11,7 +11,6 @@ import {
   marqueeFrame,
   marqueeRange,
   marqueeRectangle,
-  marqueeScale,
   marqueeView,
   pressOnScrollbar,
   toCanvas,
@@ -365,27 +364,5 @@ describe('inside a scaled copy', () => {
       const range = marqueeRange({ from, to, rowHeight: 28, total: 40 });
       expect(range, String(scale)).toEqual({ anchor: 3, head: 6 });
     }
-  });
-});
-
-describe('marqueeScale', () => {
-  /** Under `scale(0.5)`, as measured in Chrome: a 654.203 px scroller and a 139957 px canvas. */
-  const SCROLLER = { scrollerScreen: 327.1015625, scrollerLayout: 654 };
-
-  it('⚠️ takes a long canvas’s ratio, whose whole-px rounding is the smaller share of its length', () => {
-    const scale = marqueeScale({ ...SCROLLER, canvasScreen: 69978.265625, canvasLayout: 139957 });
-    expect(Math.abs(scale - 0.5)).toBeLessThan(0.00001);
-  });
-
-  it('⚠️ takes the scroller’s ratio for a canvas shorter than the scroller, or empty', () => {
-    const scrollers = 327.1015625 / 654;
-    expect(marqueeScale({ ...SCROLLER, canvasScreen: 42.3, canvasLayout: 84 })).toBe(scrollers);
-    expect(marqueeScale({ ...SCROLLER, canvasScreen: 0, canvasLayout: 0 })).toBe(scrollers);
-  });
-
-  it('is 1 where nothing is measured, as under jsdom', () => {
-    expect(
-      marqueeScale({ scrollerScreen: 0, scrollerLayout: 0, canvasScreen: 0, canvasLayout: 0 }),
-    ).toBe(1);
   });
 });

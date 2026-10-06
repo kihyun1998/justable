@@ -6,11 +6,11 @@ import {
   marqueeFrame,
   marqueeRange,
   marqueeRectangle,
-  marqueeScale,
   marqueeView,
   pressOnScrollbar,
   toCanvas,
 } from '../lib/marquee.js';
+import { longScale } from '../lib/rowWindow.js';
 import { useDrag } from './useDrag.js';
 
 /** What a report says happened: the drag passed its threshold, moved, was released, or was abandoned. */
@@ -74,7 +74,7 @@ export function useMarquee(
     if (!options || !scroller || !canvas || !rectangle) return;
 
     const box = scroller.getBoundingClientRect();
-    const scale = marqueeScale({
+    const scale = longScale({
       scrollerScreen: box.height,
       scrollerLayout: scroller.offsetHeight,
       canvasScreen: canvas.getBoundingClientRect().height,

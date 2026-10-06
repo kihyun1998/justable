@@ -4,7 +4,14 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { BLOCK_ROWS, screenScale, scrollToReveal, visibleRange } from './rowWindow.js';
+import {
+  BLOCK_ROWS,
+  canvasOffset,
+  longScale,
+  screenScale,
+  scrollToReveal,
+  visibleRange,
+} from './rowWindow.js';
 
 /**
  * The largest step a consumer's drag edge-scroll moves in one frame, in px:
@@ -288,5 +295,50 @@ describe('screenScale', () => {
       expect(screenScale(bad, 654)).toBe(1);
       expect(screenScale(327, bad)).toBe(1);
     }
+  });
+});
+
+describe('longScale', () => {
+  /** Under `scale(0.5)`, as measured in Chrome: a 654.203 px scroller and a 139957 px canvas. */
+  const SCROLLER = { scrollerScreen: 327.1015625, scrollerLayout: 654 };
+
+  it('⚠️ takes a long canvas’s ratio, whose whole-px rounding is the smaller share of its length', () => {
+    const scale = longScale({ ...SCROLLER, canvasScreen: 69978.265625, canvasLayout: 139957 });
+    expect(Math.abs(scale - 0.5)).toBeLessThan(0.00001);
+  });
+
+  it('⚠️ takes the scroller’s ratio for a canvas shorter than the scroller, or empty', () => {
+    const scrollers = 327.1015625 / 654;
+    expect(longScale({ ...SCROLLER, canvasScreen: 42.3, canvasLayout: 84 })).toBe(scrollers);
+    expect(longScale({ ...SCROLLER, canvasScreen: 0, canvasLayout: 0 })).toBe(scrollers);
+  });
+
+  it('is 1 where nothing is measured, as under jsdom', () => {
+    expect(
+      longScale({ scrollerScreen: 0, scrollerLayout: 0, canvasScreen: 0, canvasLayout: 0 }),
+    ).toBe(1);
+  });
+});
+
+describe('canvasOffset', () => {
+  it('is the canvas’s distance below the scroller’s inner edge, unscaled', () => {
+    expect(canvasOffset({ canvasEdge: 128, viewEdge: 100, scale: 1, scroll: 0 })).toBe(28);
+  });
+
+  it('adds the scroll, which has carried the canvas up on screen by as much', () => {
+    expect(canvasOffset({ canvasEdge: 100 + 28 - 400, viewEdge: 100, scale: 1, scroll: 400 })).toBe(28);
+  });
+
+  /** ⚠️ The border is in the view edge, in screen px: `docs/map/territory/row-windowing.md`. */
+  it('⚠️ divides a screen distance by a fractional scale, with the border already in the view edge', () => {
+    // A box at 50 with a 1 px border under scale(0.83): the inner edge is at 50.83 on screen, and
+    // a canvas 28 layout px below it is at 50.83 + 28 × 0.83.
+    const offset = canvasOffset({
+      canvasEdge: 50.83 + 28 * 0.83,
+      viewEdge: 50 + 1 * 0.83,
+      scale: 0.83,
+      scroll: 0,
+    });
+    expect(offset).toBeCloseTo(28, 9);
   });
 });
