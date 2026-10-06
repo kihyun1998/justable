@@ -4,6 +4,7 @@
  * the window is the unmeasured cap unless a case stubs the viewport's height.
  */
 import { cleanup, render } from '@testing-library/react';
+import type { CSSProperties } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -194,34 +195,36 @@ describe('the keyboard link', () => {
   });
 });
 
-describe('inside a scaled copy of the table', () => {
+describe('the row height the grid measures', () => {
   /**
-   * A grid drawn at half size: every screen height (`getBoundingClientRect`) is half its layout
-   * height, while `clientHeight` and `offsetHeight` stay in layout px. A row is 30 layout px, so it
-   * differs from the `rowHeightRem` fallback (28).
+   * jsdom lays nothing out, so the scroller's `clientHeight` and `offsetHeight` are what let the
+   * grid measure at all, while a row's height is whatever style the case gives it. `rowScreen` is
+   * the row's height on screen, read in turn from the list: a case can set one that disagrees with
+   * the row's layout height, or two that alternate at every measurement.
    */
-  function scaled(scrollerScreen: number, rowScreen: number, run: () => void) {
+  function measured(scrollerScreen: number, rowScreen: readonly number[], run: () => void) {
     const proto = HTMLElement.prototype;
     const rect = proto.getBoundingClientRect;
     const client = Object.getOwnPropertyDescriptor(proto, 'clientHeight');
     const offset = Object.getOwnPropertyDescriptor(proto, 'offsetHeight');
     const isScroller = (el: HTMLElement) => el.hasAttribute('data-scroller');
+    let reads = 0;
     proto.getBoundingClientRect = function (this: HTMLElement) {
-      const height = isScroller(this) ? scrollerScreen : this.hasAttribute('data-row') ? rowScreen : 0;
+      const height = isScroller(this)
+        ? scrollerScreen
+        : this.hasAttribute('data-row')
+          ? rowScreen[reads++ % rowScreen.length]!
+          : 0;
       return { width: 0, height, x: 0, y: 0, top: 0, left: 0, right: 0, bottom: height, toJSON: () => ({}) };
     };
-    Object.defineProperty(proto, 'clientHeight', {
-      configurable: true,
-      get(this: HTMLElement) {
-        return isScroller(this) ? 654 : 0;
-      },
-    });
-    Object.defineProperty(proto, 'offsetHeight', {
-      configurable: true,
-      get(this: HTMLElement) {
-        return isScroller(this) ? 654 : 0;
-      },
-    });
+    for (const name of ['clientHeight', 'offsetHeight'] as const) {
+      Object.defineProperty(proto, name, {
+        configurable: true,
+        get(this: HTMLElement) {
+          return isScroller(this) ? 654 : 0;
+        },
+      });
+    }
     try {
       run();
     } finally {
@@ -233,41 +236,89 @@ describe('inside a scaled copy of the table', () => {
     }
   }
 
-  const placed = (i: number, place: RowPlace) => <div role="row" data-row={`r${i}`} style={place.style} />;
-
   const tops = (grid: HTMLElement) =>
     dataRows(grid)
       .slice(0, 3)
       .map((r) => (r as HTMLElement).style.top);
 
-  it('places rows a whole layout row apart and pages by the unscaled page', () => {
+  /** 40 rows styled as the case asks, inside a scroller 654 layout px tall. */
+  function styledGrid(style: CSSProperties, rowScreen: readonly number[], scrollerScreen = 327) {
     const link = { rowsPerPage: 0 };
     let grid!: HTMLElement;
-    scaled(327, 15, () => {
-      grid = renderGrid({ keyboard: link, rows: Array.from({ length: 40 }, (_, i) => `r${i}`), renderRow: placed, scrollerProps: { 'data-scroller': true } });
+    measured(scrollerScreen, rowScreen, () => {
+      grid = renderGrid({
+        keyboard: link,
+        rows: Array.from({ length: 40 }, (_, i) => `r${i}`),
+        renderRow: (i: number, place: RowPlace) => (
+          <div role="row" data-row={`r${i}`} style={{ ...place.style, ...style }} />
+        ),
+        scrollerProps: { 'data-scroller': true },
+      });
     });
+    return { grid, link };
+  }
+
+  it('places rows by the row’s own height, not by its height on screen', () => {
+    // 20 on screen over the scroller's ratio (327/654) would be 40; the row's height is 30.
+    const { grid, link } = styledGrid({ height: 30 }, [20]);
     expect(tops(grid)).toEqual(['0px', '30px', '60px']);
     expect(link.rowsPerPage).toBe(Math.floor(654 / 30));
   });
 
-  it('⚠️ leaves the `rowHeightRem` fallback alone, since it is in layout px already', () => {
-    const link = { rowsPerPage: 0 };
-    let grid!: HTMLElement;
-    scaled(327, 0, () => {
-      grid = renderGrid({ keyboard: link, rows: Array.from({ length: 40 }, (_, i) => `r${i}`), renderRow: placed, scrollerProps: { 'data-scroller': true } });
-    });
+  /** ⚠️ The padding and borders are summed only for `content-box`: `docs/map/territory/row-windowing.md`. */
+  it('⚠️ adds a content-box row’s padding and borders to its height, and a border-box row’s not', () => {
+    const contentBox = styledGrid(
+      {
+        boxSizing: 'content-box',
+        height: 24,
+        paddingTop: 1,
+        paddingBottom: 1,
+        borderTop: '1px solid black',
+        borderBottom: '1px solid black',
+      },
+      [20],
+    );
+    expect(tops(contentBox.grid)).toEqual(['0px', '28px', '56px']);
+    cleanup();
+    const borderBox = styledGrid(
+      {
+        boxSizing: 'border-box',
+        height: 28,
+        paddingTop: 1,
+        paddingBottom: 1,
+        borderBottom: '1px solid black',
+      },
+      [20],
+    );
+    expect(tops(borderBox.grid)).toEqual(['0px', '28px', '56px']);
+  });
+
+  it('⚠️ leaves the `rowHeightRem` fallback alone where the row has no readable height', () => {
+    const { grid, link } = styledGrid({}, [15]);
     expect(tops(grid)).toEqual(['0px', '28px', '56px']);
     expect(link.rowsPerPage).toBe(Math.floor(654 / 28));
   });
 
-  it('⚠️ takes a row as measured on screen while the scroller has no screen height, as before', () => {
-    const link = { rowsPerPage: 0 };
-    let grid!: HTMLElement;
-    scaled(0, 15, () => {
-      grid = renderGrid({ keyboard: link, rows: Array.from({ length: 40 }, (_, i) => `r${i}`), renderRow: placed, scrollerProps: { 'data-scroller': true } });
-    });
-    expect(tops(grid)).toEqual(['0px', '15px', '30px']);
-    expect(link.rowsPerPage).toBe(Math.floor(654 / 15));
+  /** ⚠️ A height that is not positive is no measurement: `docs/map/invariant/zero-is-no-measurement.md`. */
+  it('⚠️ falls back for a row of no height, rather than reading its borders as one', () => {
+    const { grid } = styledGrid(
+      { boxSizing: 'content-box', height: 0, borderTop: '1px solid black', borderBottom: '1px solid black' },
+      [15],
+    );
+    expect(tops(grid)).toEqual(['0px', '28px', '56px']);
+  });
+
+  /** ⚠️ The row height does not wobble, so the comparison is strict: `docs/map/territory/row-windowing.md`. */
+  it('⚠️ settles where the row’s height on screen alternates at every measurement', () => {
+    // Half the two readings `scale(0.83)` gave once divided: `docs/map/territory/row-windowing.md`.
+    const { grid } = styledGrid({ height: 28 }, [14.000013, 13.999994]);
+    expect(tops(grid)).toEqual(['0px', '28px', '56px']);
+  });
+
+  it('is the same whatever height the scroller has on screen', () => {
+    const { grid, link } = styledGrid({ height: 30 }, [20], 0);
+    expect(tops(grid)).toEqual(['0px', '30px', '60px']);
+    expect(link.rowsPerPage).toBe(Math.floor(654 / 30));
   });
 });
 

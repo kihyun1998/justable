@@ -167,7 +167,8 @@ Row colours — hover, focus, selection — are yours too: style the rows throug
 | `TableGrid`'s `marquee` | A rectangle dragged over the rows, reporting which rows it touches. |
 
 **Rows must all be the same height.** The grid measures one drawn row and uses it for every row;
-`rowHeightRem` is only its estimate before that.
+`rowHeightRem` is its estimate before that, and stands in while the measured row has no height of
+its own (`display: contents`, say).
 
 ## Columns
 

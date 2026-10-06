@@ -16,6 +16,10 @@ be run by hand.
   example had no grid with leading rows, and `check.mjs` reads `aria-rowindex` 2 as the first data
   row in the track, gutter and marquee checks, so an always-drawn row would move every one of them.
   `App` reads the parameter and hands `FileTable` its `parentRow`. Theirs to reverse.
+- **The inexact-scale check sweeps five depths, at about 3 s** — the maintainer's call, 2026-10-06
+  (#47), over cutting it to three. Shown: `check:example` ran 19.14 and 19.49 s without it and 22.10
+  and 22.08 s with it (Windows 11, Chrome, interleaved), against the ~1 s weighed in #47's triage,
+  which had not been measured. Three depths was offered unmeasured. Theirs to reverse.
 
 ## Design model
 
@@ -52,7 +56,11 @@ be run by hand.
   opts into jsdom with a `// @vitest-environment jsdom` first line. jsdom lays nothing out, so a grid
   test sees the unmeasured state unless it stubs a length — `TableGrid.test.tsx` stubs
   `HTMLElement.prototype.clientHeight` to reach the measured one — and a disabled grid is visible to
-  a test only as `aria-disabled` and a class name, since jsdom compiles no CSS.
+  a test only as `aria-disabled` and a class name, since jsdom compiles no CSS. It does resolve the
+  cascade, so a row's computed `height`, `box-sizing`, padding and borders are whatever style the
+  test gives it (#47), and an unstyled row's `height` is `auto`. One trap there: with no border
+  style, jsdom answers `border-top-width` as `medium`, where Chrome answers `0px` (2026-10-06), so
+  a length read from computed style is parsed with a fallback to 0 (`lengthPx`).
 - **When the grid renders is a jsdom test of its own** (`TableGrid.renders.test.tsx`, #32): a
   `Profiler` counts commits by phase, so a `nested-update` is told from an `update`, and it replaces
   `ResizeObserver` with one it can fire, since jsdom has none. One rerender from the parent is not
@@ -173,16 +181,29 @@ be run by hand.
   blank), and a spacer shown with nothing overflowing (a 1280 px grid that scrolls). Hiding the spacer to
   measure the content failed the existing 20 px drag check (it shrank by 35). Firefox and a short
   list are not in the gate: the app draws only the 5000-row grid, and Firefox is measured by hand.
-- **Three checks hold a scaled copy of the grid** ([row windowing](row-windowing.md)), on a page of
+- **Four checks hold a scaled copy of the grid** ([row windowing](row-windowing.md)), on a page of
   their own, last: the grid is measured unscaled, then under `transform: scale(0.5)` on the grid,
   each after Home → PageDown, whose first focus change is the render that measures (a one-px
   scroll was, until #32 made a scroll inside a block render nothing). Unscaled, rows are exactly
   one row's `offsetHeight` apart; scaled, they are that far apart within 0.05 px and overlap on
   screen by no more; and the drawn rows, the page and the canvas (within 0.05 px a row) are the
-  unscaled ones. The tolerance is the precision of a scale built on a whole-px `offsetHeight`.
-  Proven failing: dividing the row by 1 instead of the scale fails the two scaled checks (step 14,
-  7 px overlap, 64 rows drawn, canvas 70,000, the page landing on 48), and dropping the snap to 1
-  fails the unscaled one (step 27.9913) — the scaled checks compare against the unscaled run, so they
+  unscaled ones. Since #47 read the row off the layout, `scale(0.5)` gives a step of exactly 28 and
+  a canvas of exactly 140,000, where it gave 27.9913 and 139,957 before — so on the step and the
+  canvas the 0.05 px stands as slack, not as the precision it was: that precision bounded the row
+  while the row passed through a scale, and now bounds only the screen overlap. The fourth check is the inexact scales
+  (#47): under `scale(0.83)`, at five scroll fractions through the 5,000 rows, no page error is
+  raised and every row step equals the row's `offsetHeight`. It catches the render loop by its own
+  sweep failing to read — a loop takes the tree down, so the check records the throw rather than
+  ending the run, and the checks after it still report.
+  Proven failing: reading the row on screen, undivided, rather than from its computed height fails
+  six — the two scaled checks (step 14, 7 px overlap, 64 rows drawn, canvas 70,000, the page landing
+  on 48), both `scale(0.5)` marquee drags, the inexact one and "no page errors" (39 of 45). The tree
+  before #47 fails only the inexact one and "no page errors" — *Maximum update depth exceeded* with
+  nothing read, 43 of 45 — and passed every `scale(0.5)` check, which is why those could not stand
+  in for it. The inexact check sweeps `scale(0.83)` only; `scale(0.37)` and CSS `zoom` were swept by
+  hand on 2026-10-06 ([row windowing](row-windowing.md)). Two older proofs are withdrawn with the reading they belonged to:
+  dividing the row by 1 instead of the scale, and dropping the snap to 1 (step 27.9913), neither of
+  which the row path can do any more. The scaled checks compare against the unscaled run, so they
   alone cannot see both runs drift together.
 - **Three more drag a [marquee](marquee.md) in that scaled copy** (#28), on each row's third cell,
   away from the name, and each asserts the rectangle showed. Under `scale(0.5)`, at `scrollTop` 0, a

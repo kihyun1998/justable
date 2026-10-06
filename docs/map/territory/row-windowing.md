@@ -24,7 +24,25 @@ the measurements, and `TableGrid` draws what it answers.
 - **`screenScale` stays in `rowWindow.ts` while `useRowWindow`'s `measure` is its only caller** — the maintainer's
   call, 2026-09-30 (#19), over a module of its own now. Shown: the review's point that it is a
   general screen-to-layout ratio, and that #28 would be its second caller. Where it goes when #28
-  arrives was not decided.
+  arrives was not decided. **The premise is gone**: since #47 `measure` does not call it at all, and
+  `marqueeScale` — itself built on it — is its only caller. Where it lives, and what `marqueeScale`
+  is called, were deferred to #48 by the maintainer (2026-10-01, #47's triage).
+- **The row height is read in layout px, from the row's computed height** — the maintainer's call in
+  triage, 2026-10-01 (#47), over a tolerance on the box comparison and over doing both. Shown: a
+  static page in Chrome, absolutely placed 28 px rows in a scroller under a transform, sampled at 66
+  scroll depths — the screen height divided by the scale gave one value under `scale(1)` and
+  `scale(0.5)` and three to five under `scale(0.54)`, `(0.37)`, `(0.7)` and `(0.83)`, spread
+  27.999997–28.000005, while the computed height gave 28 at every depth and every scale. Theirs to
+  reverse.
+- **The padding and borders are added only where `box-sizing` is `content-box`** — a derivation,
+  measured rather than reasoned, and it falls to a better measurement. The triage call named the
+  rule but its three measured rows were all content-box or had no vertical padding or border, so
+  none of them told it from an unconditional sum. Measured 2026-10-06 in Chrome, on the rows that
+  do tell them apart: a `border-box` row of `height: 28px` with a 1 px bottom border, and one with
+  4 px of vertical padding, both compute `height` as **`28px`** — Chrome resolves `height` to the
+  border box where `box-sizing` is `border-box`, not to the content box. So an unconditional sum
+  reads such a row 1 px and 8 px too tall. A `content-box` row of `height: 26px` with 1 px borders
+  computes `26px` and needs the sum.
 - **The row window measures on its own** — the maintainer's call, 2026-09-30 (#25's triage), over
   one effect calling the row window and the [header lane](header-lane.md) in a fixed order: each hook
   attaches its own layout effect and its own `ResizeObserver`. What that costs, and the order the two
@@ -119,18 +137,33 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   that is the [marquee](marquee.md)'s rectangle. It follows the app's root font size
   and row density — 28 px at a 16 px root, 42 px at 24 px (PenTerm). `rowHeightRem` × the root font
   size (16 if unparsable) covers only frames before a row exists.
-- **The row height is in layout px**, whatever transform scales the grid on screen. The row is read
-  with `getBoundingClientRect`, which is after the transform, while `clientHeight`, `scrollTop` and a
-  row's `top` are before it; so `measure` divides the row by `screenScale` — the scroller's screen
-  height over its `offsetHeight` — and every consumer of `box` works in one unit without being
-  touched. The `rowHeightRem` fallback is layout px already and is not divided. See
+- **The row height is read in layout px, never on screen (#47).** `rowLayoutHeight` takes the
+  sampled row's computed `height` — which no transform touches — and adds its vertical padding and
+  borders only where `box-sizing` is `content-box`, since `height` resolves to the border box
+  otherwise (#47, above). A height that is not a positive number is no measurement and the
+  `rowHeightRem` fallback applies, which is layout px already. No scale enters it, so nothing about
+  the row moves when the grid is scaled. Until #47 the row was read with `getBoundingClientRect`,
+  after the transform, and divided by `screenScale`; that quotient is what never settled. See
   [lengths are layout px](../invariant/lengths-are-layout-px.md).
+- **So the box comparison is strict, and may be.** `measure` compares `rowHeight` with `===`. That
+  was #19's and it was wrong while the reading came off the screen: a row's screen height moves with
+  its sub-px position, so the quotient wobbled and each reading was a new box, a new render and a new
+  measurement. In Chrome, 5,000 rows under `scale(0.83)` alternated 28.0000257 ↔ 27.9999889 at each
+  `measure`, 52 `setBox` calls in ten frames, until React threw *Maximum update depth exceeded*; so
+  did `scale(0.37)`, while `scale(1)` and `scale(0.5)` settled (2026-10-01, while #46 was built).
+  `TableGrid.test.tsx` feeds a row's screen height half that pair, alternating, and requires the
+  grid to settle. The computed height does not move, so the strict comparison is now exactly right
+  rather than merely cheap. The offset keeps its 1 px threshold (#46), because it is still a screen
+  distance.
 - **A scale within a px of 1 is exactly 1.** `offsetHeight` is a whole px, so the ratio of an
-  unscaled scroller is not 1: the example's is 654.203125 over 654 in Chrome, which would place rows
-  27.991 apart instead of 28. Snapping keeps an unscaled grid's `box` identical to what the row
-  measures. Under a scale the ratio is exact only to half a px of the scroller's height: under
-  `scale(0.5)` the example places rows 27.9913 apart and draws a canvas of 139,957 px against 140,000
-  unscaled — 0.008 screen px of overlap a row, the same window and the same page.
+  unscaled scroller is not 1: the example's is 654.203125 over 654 in Chrome. Snapping keeps an
+  unscaled grid's readings identical to the lengths themselves. Under a scale the ratio is exact only
+  to half a px of the scroller's height, which is why a distance longer than the element measured
+  takes the longer one (`marqueeScale`, below). Before #47 this bounded the row too: the unsnapped
+  ratio placed rows 27.991 apart instead of 28, and under `scale(0.5)` the example placed them
+  27.9913 apart on a canvas of 139,957 px against 140,000 unscaled. Under a transform both are now
+  exact: step 28 and canvas 140,000 under `scale(0.5)`, step 28 at six depths under `scale(0.37)`
+  and `scale(0.83)` (Chrome, 2026-10-06). Not under CSS `zoom` (`## Known holes / open`).
 - **A zero viewport is no measurement.** `box` stays `null`, rows flow unpositioned and the window is
   the first `UNMEASURED_ROWS` (200, about 120 ms to draw in PenTerm) — a cap, not a guess at what
   fits. Windowing against a zero height would draw one row. See
@@ -162,12 +195,12 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   `measure` takes the canvas's client top less the scroller's, divided by the scale, less the
   scroller's top border, plus `scrollTop`. That screen distance grows with the scroll, so it is
   divided by `marqueeScale` — the scale over the longer of the scroller and the canvas — not by the
-  scroller's own ratio, which the row height uses: under `scale(0.5)`, a reveal deep in the
+  scroller's own ratio: under `scale(0.5)`, a reveal deep in the
   example's 5,000 rows landed 43 px off with the scroller's ratio and 0 with the longer one (Chrome,
   2026-10-01). The reading still moves with the scroll by a fraction of a px — under `scale(0.83)`,
   83.95 against 84.10 — and a new offset is a new `box` and a render, which measures again; a
-  reading that alternates would render without end, as the row height does under some scales
-  (`## Known holes / open`). So `measure` keeps the old offset while the new one is within 1 px; with
+  reading that alternates renders without end, which is what the row height did under some scales
+  until #47 read it off the layout instead. So `measure` keeps the old offset while the new one is within 1 px; with
   a strict comparison, jsdom fed an offset 0.4 px apart at every second reading throws React's
   *Maximum update depth exceeded*. A scroller with no height on screen (jsdom) answers 0 rather than
   a distance from a box that was never laid out.
@@ -193,7 +226,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 - `src/lib/rowWindow.ts` — `visibleRange`, `scrollToReveal`, `screenScale`, `BLOCK_ROWS`, `UNMEASURED_ROWS`, `VisibleRangeInput`, `RevealInput`
 - `src/types.ts` — `RowWindow`
-- `src/hooks/useRowWindow.ts` — `useRowWindow`, `measure`, `canvasOffset`, `RowBox` (`canvasTop` included), `RowWindowInput`, `RowWindowState`, `rowHeightRemRef`, `notARowRef`, `scrollTopRef`, `boxRef`, `rangeRef`, `redraw`
+- `src/hooks/useRowWindow.ts` — `useRowWindow`, `measure`, `rowLayoutHeight`, `lengthPx`, `canvasOffset`, `RowBox` (`canvasTop` included), `RowWindowInput`, `RowWindowState`, `rowHeightRemRef`, `notARowRef`, `scrollTopRef`, `boxRef`, `rangeRef`, `redraw`
 - `src/components/TableGrid.tsx` — `TableGrid`, `canvasRef`, `rowKey`
 
 ## Reference behaviour
@@ -205,9 +238,10 @@ followed), with the `left: 0` trap found against it.
 ## Cross-cutting invariants
 
 - [Zero is no measurement](../invariant/zero-is-no-measurement.md) — `visibleRange`,
-  `scrollToReveal`, `screenScale` and `measure` each treat a zero or unparsable length as absent.
-- [Lengths are layout px](../invariant/lengths-are-layout-px.md) — `measure` converts the row's
-  screen height before it enters `box`.
+  `scrollToReveal`, `screenScale`, `rowLayoutHeight` and `measure` each treat a zero or unparsable
+  length as absent.
+- [Lengths are layout px](../invariant/lengths-are-layout-px.md) — `measure` reads the row's height
+  in layout px (#47) and converts the canvas's screen offset before either enters `box`.
 - [Drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md) — the
   `right: 0` is what keeps a placed row's filler track as wide as the header's.
 - [Row one is the header](../invariant/row-one-is-the-header.md) — the window is in data-row
@@ -241,23 +275,27 @@ followed), with the `left: 0` trap found against it.
 - **Variable row heights are not supported.** Every row is placed at `index × rowHeight` from one
   measured row.
 - **A scale changed with no re-render is picked up at the next render.** A `ResizeObserver` does not
-  fire on a transform, and `measure` runs on commit; #19 left an observer for it out. The same holds
-  for a root font-size change, which moves the row height without resizing the scroller. Since #32
+  fire on a transform, and `measure` runs on commit; #19 left an observer for it out. Since #47 the
+  row height is not among what a new scale moves — it is read off the layout — but the canvas's
+  offset still is. The same holds for a root font-size change, which does move the row height without
+  resizing the scroller. Since #32
   a scroll inside a block is no longer a render, so such a change waits for a scroll that moves the
   window, a new `focus`, or a render from the consumer; before, any scroll step picked it up. #32's
   calls did not cover this, and #34 kept measuring after every commit on cost alone (below), so
   this gap is open.
-- **Under some scales the box never settles, on `main` before #46 too.** In Chrome, 5,000 rows under
-  `scale(0.37)` or `scale(0.83)` and a deep scroll or reveal throw React's *Maximum update depth
-  exceeded*: the measured row height alternates between 28.0000257 and 27.9999889 on each `measure`,
-  and the strict comparison takes each as a new box. Unscaled and under `scale(0.5)` it does not
-  happen. Measured 2026-10-01 while #46 was built; #46's offset stays within its 1 px and is not
-  part of it. Not fixed: the row height's comparison is #19's.
 - **Only a scale is corrected.** The ratio is taken from heights, so a scale on the vertical axis is
   what it measures; under a rotation or a skew the bounding rect is the box that encloses the element,
   and the ratio is not the scale. A real scale that moves the scroller's height by less than a px is
-  snapped away.
+  snapped away. Since #47 this binds only the canvas's offset, the one reading still taken on screen.
 - **The marquee measures its scale with `screenScale` too, on the longer of the scroller and the
   canvas** (#28): the scroller's ratio, exact to half a px of its height, drifted rows when divided
-  into a distance as long as the scroll ([marquee](marquee.md)). The row height here only divides a
-  row's own height, so the scroller's ratio is enough for it.
+  into a distance as long as the scroll ([marquee](marquee.md)). `measure` uses that same longer
+  ratio for the canvas's offset, and since #47 divides nothing else.
+- **Under CSS `zoom` the row height is not the specified one.** Chrome lays a zoomed subtree out in
+  zoomed px and divides the computed values back, so a 28 px row computes as 27.9932 under
+  `zoom: 0.83` and 27.9983 under `zoom: 0.37`, while its `offsetHeight` says 28. Measured
+  2026-10-06 on the example swept to six depths: one value per zoom at every depth, no page error,
+  rows placed at that pitch — so no loop, and no gap a row could show, since the rows are drawn at
+  the pitch they are laid out at. The screen reading before #47 was not 28 either (27.9756 on a
+  static page under `zoom: 0.83`). `zoom` was never among what this corrects (above); recorded so
+  that the transform's exact 28 is not read as a promise for it.

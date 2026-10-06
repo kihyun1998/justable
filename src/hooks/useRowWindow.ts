@@ -6,7 +6,7 @@ import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react';
 
 import { marqueeScale } from '../lib/marquee.js';
-import { screenScale, scrollToReveal, visibleRange } from '../lib/rowWindow.js';
+import { scrollToReveal, visibleRange } from '../lib/rowWindow.js';
 import type { RowWindow } from '../types.js';
 import type { TableKeyboardLink } from './useTableKeyboard.js';
 
@@ -81,13 +81,12 @@ export function useRowWindow({
     const first = canvasRef.current?.firstElementChild;
     const row = first === notARowRef.current ? null : first;
     const rootPx = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    // The row is measured on screen and converted to layout px:
-    // `docs/map/invariant/lengths-are-layout-px.md`.
     const view = el.getBoundingClientRect();
-    const scale = screenScale(view.height, el.offsetHeight);
     const next = {
       viewportHeight: el.clientHeight,
-      rowHeight: (row?.getBoundingClientRect().height ?? 0) / scale || rowHeightRemRef.current * rootPx,
+      // The row's height is read in layout px, not on screen:
+      // `docs/map/invariant/lengths-are-layout-px.md`.
+      rowHeight: rowLayoutHeight(row) || rowHeightRemRef.current * rootPx,
       canvasTop: canvasOffset(el, view, canvasRef.current),
     };
     const prev = boxRef.current;
@@ -145,6 +144,31 @@ export function useRowWindow({
     },
     measure,
   };
+}
+
+/** A computed length in px; `0` where it is not a length, as `auto` and `medium` are not. */
+const lengthPx = (value: string) => Number.parseFloat(value) || 0;
+
+/**
+ * The sampled row's height in layout px, from its computed style: the box its `height` names, plus
+ * its vertical padding and borders where that box is the content box. `0` with no row, or where the
+ * height is no length — which sends `measure` to its `rowHeightRem` fallback.
+ */
+function rowLayoutHeight(row: Element | null | undefined): number {
+  if (!row) return 0;
+  const style = getComputedStyle(row);
+  const height = Number.parseFloat(style.height);
+  // A height that is not positive, NaN included, is no measurement:
+  // `docs/map/invariant/zero-is-no-measurement.md`.
+  if (!(height > 0)) return 0;
+  if (style.boxSizing !== 'content-box') return height;
+  return (
+    height +
+    lengthPx(style.paddingTop) +
+    lengthPx(style.paddingBottom) +
+    lengthPx(style.borderTopWidth) +
+    lengthPx(style.borderBottomWidth)
+  );
 }
 
 /**

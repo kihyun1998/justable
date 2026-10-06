@@ -642,6 +642,42 @@ try {
     doubleDrag !== null && doubleDrag.shown === 'block' && doubleDrag.selected.join() === `${lowRow},${lowRow + 1}`,
     { band, doubleDrag },
   );
+
+  // Under scale(0.83), deep in the list: `docs/map/territory/verification-gates.md`.
+  const beforeScaled = errors.length;
+  await scaled.evaluate(() => {
+    document.querySelector('[role="grid"]').style.transform = 'scale(0.83)';
+  });
+  const inexact = [];
+  // A throw here is the check's to report: `docs/map/territory/verification-gates.md`.
+  let sweepThrew = null;
+  try {
+    for (const fraction of [0, 0.25, 0.5, 0.75, 0.97]) {
+      await scrollScaledTo(fraction);
+      inexact.push(
+        await scaled.evaluate(() => {
+          const grid = document.querySelector('[role="grid"]');
+          const rows = [...grid.querySelectorAll('[role="presentation"] > [role="row"][aria-rowindex]')].sort(
+            (a, b) => Number(a.getAttribute('aria-rowindex')) - Number(b.getAttribute('aria-rowindex')),
+          );
+          return {
+            step: Number.parseFloat(rows[1].style.top) - Number.parseFloat(rows[0].style.top),
+            offsetHeight: rows[0].offsetHeight,
+          };
+        }),
+      );
+    }
+  } catch (e) {
+    sweepThrew = String(e);
+  }
+  check(
+    'inside scale(0.83), a deep scroll raises no error and rows stay at the unscaled step',
+    sweepThrew === null &&
+      errors.length === beforeScaled &&
+      inexact.length === 5 &&
+      inexact.every((r) => r.step === r.offsetHeight),
+    { sweepThrew, raised: errors.slice(beforeScaled), inexact },
+  );
   await scaled.close();
 
   // Below a leading `..` row: the focused row is revealed whole, counted from the canvas (#46).

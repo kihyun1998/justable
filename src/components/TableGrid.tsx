@@ -48,7 +48,10 @@ export interface TableGridProps {
   disabled?: boolean;
   /** Whether the consumer lets several rows be selected at once; the engine selects nothing. */
   multiselectable?: boolean;
-  /** A row's height in `rem`, used only before a real row has been measured. */
+  /**
+   * A row's height in `rem`, used before a drawn row is measured and while that row has no height of
+   * its own.
+   */
   rowHeightRem: number;
   /** `useTableKeyboard`'s link; the grid writes the rows a page moves by into it. */
   keyboard?: TableKeyboardLink;
