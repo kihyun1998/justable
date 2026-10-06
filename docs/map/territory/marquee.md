@@ -154,11 +154,12 @@ places the press, the pointer and the rectangle on the canvas. The engine draws 
   pointer's distance from the canvas's top, which is as long as the scroll, so the error grows with
   it. Measured in Chrome with the scroller's ratio: a drag over four rows selected them at
   `scrollTop` 0, one row too high at 41,791 and two rows too high at 132,338; the bounds and the
-  rectangle moved with it. The canvas is as long as the list (139,957 px), so half a px is under
-  0.5 px of error at its far end. A canvas shorter than the scroller — a short or empty list — falls
+  rectangle moved with it. The canvas is as long as the list (139,957 px then, 140,000 since #47),
+  so half a px is under 0.5 px of error at its far end. A canvas shorter than the scroller — a short or empty list — falls
   back on the scroller, where every distance stays within the view: at most 0.2 px at 0.5. The rows'
-  own step, 27.9914 layout px under `scale(0.5)` where a row is 28, is the grid's: the rows are
-  placed and hit-tested by that same height, so it moves no row. A first version of this note said
+  own step is the grid's: the rows are placed and hit-tested by that same height, so it moves no
+  row. It was 27.9914 layout px under `scale(0.5)` where a row is 28, until #47 read the row off the
+  layout; it is 28 now, and no scale enters it. A first version of this note said
   the error cancelled; that was checked at `scrollTop` 0 only.
 - **No marquee before the grid has measured**: the rectangle is only drawn once `box` exists, and the
   press handler needs it.
@@ -196,7 +197,8 @@ this imitates; neither was read or measured.
 - [Grid scaffold](grid-scaffold.md) — owns the scroller the press lands on, the floor click the swallow
   protects, the focus the press moves, and the disabled class.
 - [Row windowing](row-windowing.md) — owns `box`, the canvas and `screenScale`; a change to how rows
-  are placed, or to how the scale is measured, moves the hit-test's origin and band.
+  are placed or the row height is read moves the hit-test's band, and a change to how the scale is
+  measured moves its origin (since #47 the row height takes no scale).
 - [Column resize](column-resize.md) — the sibling drag: its predicate seam and #8, which this extends
   to the vertical axis.
 - [Drag lifetime](drag-lifetime.md) — owns when this drag ends and what interrupts it; a change there

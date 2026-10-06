@@ -30,12 +30,16 @@ grid works its scale out itself (#19), and so does the marquee (#28). Unifying t
 
 ## Territories it holds in
 
-- [Row windowing](../territory/row-windowing.md) — **converted (#19).** `useRowWindow`'s `measure` divides the first
-  drawn row's screen height by `screenScale`, the scroller's own screen height over its
-  `offsetHeight`. The `rowHeightRem` fallback is in layout px already and is not divided. **Converted
-  (#46):** the canvas's offset — the canvas's client top less the scroller's — is divided by
-  `marqueeScale`, the longer element's, before `scrollTop` is added, since that distance grows with
-  the scroll as the marquee's does.
+- [Row windowing](../territory/row-windowing.md) — **not read on screen at all, since #47.**
+  `useRowWindow`'s `measure` takes the first drawn row's height from its computed `height`, which no
+  transform touches, so no conversion applies; the `rowHeightRem` fallback was always in layout px.
+  **Converted (#19), withdrawn (#47):** it used to divide the row's screen height by `screenScale`,
+  the scroller's own screen height over its `offsetHeight` — a conversion that was correct in units
+  and still unstable, because the row's screen height moves with its sub-px position and the quotient
+  never settled. **Converted (#46):** the canvas's offset — the canvas's client top less the
+  scroller's — is divided by `marqueeScale`, the longer element's, before `scrollTop` is added, since
+  that distance grows with the scroll as the marquee's does. It is now this territory's only screen
+  reading.
 - [Column resize](../territory/column-resize.md) — **converted by the consumer's `scale` (#8).**
   Only the pointer is divided; `scrollLeft` is already layout px.
 - [Marquee](../territory/marquee.md) — **converted (#28)**, measuring its scale as the grid does,
@@ -73,6 +77,15 @@ grid works its scale out itself (#19), and so does the marquee (#28). Unifying t
 - #28 (2026-10-01, marquee) — converted those sites once #26 had made them pure functions. Reading
   them found one more the issue had not listed: the scroller's border widths, `clientLeft` /
   `clientTop`, are layout px too, and were added to its screen `left` / `top`.
+- #47 (2026-10-06, row windowing) — the first site **removed** rather than converted, and the lesson
+  this note did not hold: a correct conversion is not a stable one. The row's screen height was
+  divided by the right ratio and still gave three to five values across a scroll sweep under an
+  inexact scale, which looped the grid's render. Where a layout reading of the same length exists —
+  here the computed `height` — it is preferable to converting a screen one, because it needs no
+  ratio and cannot wobble. Of the screen readings left, only the pointer has no layout equivalent.
+  The canvas's offset has one — `check:example` reads it as `offsetTop` differences — and #46 kept
+  it on screen so as not to assume the scroller is the canvas's `offsetParent`; auto-fit's width
+  has one too, and is not converted at all (above).
 
 ## Where it will recur
 

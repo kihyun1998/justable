@@ -26,7 +26,9 @@ guard is written differently at each site.
   viewport; `useRowWindow` hands `visibleRange` a zero row height while `box` is `null`, so the
   unmeasured window is that function's alone; `useRowWindow`'s `measure` keeps `box` at `null` for a zero
   `clientHeight`, falls back to `rowHeightRem` for a zero row height and to 16 px for an unparsable
-  root font size; `screenScale` answers 1 — no scale — for a zero, negative or non-finite screen or
+  root font size; `rowLayoutHeight` answers 0 for a computed height that is not a positive length,
+  which is what sends `measure` to that fallback (#47); `screenScale` answers 1 — no scale — for a
+  zero, negative or non-finite screen or
   layout height; `canvasOffset` answers 0 while the scroller has no height on screen (#46).
 - [Header lane](../territory/header-lane.md) — a zero gutter pads nothing, the engine probe
   counts a shortfall only above half a px, and `useHeaderLane`'s `measure` leaves the spacer alone

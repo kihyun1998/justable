@@ -14,6 +14,16 @@ anything else the patch.
 
 ### Fixed
 
+- **A scaled grid no longer throws *Maximum update depth exceeded*.** Under a CSS
+  `transform: scale(…)` whose ratio is inexact — 0.37 and 0.83 among them, though not 1 or 0.5 — the
+  measured row height alternated between two values a hair apart (28.0000257 and 27.9999889 at
+  `scale(0.83)`), so every measurement looked like a new viewport and React gave up on the nested
+  renders. The row's height is now read from its computed height, in layout px, instead of from its
+  height on screen divided by the scale: no transform touches it and it does not move with the row's
+  sub-pixel position. A side effect under a scale: rows are placed at the row's own height — 28 px
+  apart under `scale(0.5)`, where they were 27.9913 apart before. The height taken is the row's border box,
+  padding and borders included, as it was. A row whose computed height is not a positive length —
+  `display: contents`, say — still falls back to `rowHeightRem` (#47).
 - **A row revealed below `leadingRows` comes wholly into view.** Revealing the focused row ignored
   the leading rows' height, so a row reached at the bottom — by an arrow key or a type-ahead jump —
   stayed hidden below the view by that height (28 px under one 28 px `..` row). The window of drawn
