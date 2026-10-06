@@ -1,6 +1,6 @@
 {
   "name": "@kihyun1998/justable",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A windowed, keyboard-navigable data table for React: column model, grid, header, rows and auto-fit, themed through --table-* CSS variables.",
   "license": "MIT",
   "author": "Ki Hyun Park",
