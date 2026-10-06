@@ -57,7 +57,7 @@ gh issue list --state open                         # M5 — the open backlog
 
 What they showed on the day this was written, and what does not rot with the numbers:
 
-- **M1 — every public promise is ungoverned.** The package has no `docs/adr/` and no `CONTEXT.md`.
+- **M1 — every public promise is ungoverned.** The package has no `docs/adr/` and no `GLOSSARY.md`.
   The only records that decided anything about it — PenTerm's ADR-0099 and ADR-0100, on column
   resize — are in the consumer's repository, and nothing here adopts them. So every
   `## Governing decisions` in this map was `**None.**`, and the adjacent PenTerm records are named where
