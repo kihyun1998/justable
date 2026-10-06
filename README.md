@@ -163,7 +163,7 @@ Row colours — hover, focus, selection — are yours too: style the rows throug
 | `TableGrid` | The scrolling grid. It draws only the rows in view, and calls `renderRow(index, place)` for each. |
 | `TableHeader` | The header row: one sort button per column, and a resize handle on each column's right border. |
 | `TableRow` | One row: one cell per column, from `cell(key)`. Spread `place.id`, `place.rowIndex` and `place.style` onto it. |
-| `useTableKeyboard` | Arrow keys, Home/End, Page Up/Down and type-ahead. You call its `step` from your own key handler. |
+| `useTableKeyboard` | Arrow keys, Home/End, Page Up/Down and type-ahead. You call its `step` from your own key handler, and its `end` when you move the row yourself. |
 | `TableGrid`'s `marquee` | A rectangle dragged over the rows, reporting which rows it touches. |
 
 **Rows must all be the same height.** The grid measures one drawn row and uses it for every row;
@@ -220,6 +220,11 @@ does a negative or `NaN` window; `Infinity` lets no pause end one. `step` answer
 
 On a move and on a type-ahead hit, `step` calls `preventDefault` on the event. A type-ahead miss
 ends the query, so the next letter starts a fresh one.
+
+When you move the row by other means — a click, a marquee, a list replaced by another folder's —
+call the hook's `end()`, so the next letter starts a fresh query instead of extending one typed
+against the old row or the old names. `end` is the same function for the hook's life, so an effect
+can depend on it. Calling it from `step`'s own answer would end every query after one letter.
 
 `focus` is a row index or `null`, and keeping it pointed at the right row — after a filter, say — is
 yours. A `focus` that names no row — negative, past the end, fractional or `NaN` — is searched from

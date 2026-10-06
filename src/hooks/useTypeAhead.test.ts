@@ -61,6 +61,14 @@ describe('useTypeAhead', () => {
     expect(e.preventDefault).not.toHaveBeenCalled();
   });
 
+  it('end is one function for the hook’s life, so an effect can depend on it', () => {
+    const { result, rerender } = renderHook(() => useTypeAhead({ windowMs: WINDOW }));
+    const first = result.current.end;
+    expect(first).toBeTypeOf('function');
+    rerender();
+    expect(result.current.end).toBe(first);
+  });
+
   it('end() makes the next letter start a new query', () => {
     const { step, end } = setup();
     expect(step(key('c'), null)).toEqual({ to: 2 });

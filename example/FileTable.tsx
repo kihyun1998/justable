@@ -179,6 +179,7 @@ export function FileTable({
     }
     setSelected(next);
     if (phase === 'end' && range) {
+      keyboard.end();
       setAnchor(range.anchor);
       setFocus(range.head);
       onStatus(`marquee: ${touched.length} rows`);
@@ -271,7 +272,10 @@ export function FileTable({
               gridStyle={gridStyle}
               className={place.focused ? 'row is-focused' : 'row'}
               aria-selected={selected.has(rows[i]!.name)}
-              onClick={(e) => pick(i, e)}
+              onClick={(e) => {
+                keyboard.end();
+                pick(i, e);
+              }}
               cell={(key) => cellOf(rows[i]!, key)}
               cellClassName={cellClass}
             />

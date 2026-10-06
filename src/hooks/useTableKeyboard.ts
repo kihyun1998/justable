@@ -16,8 +16,9 @@ export type TableKeyStep = { by: 'move'; to: number } | { by: 'typeAhead'; to: n
 
 /**
  * Keyboard movement for a table: the consumer calls `step` from wherever it receives keys, and
- * decides what a move means (selection, opening). Pass `link` to the grid as `keyboard`. Its
- * type-ahead is `useTypeAhead`'s, with the same options.
+ * decides what a move means (selection, opening), and `end` whenever it moves the row by other
+ * means. Pass `link` to the grid as `keyboard`. Its type-ahead is `useTypeAhead`'s, with the same
+ * options, and `end` is that type-ahead's.
  */
 export function useTableKeyboard(options: TypeAheadOptions) {
   const link = useRef<TableKeyboardLink>({ rowsPerPage: 0 }).current;
@@ -45,5 +46,5 @@ export function useTableKeyboard(options: TypeAheadOptions) {
     return answer === null ? null : { by: 'typeAhead', to: answer.to };
   };
 
-  return { step, link };
+  return { step, link, end: typeAhead.end };
 }

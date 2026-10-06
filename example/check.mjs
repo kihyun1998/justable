@@ -187,6 +187,26 @@ try {
   const selected = await page.$$eval('[role="row"][aria-selected="true"]', (rs) => rs.length);
   check('Space right after a move selects', selected === 1, { selected });
 
+  // A click moves the row by other means and ends the query: from "New Year plan.md", "c" lands on
+  // "Cherry.png", and after a click on "new folder", "i" searches for "i" rather than narrowing "ci"
+  // to "citrus.csv".
+  const typedAt = Date.now();
+  await page.keyboard.type('c');
+  const onC = await focusedText();
+  const newFolder = await page.evaluateHandle(() =>
+    [...document.querySelectorAll('[role="row"]')].find((r) => r.textContent.includes('new folder')),
+  );
+  await newFolder.click();
+  await page.keyboard.type('i');
+  // Inside the example's 700 ms window, or the query would have ended by itself.
+  const elapsed = Date.now() - typedAt;
+  const afterClick = await focusedText();
+  check(
+    'a click ends the type-ahead query, so the next letter starts a new one',
+    elapsed < 700 && onC?.includes('Cherry.png') === true && afterClick?.includes('invoice-') === true,
+    { onC, afterClick, elapsed },
+  );
+
   const kind = await page.$('[data-table-resize="kind"]');
   const kb = await kind.boundingBox();
   await page.mouse.click(kb.x + kb.width / 2, kb.y + kb.height / 2, { clickCount: 2 });
