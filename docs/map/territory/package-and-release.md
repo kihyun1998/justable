@@ -54,6 +54,17 @@ today.
   passes, `v0.1.1`, `0.1.0` and no tag fail). It authenticates with the `NPM_TOKEN` repository
   secret, the maintainer's choice over npm trusted publishing, and checks it with `npm whoami` before
   publishing. `--provenance` attaches a build attestation, which needs the job's `id-token: write`.
+  It has published every release, each from its `v*` tag's run — 0.1.0 through 0.3.1, six by
+  2026-10-06 (`gh run list`; the registry's `time`); 0.1.0 took a second run after the first was
+  refused the name, and 0.3.1 a second attempt after the token was (both below). Before the first,
+  a dry run on throwaway tags (2026-09-29, deleted after) saw a tag not naming the version fail at
+  the tag check with every later step skipped, and a matching one pass `npm whoami` and pack the
+  package; it asked the registry nothing about permission, which the first real publish then did
+  (the name, below).
+- **A version shows on the registry about a minute after npm accepts it.** For 0.3.1, npm printed
+  `+ @kihyun1998/justable@0.3.1` at 02:15:14Z; `npm view @kihyun1998/justable@0.3.1` answered 404 at
+  02:15:33Z; the registry records the version at 02:16:09Z (2026-10-06). So a check right after the
+  job polls rather than concluding from the first answer.
 - **The published tarball** is 36 files: `dist/`, `README.md`, `LICENSE` and `package.json`
   (`npm pack --dry-run`, 2026-09-29); 40 files at 0.2.0, the same day; 46 at 0.3.0 (2026-10-01), the `.js`
   and `.d.ts` of `useDrag`, `useHeaderLane` and `useRowWindow`; 46 at 0.3.1 (2026-10-06, counted with `pnpm pack`, no
@@ -91,10 +102,12 @@ today.
 
 ## Known holes / open
 
-- **The publish job has run only as a dry run**, 2026-09-29, on throwaway tags deleted after: a tag
-  not naming the version failed at the tag check with every later step skipped, and a matching one
-  passed `npm whoami` with `NPM_TOKEN` and packed the package (36 files) for public access. A dry run
-  asks the registry nothing about permission.
+- **`NPM_TOKEN` can lapse between releases, and nothing shows it until a tag runs.** Set
+  2026-09-29, it published 0.3.0 on 2026-10-01 and was refused on 2026-10-06: `npm whoami` answered
+  E401, the publish step was skipped, and the registry took nothing. Whether it expired or was
+  revoked was not seen. A new token in the secret and the failed job re-run on the same tag
+  (`gh run rerun <run> --failed`) published 0.3.1; no new version was needed, since npm had taken
+  none.
 - **The name is scoped, `@kihyun1998/justable`** — the maintainer's call, 2026-09-29, over another
   unscoped name. The first real publish, of `v0.1.0` as `justable`, was refused: npm answered 403,
   "Package name too similar to existing package stable", and suggested the scoped name. Nothing was
