@@ -192,7 +192,7 @@ places the press, the pointer and the rectangle on the canvas. The engine draws 
 ## Code
 
 - `src/lib/marquee.ts` — `marqueeRange`, `MarqueeRange`, `MarqueeRangeInput`, `marqueeView`, `MarqueeView`, `MarqueeViewInput`, `pressOnScrollbar`, `marqueeFrame`, `MarqueeFrame`, `MarqueeFrameInput`, `MarqueeBounds`, `toCanvas`, `CanvasPoint`, `marqueeRectangle`, `MarqueeBox`
-- `src/hooks/useMarquee.ts` — `useMarquee`, `MarqueeOptions`, `MarqueeReport`, `MarqueePhase`, `MarqueeParts`, `MarqueeRows`, `swallowNextClick`
+- `src/hooks/useMarquee.ts` — `useMarquee`, `MarqueeOptions`, `MarqueeReport`, `MarqueePhase`, `MarqueeParts`, `MarqueeRows`, `swallowNextClick` (exported to the [column move](column-move.md), which calls it too)
 - `src/components/TableGrid.tsx` — `TableGrid`, `marquee`, `marqueeRef`, `gridRef`, `data-table-marquee`
 - `example/FileTable.tsx` — `onMarquee`, `before`
 - `example/edgeScroll.ts` — `useEdgeScroll`, `EdgeAxes`, `EdgeDrag`

@@ -118,9 +118,13 @@ be run by hand.
   double-click on every border changes none of them — the sort
   button free of browser button styles, windowing, the sort cycle, type-ahead through a space, Space
   after a move, a click ending the type-ahead query, the theme through the colour variables, and a
-  border held past the scroller's right edge scrolling the grid while the column keeps pace. It **exits 1 when no browser is found**,
+  border held past the scroller's right edge scrolling the grid while the column keeps pace, and a
+  header column move — unscaled and inside `scale(0.5)`, a press under the threshold still sorting,
+  the landing line on the border it lands at with no text selected, a drop onto the pinned first
+  column landing after it, and the header and rows reordered together (#61). It **exits 1 when no browser is found**,
   since a run that inspected nothing is not a pass. Proven failing: removing the button reset,
-  dropping a placed row's `right: 0`, and refusing the space mid-query each fail it. The type-ahead
+  dropping a placed row's `right: 0`, and refusing the space mid-query each fail it; so does drawing
+  the move's landing line from screen boxes rather than `offsetLeft`, inside `scale(0.5)`. The type-ahead
   check first asserts that "new" lands on `news.txt` — without that, `new folder` came first and the
   check passed with the space refused. The click check first asserts that "c" lands on
   `Cherry.png`, then clicks `new folder` and types "i": it lands on an `invoice-` row, where a query

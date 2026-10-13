@@ -120,7 +120,8 @@ What they showed on the day this was written, and what does not rot with the num
 
 **Complete for `src/` and the package's build and publish surface as of `e613ea2`.** Every file
 under `src/` is named under some note's `## Code`. The territories:
-[column model](territory/column-model.md) · [row windowing](territory/row-windowing.md) ·
+[column model](territory/column-model.md) · [column move](territory/column-move.md) ·
+[row windowing](territory/row-windowing.md) ·
 [grid scaffold](territory/grid-scaffold.md) · [header lane](territory/header-lane.md) ·
 [header row](territory/header-row.md) · [column resize](territory/column-resize.md) ·
 [drag lifetime](territory/drag-lifetime.md) ·

@@ -30,6 +30,7 @@ const SPEC: ColumnSpec<FileEntry, Key>[] = [
     minWidth: 120,
     maxWidth: 720,
     hideable: false,
+    movable: false,
     firstSortDesc: false,
     compare: (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }),
   },
@@ -39,6 +40,7 @@ const SPEC: ColumnSpec<FileEntry, Key>[] = [
     minWidth: 60,
     maxWidth: 200,
     hideable: true,
+    movable: true,
     firstSortDesc: false,
     compare: (a, b) => a.kind.localeCompare(b.kind),
   },
@@ -48,6 +50,7 @@ const SPEC: ColumnSpec<FileEntry, Key>[] = [
     minWidth: 70,
     maxWidth: 200,
     hideable: true,
+    movable: true,
     firstSortDesc: true,
     compare: (a, b) => a.size - b.size,
   },
@@ -57,6 +60,7 @@ const SPEC: ColumnSpec<FileEntry, Key>[] = [
     minWidth: 90,
     maxWidth: 260,
     hideable: true,
+    movable: true,
     firstSortDesc: true,
     compare: (a, b) => a.modified.getTime() - b.modified.getTime(),
   },
@@ -205,7 +209,12 @@ export function FileTable({
   const header = (
     <TableHeader
       className="header"
-      columns={columns.map((key) => ({ key, label: LABELS[key], width: model.columnWidth(layout, key) }))}
+      columns={columns.map((key) => ({
+        key,
+        label: LABELS[key],
+        width: model.columnWidth(layout, key),
+        movable: SPEC.find((c) => c.key === key)!.movable,
+      }))}
       sort={sort}
       gridStyle={gridStyle}
       onSort={(key) => setSort((s) => model.nextSort(s, key))}
@@ -214,6 +223,14 @@ export function FileTable({
       onAutoFit={onAutoFit}
       resizeLabel="Resize column"
       refusePress={(e) => e.button !== 0}
+      move={{
+        refusePress: (e) => e.button !== 0,
+        threshold: 4,
+        onMove: (key, beforeKey) => {
+          setLayout((l) => model.withOrder(l, key, beforeKey));
+          onStatus(`move: ${key} before ${beforeKey ?? 'the end'}`);
+        },
+      }}
     />
   );
 

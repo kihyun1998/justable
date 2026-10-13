@@ -4,7 +4,8 @@
 
 `TableHeader`: the one `row` at `aria-rowindex` 1, drawing a `columnheader` per drawn column. Each
 cell is a sort button, whole, with the label and — on the sorted column — an arrow, and carries the
-resize handle on its right border. It paints the header's surface, ink, border, hover fill and focus
+resize handle on its right border; given `move`, a press on a movable cell can drag the column
+([column move](column-move.md)), and the row draws the landing line while it does. It paints the header's surface, ink, border, hover fill and focus
 ring, all through `--table-*` variables.
 
 ## Governing decisions
@@ -35,8 +36,9 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **The header row is `relative z-20` over its own surface.** `relative` makes the stacking context
   that keeps its `z-10` handles with it; the surface keeps rows scrolled under the lane from showing
   through.
-- **Two data attributes are how a consumer finds the header**: `data-table-header` on the row and
-  `data-table-resize="<key>"` on each handle. PenTerm's guide tour and its checks select by them, and
+- **Data attributes are how a consumer finds the header**: `data-table-header` on the row,
+  `data-table-resize="<key>"` on each handle, and `data-table-move-indicator` on the landing line
+  while a move runs. PenTerm's guide tour and its checks select by them, and
   `README.md` names them, with `data-table` and `data-table-ruler`, as stable.
 - **Height and type are the consumer's**, as `className` on the row, except what the sort button
   sets itself: `font-medium`, `text-left`, and `px-2`. The weight is the engine's, and a class on
@@ -54,7 +56,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 ## Code
 
-- `src/components/TableHeader.tsx` — `TableHeader`, `TableHeaderProps`, `HOVER_LAYER`
+- `src/components/TableHeader.tsx` — `TableHeader`, `TableHeaderProps`, `HOVER_LAYER`, `move`
 - `src/types.ts` — `HeaderColumn`, `TableSort`
 
 ## Reference behaviour
@@ -68,12 +70,15 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - [Drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md) — one
   `columnheader` per entry of `columns`, laid out by `gridStyle`.
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
-  labels, the handles' accessible name, what a sort press does and which presses may resize.
+  labels, the handles' accessible name, what a sort press does, which presses may resize or move,
+  and the move's threshold.
 
 ## Blast radius
 
 - [Column resize](column-resize.md) — the handle lives in this component and its press handler is
   here.
+- [Column move](column-move.md) — the cell's press handler and the landing line are here; the
+  handle's `stopPropagation` is what keeps a border press from moving the column.
 - [Auto-fit](auto-fit.md) — the handle's double-click is the entry point to `measure`; fitting every
   column (`measureAll`) is triggered by the consumer, not from here.
 - [Column model](column-model.md) — the sort shown here is the one `nextSort` produced.

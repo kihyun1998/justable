@@ -812,6 +812,98 @@ try {
   );
   await boxed.close();
 
+  // A header move drag, unscaled and inside scale(0.5): Size dragged left past Kind's middle, onto Name.
+  for (const scale of [1, 0.5]) {
+    const moving = await browser.newPage();
+    moving.on('pageerror', (e) => errors.push(String(e)));
+    await moving.goto(url, { waitUntil: 'networkidle0' });
+    await moving.waitForSelector('[role="grid"] [data-table-header]');
+    await moving.evaluate((s) => {
+      const grid = document.querySelector('[role="grid"]');
+      grid.style.transform = `scale(${s})`;
+      grid.style.transformOrigin = '0 0';
+    }, scale);
+    const cell = (i) =>
+      moving.$eval(`[data-table-header] [role="columnheader"][aria-colindex="${i}"]`, (h) => {
+        const r = h.getBoundingClientRect();
+        return { left: r.left, right: r.right, y: r.top + r.height / 2 };
+      });
+    const labels = () =>
+      moving.$$eval('[data-table-header] [role="columnheader"]', (hs) => hs.map((h) => h.textContent));
+    const sorted = () =>
+      moving.$$eval('[data-table-header] [aria-sort]', (hs) => hs.map((h) => h.getAttribute('aria-sort')));
+    const name = await cell(1);
+    const kind = await cell(2);
+    const size = await cell(3);
+    const from = labels();
+
+    // A press that travels less than the threshold is still a sort press.
+    await moving.mouse.move((size.left + size.right) / 2, size.y);
+    await moving.mouse.down();
+    await moving.mouse.move((size.left + size.right) / 2 + 2, size.y);
+    await moving.mouse.up();
+    const shortPress = await sorted();
+
+    await moving.mouse.move((size.left + size.right) / 2, size.y);
+    await moving.mouse.down();
+    await moving.mouse.move(kind.left + 3, size.y, { steps: 8 });
+    const during = await moving.evaluate(() => {
+      const line = document.querySelector('[data-table-move-indicator]');
+      if (!line) return null;
+      const r = line.getBoundingClientRect();
+      return {
+        centre: r.left + r.width / 2,
+        colour: getComputedStyle(line).backgroundColor,
+        selection: String(getSelection()),
+      };
+    });
+    await moving.mouse.move((name.left + name.right) / 2, size.y, { steps: 4 });
+    const onPin = await moving.evaluate(() => {
+      const line = document.querySelector('[data-table-move-indicator]');
+      if (!line) return null;
+      const r = line.getBoundingClientRect();
+      return r.left + r.width / 2;
+    });
+    await moving.mouse.up();
+    const after = await labels();
+    const sortAfter = await sorted();
+    const tracksAgree = await moving.evaluate(() => {
+      const grid = document.querySelector('[role="grid"]');
+      const header = grid.querySelector('[data-table-header]');
+      const row = grid.querySelector('[role="rowgroup"] [role="row"][aria-rowindex="2"]');
+      return getComputedStyle(header).gridTemplateColumns === getComputedStyle(row).gridTemplateColumns;
+    });
+    const gone = await moving.$('[data-table-move-indicator]');
+    const tag = scale === 1 ? 'unscaled' : `inside scale(${scale})`;
+    check(
+      `${tag}, a header press shorter than the threshold sorts`,
+      shortPress.length === 1,
+      { shortPress },
+    );
+    check(
+      `${tag}, a header drag shows its landing line on the border it will land at, selecting no text`,
+      during !== null &&
+        Math.abs(during.centre - kind.left) <= 1.5 &&
+        during.colour !== 'rgba(0, 0, 0, 0)' &&
+        during.selection === '',
+      { during, kindLeft: kind.left },
+    );
+    check(
+      `${tag}, a drag onto the pinned first column lands after it`,
+      onPin !== null && Math.abs(onPin - kind.left) <= 1.5,
+      { onPin, kindLeft: kind.left },
+    );
+    check(
+      `${tag}, the drop moves the column, header and rows together, and sorts nothing`,
+      JSON.stringify(after) === JSON.stringify(['Name', 'Size', 'Kind', 'Modified']) &&
+        JSON.stringify(sortAfter) === JSON.stringify(shortPress) &&
+        tracksAgree &&
+        gone === null,
+      { from: await from, after, sortAfter, tracksAgree },
+    );
+    await moving.close();
+  }
+
   check('no page errors', errors.length === 0, errors);
 } finally {
   await browser.close();

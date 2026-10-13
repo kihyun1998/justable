@@ -3,6 +3,7 @@
  * The engine's header on its own columns.
  */
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import { Profiler } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { TableGrid } from './TableGrid.js';
@@ -378,5 +379,242 @@ describe('sorting', () => {
     const cells = [...header.querySelectorAll('[role="columnheader"]')];
     expect(cells.map((c) => c.getAttribute('aria-sort'))).toEqual([null, 'descending']);
     expect(cells.map((c) => c.querySelector('svg') !== null)).toEqual([false, true]);
+  });
+});
+
+describe('moving', () => {
+  type M = 'a' | 'b' | 'c';
+  const MOVE_COLUMNS = [
+    { key: 'a' as const, label: 'Alpha', width: 100, movable: false },
+    { key: 'b' as const, label: 'Beta', width: 100, movable: true },
+    { key: 'c' as const, label: 'Gamma', width: 100, movable: true },
+  ];
+
+  /**
+   * jsdom lays nothing out: each cell's screen box is `scale` × its layout box, and its layout box is
+   * 100 px wide, side by side from 0.
+   */
+  function renderMovable(over: Partial<TableHeaderProps<M>> = {}, scale = 1) {
+    const onSort = vi.fn();
+    const onMove = vi.fn();
+    const refusePress = vi.fn(() => false);
+    const { container } = render(
+      <TableHeader
+        columns={MOVE_COLUMNS}
+        sort={undefined}
+        gridStyle={{}}
+        onSort={onSort}
+        onResize={vi.fn()}
+        resizeLabel="Resize"
+        refusePress={() => false}
+        move={{ refusePress, threshold: 4, onMove }}
+        scale={scale}
+        {...over}
+      />,
+    );
+    const header = container.firstElementChild as HTMLElement;
+    const cells = [...header.querySelectorAll<HTMLElement>('[role="columnheader"]')];
+    cells.forEach((cell, i) => {
+      Object.defineProperty(cell, 'offsetLeft', { get: () => i * 100 });
+      Object.defineProperty(cell, 'offsetWidth', { get: () => 100 });
+      cell.getBoundingClientRect = () =>
+        ({ left: i * 100 * scale, right: (i + 1) * 100 * scale, top: 0, bottom: 20 }) as DOMRect;
+    });
+    const button = (key: M) => cells[MOVE_COLUMNS.findIndex((c) => c.key === key)]!.querySelector('button')!;
+    const indicator = () => header.querySelector<HTMLElement>('[data-table-move-indicator]');
+    return { header, button, indicator, onSort, onMove, refusePress };
+  }
+
+  /** A press on `key`'s sort button, moves to each x, then the release and the click it brings. */
+  function drag(button: HTMLElement, from: number, ...to: number[]) {
+    fireEvent.mouseDown(button, { button: 0, clientX: from, clientY: 5 });
+    for (const x of to) move(x, { clientY: 5 });
+    act(() => {
+      fireEvent.mouseUp(document, { button: 0, clientX: to.at(-1) ?? from });
+    });
+    fireEvent.click(button, { detail: 1 });
+  }
+
+  it('a press that stays within the threshold is a sort press', () => {
+    const { button, onSort, onMove } = renderMovable();
+    drag(button('b'), 150, 154);
+    expect(onSort).toHaveBeenCalledWith('b');
+    expect(onMove).not.toHaveBeenCalled();
+  });
+
+  it('past the threshold the press is a move: the drop reports once, and no sort follows', () => {
+    const { button, onSort, onMove } = renderMovable();
+    drag(button('b'), 150, 200, 290);
+    expect(onMove).toHaveBeenCalledTimes(1);
+    expect(onMove).toHaveBeenCalledWith('b', null);
+    expect(onSort).not.toHaveBeenCalled();
+  });
+
+  it('lands before the column whose middle the pointer has not passed', () => {
+    const { button, onMove } = renderMovable();
+    drag(button('c'), 250, 120);
+    expect(onMove).toHaveBeenCalledWith('c', 'b');
+  });
+
+  it('no movable column passes an unmovable one', () => {
+    const { button, onMove } = renderMovable();
+    drag(button('c'), 250, 10);
+    expect(onMove).toHaveBeenCalledWith('c', 'b');
+  });
+
+  it('a drop where the column already is reports nothing, and still eats the click', () => {
+    const { button, onSort, onMove } = renderMovable();
+    drag(button('b'), 150, 170);
+    expect(onMove).not.toHaveBeenCalled();
+    expect(onSort).not.toHaveBeenCalled();
+  });
+
+  it('shows where the column will land while it is dragged, and nothing after', () => {
+    const { button, indicator } = renderMovable();
+    fireEvent.mouseDown(button('b'), { button: 0, clientX: 150, clientY: 5 });
+    move(152, { clientY: 5 });
+    expect(indicator()).toBeNull();
+    move(290, { clientY: 5 });
+    expect(indicator()!.style.left).toBe('300px');
+    move(60, { clientY: 5 });
+    expect(indicator()!.style.left).toBe('100px');
+    act(() => {
+      fireEvent.mouseUp(document, { button: 0 });
+    });
+    expect(indicator()).toBeNull();
+  });
+
+  it('under a scale, finds the slot on screen and draws the line in table px', () => {
+    const { button, indicator, onMove } = renderMovable({}, 0.5);
+    fireEvent.mouseDown(button('c'), { button: 0, clientX: 125, clientY: 5 });
+    move(60, { clientY: 5 });
+    expect(indicator()!.style.left).toBe('100px');
+    act(() => {
+      fireEvent.mouseUp(document, { button: 0 });
+    });
+    expect(onMove).toHaveBeenCalledWith('c', 'b');
+  });
+
+  it('a scroll under a still pointer moves the landing place', () => {
+    const onMove = vi.fn();
+    const { container } = render(
+      <TableGrid
+        label="t"
+        header={
+          <TableHeader
+            columns={MOVE_COLUMNS}
+            sort={undefined}
+            gridStyle={{}}
+            onSort={vi.fn()}
+            onResize={vi.fn()}
+            resizeLabel="Resize"
+            refusePress={() => false}
+            move={{ refusePress: () => false, threshold: 4, onMove }}
+          />
+        }
+        colCount={3}
+        total={0}
+        renderRow={() => null}
+        rowKey={String}
+        fill
+        focus={null}
+        rowIdPrefix="t"
+        rowHeightRem={2}
+      />,
+    );
+    const grid = container.firstElementChild as HTMLElement;
+    const scroller = grid.querySelectorAll(':scope > [role="rowgroup"]')[1] as HTMLElement;
+    let scrolled = 0;
+    const cells = [...grid.querySelectorAll<HTMLElement>('[role="columnheader"]')];
+    cells.forEach((cell, i) => {
+      Object.defineProperty(cell, 'offsetLeft', { get: () => i * 100 });
+      Object.defineProperty(cell, 'offsetWidth', { get: () => 100 });
+      cell.getBoundingClientRect = () =>
+        ({ left: i * 100 - scrolled, right: (i + 1) * 100 - scrolled, top: 0, bottom: 20 }) as DOMRect;
+    });
+    fireEvent.mouseDown(cells[1]!.querySelector('button')!, { button: 0, clientX: 150, clientY: 5 });
+    move(240, { clientY: 5 });
+    act(() => {
+      scrolled = 100;
+      fireEvent.scroll(scroller);
+    });
+    expect(grid.querySelector<HTMLElement>('[data-table-move-indicator]')!.style.left).toBe('300px');
+    act(() => {
+      fireEvent.mouseUp(document, { button: 0 });
+    });
+    expect(onMove).toHaveBeenCalledWith('b', null);
+  });
+
+  it('a move that keeps the landing place renders nothing', () => {
+    let commits = 0;
+    const { container } = render(
+      <Profiler id="header" onRender={() => (commits += 1)}>
+        <TableHeader
+          columns={MOVE_COLUMNS}
+          sort={undefined}
+          gridStyle={{}}
+          onSort={vi.fn()}
+          onResize={vi.fn()}
+          resizeLabel="Resize"
+          refusePress={() => false}
+          move={{ refusePress: () => false, threshold: 4, onMove: vi.fn() }}
+        />
+      </Profiler>,
+    );
+    const cells = [...container.querySelectorAll<HTMLElement>('[role="columnheader"]')];
+    cells.forEach((cell, i) => {
+      Object.defineProperty(cell, 'offsetLeft', { get: () => i * 100 });
+      cell.getBoundingClientRect = () =>
+        ({ left: i * 100, right: (i + 1) * 100, top: 0, bottom: 20 }) as DOMRect;
+    });
+    fireEvent.mouseDown(cells[1]!.querySelector('button')!, { button: 0, clientX: 150, clientY: 5 });
+    move(260, { clientY: 5 });
+    const shown = commits;
+    move(270, { clientY: 5 });
+    move(280, { clientY: 5 });
+    expect(commits).toBe(shown);
+  });
+
+  it('a press on a resize handle never starts a move', () => {
+    const { header, onMove } = renderMovable();
+    fireEvent.mouseDown(handle(header as HTMLElement, 'b' as Key), { button: 0, clientX: 200 });
+    move(290);
+    act(() => {
+      fireEvent.mouseUp(document, { button: 0 });
+    });
+    expect(onMove).not.toHaveBeenCalled();
+  });
+
+  it('an unmovable column does not move', () => {
+    const { button, onSort, onMove, indicator } = renderMovable();
+    fireEvent.mouseDown(button('a'), { button: 0, clientX: 50, clientY: 5 });
+    move(290, { clientY: 5 });
+    expect(indicator()).toBeNull();
+    act(() => {
+      fireEvent.mouseUp(document, { button: 0 });
+    });
+    fireEvent.click(button('a'), { detail: 1 });
+    expect(onMove).not.toHaveBeenCalled();
+    expect(onSort).toHaveBeenCalledWith('a');
+  });
+
+  it('a press the consumer refuses does not move', () => {
+    const { button, onMove, refusePress } = renderMovable();
+    refusePress.mockReturnValue(true);
+    drag(button('b'), 150, 290);
+    expect(refusePress).toHaveBeenCalled();
+    expect(onMove).not.toHaveBeenCalled();
+  });
+
+  it('without `move` the header moves nothing, as before', () => {
+    const { button, onSort, indicator } = renderMovable({ move: undefined });
+    fireEvent.mouseDown(button('b'), { button: 0, clientX: 150, clientY: 5 });
+    move(290, { clientY: 5 });
+    expect(indicator()).toBeNull();
+    act(() => {
+      fireEvent.mouseUp(document, { button: 0 });
+    });
+    fireEvent.click(button('b'), { detail: 1 });
+    expect(onSort).toHaveBeenCalledWith('b');
   });
 });

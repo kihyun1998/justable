@@ -18,6 +18,7 @@ export {
 export { TABLE_CELL, TABLE_GRID } from './lib/tableClasses.js';
 
 export { useColumnAutoFit } from './hooks/useColumnAutoFit.js';
+export type { ColumnMoveOptions } from './hooks/useColumnMove.js';
 export { type ResizeDrag, useColumnResize } from './hooks/useColumnResize.js';
 export type { MarqueeOptions, MarqueePhase, MarqueeReport } from './hooks/useMarquee.js';
 export type { MarqueeRange } from './lib/marquee.js';

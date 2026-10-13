@@ -200,11 +200,11 @@ export function useMarquee(
 }
 
 /**
- * Eats the one mouse click a browser sends for the release that ended a marquee, and the double-click
+ * Eats the one mouse click a browser sends for the release that ended a drag, and the double-click
  * that follows it when the drag was pressed as a second click; gives up at the next press. A click
  * with no press behind it (`detail` 0, e.g. from a key) passes.
  */
-function swallowNextClick() {
+export function swallowNextClick() {
   const swallow = (ev: MouseEvent) => {
     if (ev.detail === 0) return;
     ev.preventDefault();
