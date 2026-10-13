@@ -64,6 +64,7 @@ const COLUMNS: ColumnSpec<Person, Key>[] = [
     minWidth: 80,
     maxWidth: 480,
     hideable: false,
+    movable: false,
     firstSortDesc: false,
     compare: (a, b) => a.name.localeCompare(b.name),
   },
@@ -73,6 +74,7 @@ const COLUMNS: ColumnSpec<Person, Key>[] = [
     minWidth: 60,
     maxWidth: 160,
     hideable: true,
+    movable: true,
     firstSortDesc: true,
     compare: (a, b) => a.age - b.age,
   },
@@ -159,9 +161,9 @@ Row colours — hover, focus, selection — are yours too: style the rows throug
 
 | Piece | What it does |
 |---|---|
-| `createTableModel(columns)` | The column rules, as pure functions: widths clamped to each column's `minWidth`–`maxWidth`, hiding, the column template, the sort cycle, and `sortRows`. |
+| `createTableModel(columns)` | The column rules, as pure functions: widths clamped to each column's `minWidth`–`maxWidth`, hiding, order, the column template, the sort cycle, and `sortRows`. |
 | `TableGrid` | The scrolling grid. It draws only the rows in view, and calls `renderRow(index, place)` for each. |
-| `TableHeader` | The header row: one sort button per column, and a resize handle on each column's right border. |
+| `TableHeader` | The header row: one sort button per column, a resize handle on each column's right border, and — given `move` — a drag that moves a column. |
 | `TableRow` | One row: one cell per column, from `cell(key)`. Spread `place.id`, `place.rowIndex` and `place.style` onto it. |
 | `useTableKeyboard` | Arrow keys, Home/End, Page Up/Down and type-ahead. You call its `step` from your own key handler, and its `end` when you move the row yourself. |
 | `TableGrid`'s `marquee` | A rectangle dragged over the rows, reporting which rows it touches. |
@@ -173,7 +175,7 @@ its own (`display: contents`, say).
 ## Columns
 
 Each `ColumnSpec` gives a column's `key`, its `defaultWidth`, `minWidth` and `maxWidth` in px,
-whether it is `hideable`, the direction of its first sort (`firstSortDesc`), and a `compare` for
+whether it is `hideable`, whether it is `movable`, the direction of its first sort (`firstSortDesc`), and a `compare` for
 ascending order.
 
 - **Sorting.** A header press calls `onSort(key)`; `model.nextSort(sort, key)` gives the next state:
@@ -186,6 +188,16 @@ ascending order.
   held.
 - **Hiding.** `model.toggleHidden(layout, key)` hides or shows a `hideable` column;
   `model.visibleColumns(layout)` is what to draw. Pass its length to `TableGrid` as `colCount`.
+- **Moving.** `layout.order` lists every column, hidden ones included, in the order they are drawn;
+  absent, they are drawn in spec order. `model.withOrder(layout, key, beforeKey)` moves `key` before
+  `beforeKey`, or to the end for `null`, and drops an order equal to spec order. A column that is not
+  `movable` keeps its spec position and no column moves past it: `withOrder` returns the layout
+  unchanged for such a move. A stored order may name columns the spec no longer has — they are
+  ignored — and may lack ones it gained — they follow the listed ones, in spec order. In the header,
+  pass `move={{ refusePress, threshold, onMove }}` and give each `HeaderColumn` its `movable`: a press
+  on a movable column that travels more than `threshold` screen px becomes a drag, shows where the
+  column will land, and calls `onMove(key, beforeKey)` once at the drop — then no `onSort`. A shorter
+  press is a sort press, and a press on a resize handle never moves. Without `move`, nothing moves.
 - **Auto-fit.** `useColumnAutoFit()` measures the widest cell of a column. Render its `TableRuler`
   with `ref={rulerRef}` and `column={measuring}` while `measuring` is set — without the ref,
   `measure` answers `null` — and call `measure(key)` from `TableHeader`'s `onAutoFit`, a
@@ -305,6 +317,7 @@ which carries `data-table`:
   --table-focus-ring: #0969da;
   --table-marquee-fill: rgb(9 105 218 / 0.12);
   --table-marquee-border: #0969da;
+  --table-move-indicator: #0969da;
 }
 ```
 
@@ -320,6 +333,7 @@ which carries `data-table`:
 | `--table-focus-ring` | a header cell's keyboard focus ring |
 | `--table-marquee-fill` | the marquee rectangle's inside |
 | `--table-marquee-border` | the marquee rectangle's edge |
+| `--table-move-indicator` | where a column being moved will land |
 
 If you point them at your own design tokens (`var(--border)`), bind them on `[data-table]` rather
 than `:root`: a variable holding `var(--x)` is resolved where it is declared, so a theme that
@@ -327,7 +341,8 @@ redefines `--x` further down the page only reaches the table if the binding sits
 
 The table's parts carry stable data attributes to select by: `data-table` on the root,
 `data-table-header` on the header row, `data-table-resize="<key>"` on a column's resize handle,
-`data-table-marquee` on the marquee rectangle, and `data-table-ruler="<key>"` on an auto-fit ruler
+`data-table-marquee` on the marquee rectangle, `data-table-move-indicator` on the line showing
+where a moved column will land, and `data-table-ruler="<key>"` on an auto-fit ruler
 while it measures.
 
 ## Accessibility
@@ -388,6 +403,7 @@ For a list with its own markup and movement — a sidebar, a tree:
   `HeaderColumn`.
 - **Components**: `TableGrid`, `TableHeader`, `TableRow`, `TableRuler`; types `TableGridProps`,
   `RowPlace`, `TableHeaderProps`, `TableRowProps`, `TableRulerProps`.
+- **Moving**: type `ColumnMoveOptions`, `TableHeader`'s `move`.
 - **Marquee**: types `MarqueeOptions`, `MarqueeReport`, `MarqueePhase`, `MarqueeRange`.
 - **Hooks**: `useTableKeyboard` (types `TableKeyEvent`, `TableKeyStep`, `TableKeyboardLink`),
   `useTypeAhead` (`TypeAheadAnswer`, `TypeAheadOptions`, the options of both hooks),

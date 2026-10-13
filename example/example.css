@@ -45,6 +45,7 @@
   --table-focus-ring: var(--ring);
   --table-marquee-fill: color-mix(in srgb, var(--primary) 12%, transparent);
   --table-marquee-border: var(--primary);
+  --table-move-indicator: var(--primary);
 }
 
 * {

@@ -1,12 +1,13 @@
 /**
  * The header row: one `columnheader` per drawn column, each a sort target with a resize handle on its
- * right border.
+ * right border, and — given `move` — a press that drags the column to another place.
  */
 import { ArrowDown, ArrowUp } from 'lucide-react';
 
-import { useContext } from 'react';
+import { useContext, useRef } from 'react';
 import type { CSSProperties } from 'react';
 
+import { type ColumnMoveOptions, useColumnMove } from '../hooks/useColumnMove.js';
 import { type ResizeDrag, useColumnResize } from '../hooks/useColumnResize.js';
 import { classNames } from '../lib/classNames.js';
 import { TABLE_GRID } from '../lib/tableClasses.js';
@@ -33,6 +34,8 @@ export interface TableHeaderProps<K extends string> {
   scale?: number;
   /** Whether a press on a handle must not start a resize — the consumer's rule; the engine has none. */
   refusePress: (event: React.MouseEvent) => boolean;
+  /** A press on a movable column's cell that travels past the threshold moves it. Without it, nothing moves. */
+  move?: ColumnMoveOptions<K>;
   className?: string;
 }
 
@@ -57,10 +60,13 @@ export function TableHeader<K extends string>({
   resizeLabel,
   scale = 1,
   refusePress,
+  move,
   className,
 }: TableHeaderProps<K>) {
   const { resizing, begin } = useColumnResize(onResize, onResizeDrag);
   const grid = useContext(GridScrollerContext);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const moveDrag = useColumnMove(columns, move, rowRef, grid?.scrollerRef);
 
   const startResize = (column: HeaderColumn<K>) => (e: React.MouseEvent) => {
     // Suppressed for every button before `refusePress` decides, deliberately:
@@ -81,6 +87,7 @@ export function TableHeader<K extends string>({
 
   return (
     <div
+      ref={rowRef}
       role="row"
       aria-rowindex={1}
       // `relative z-20` over its own surface: `docs/map/territory/header-row.md`.
@@ -102,6 +109,7 @@ export function TableHeader<K extends string>({
           }
           // `self-stretch` is deliberate: `docs/map/territory/header-row.md`.
           className="justable:relative justable:flex justable:min-w-0 justable:items-center justable:self-stretch"
+          onMouseDown={move ? moveDrag.onMouseDown(i) : undefined}
         >
           {/* The handle straddles this column's right border. */}
           <div
@@ -149,6 +157,15 @@ export function TableHeader<K extends string>({
           </button>
         </div>
       ))}
+      {moveDrag.moving && (
+        // Where the dragged column lands, straddling that border.
+        <div
+          aria-hidden
+          data-table-move-indicator
+          style={{ left: `${moveDrag.moving.left}px` }}
+          className="justable:pointer-events-none justable:absolute justable:top-0 justable:bottom-0 justable:z-30 justable:w-0.5 justable:-translate-x-1/2 justable:bg-(--table-move-indicator)"
+        />
+      )}
     </div>
   );
 }

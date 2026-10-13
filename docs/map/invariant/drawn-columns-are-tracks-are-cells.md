@@ -14,7 +14,9 @@ And the header and every row lay those tracks out in boxes of the same width, so
 over one another. `aria-colcount` is the count of the list.
 
 Checkable: in a rendered table, every `[role=row]` has as many children as the template has px
-tracks, and every row's computed track widths equal the header's.
+tracks, and every row's computed track widths equal the header's. One exception, and it takes no
+track: while a [column move](../territory/column-move.md) runs, the header row holds one more child,
+the landing line, absolutely positioned and `aria-hidden`.
 
 ## Why it is cross-cutting
 
@@ -28,7 +30,10 @@ carries this, because there is no call to hang it on.
 ## Territories it holds in
 
 - [Column model](../territory/column-model.md) — `visibleColumns` is the list; `gridTemplate` is the
-  track side and adds the filler.
+  track side and adds the filler. Both follow the layout's order, so a move reorders all three lists
+  at once.
+- [Column move](../territory/column-move.md) — the landing line is the header row's one child that
+  is not a column.
 - [Header row](../territory/header-row.md) — one `columnheader` per `columns` entry, on `gridStyle`.
 - [Table row](../territory/table-row.md) — one `gridcell` per `columns` entry; `style` merged under
   `gridStyle` so the template is never replaced.

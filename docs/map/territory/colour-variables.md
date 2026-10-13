@@ -29,7 +29,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   reach the table. Bound at `:root`, 8 of the 10 header colours came out wrong in each of two such
   scopes (PenTerm). The grid root carries `data-table` for exactly this.
 - **Only the header and the marquee paint.** `TableHeader` uses every variable but the marquee's
-  two; `TableGrid` paints only the marquee rectangle (`--table-marquee-fill`,
+  two — `--table-move-indicator` only while a column move runs; `TableGrid` paints only the marquee rectangle (`--table-marquee-fill`,
   `--table-marquee-border`); the rows and the ruler paint no colour. Row hover, selection and focus
   colours are the consumer's row classes.
 - **Enforced by lint**, not by review: any colour-bearing utility whose value is not a `(--table-…)`
@@ -53,6 +53,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 ## Blast radius
 
 - [Header row](header-row.md) — paints every role but the marquee's.
+- [Column move](column-move.md) — the landing line's role, added in #61 by the maintainer's call.
 - [Marquee](marquee.md) — the rectangle's two roles.
 - [Grid scaffold](grid-scaffold.md) — owns the `data-table` attribute the binding hangs on.
 - [Package and release](package-and-release.md) — `README.md` § Colours is the published roster; a

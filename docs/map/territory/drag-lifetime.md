@@ -2,8 +2,8 @@
 
 ## What it is
 
-How long a mouse drag lives, shared by the engine's two drags — the [column resize](column-resize.md)
-border drag and the [marquee](marquee.md): `useDrag`, an internal hook whose `begin` attaches
+How long a mouse drag lives, shared by the engine's three drags — the [column resize](column-resize.md)
+border drag, the [marquee](marquee.md) and the header's [column move](column-move.md): `useDrag`, an internal hook whose `begin` attaches
 `document` `mousemove` and `mouseup` and the scroller's `scroll`, decides which event is the release,
 and detaches when the drag ends, when another begins, or when its component unmounts. It reports
 nothing to a consumer itself; each drag says what its own moments mean.
@@ -27,8 +27,8 @@ nothing to a consumer itself; each drag says what its own moments mean.
 ## Design model
 
 - **One drag runs per hook instance.** `begin` interrupts the running one (`'replaced'`) before
-  attaching; unmounting interrupts it (`'unmounted'`). A border drag and a marquee are two instances
-  and never end each other.
+  attaching; unmounting interrupts it (`'unmounted'`). A border drag, a marquee and a column move are
+  three instances and never end each other.
 - **The running drag is over before the new one reads anything.** `begin` interrupts first and only
   then calls `start`, where each drag reads its starting state — the border drag's `scrollLeft`, the
   marquee's canvas box, scroll offsets and content bounds. The old drag's end can move all of them: the
@@ -63,7 +63,9 @@ nothing to a consumer itself; each drag says what its own moments mean.
   `holdWidth(false)`, which measures the row window and the lane again, as the hand-kept lifetime
   before #10 did too.
 - **Only the lifetime is shared.** Threshold, Escape, blur, the click swallow, scale, `Δscroll` and the
-  width hold are each drag's own, attached and released through their own code.
+  width hold are each drag's own, attached and released through their own code. The click swallow's
+  function, `swallowNextClick`, is the marquee's, which the column move calls too: shared code, but
+  each drag decides whether to call it.
 
 ## Code
 
@@ -85,6 +87,8 @@ nothing to a consumer itself; each drag says what its own moments mean.
   `onResizeDrag` gets `null`.
 - [Marquee](marquee.md) — its drag runs on this; a change to the release moves when `end` is
   reported and the click is swallowed.
+- [Column move](column-move.md) — its drag runs on this; a change to the release moves when `onMove`
+  is reported.
 - [Verification gates](verification-gates.md) — `check:example` drags both in Chrome, where `buttons`
   is real; the jsdom tests send it by hand, and a move without it is a release.
 

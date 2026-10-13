@@ -3,7 +3,7 @@
 ## What it is
 
 The table's pure decisions about columns, bound to one column spec: what width a column is drawn at,
-which columns are drawn, the `grid-template-columns` that lays them out, the three-step sort cycle a
+which columns are drawn and in what order, the `grid-template-columns` that lays them out, the three-step sort cycle a
 header press walks, and a sorted copy of the rows. `createTableModel(spec)` returns them as one
 object; nothing in it touches the DOM or holds state. The user's changes arrive as a `ColumnLayout`
 the consumer stores; the model only reads and returns new ones.
@@ -19,12 +19,13 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 - **The spec owns what is fixed; the layout owns only what the user changed.** Bounds, the default
   width, whether a column may hide, the first sort direction and the comparator are the spec's. A
-  `ColumnLayout` holds widths the user set and columns they hid; an absent width means the default.
+  `ColumnLayout` holds widths the user set, columns they hid and the order they moved them into; an
+  absent width means the default, an absent order spec order.
   `createTableModel` binds the functions to one spec so a consumer can re-export them under its own
   names and its callers never see the spec.
 - **An unknown key throws where a column is looked up.** A function that reads a column's spec by
   key throws `unknown column` rather than answering for a column the spec does not have:
-  `clampWidth`, `columnWidth`, `withWidth`, `nextSort`, and `sortRows` given a sort. `gridTemplate`
+  `clampWidth`, `columnWidth`, `withWidth`, `withOrder`, `nextSort`, and `sortRows` given a sort. `gridTemplate`
   and `visibleColumns` walk the spec, so they never meet one. The hide functions (`isHidden`,
   `toggleHidden`) look nothing up: their key is typed `H`, the hideable keys, so an unknown key is
   refused by the compiler, and one cast past it is stored by `toggleHidden` without a word and hides
@@ -33,12 +34,14 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   falls back to `defaultWidth` for an absent or non-finite stored value and returns it as written, so
   a spec whose default lies outside its own bounds is drawn at that default until the first drag.
   `withWidth` clamps before storing.
-- **Layout-changing functions keep the rest of the layout.** `withWidth` and `toggleHidden` are
+- **Layout-changing functions keep the rest of the layout.** `withWidth`, `toggleHidden` and
+  `withOrder` are
   generic over `L extends ColumnLayout`, so a consumer's layout with more fields round-trips intact.
 - **A column that cannot hide is drawn even if the layout lists it.** `visibleColumns` filters on
   `!hideable || !hidden`; `isHidden` answers list membership only. The type parameter `H` is how a
   consumer narrows `hidden` to the hideable keys.
-- **Drawn columns come out in spec order**, never in the order they were un-hidden.
+- **Drawn columns come out in the layout's order** — spec order when it has none — never in the order
+  they were un-hidden. How the order is read and written: [column move](column-move.md).
 - **The grid template is one px track per drawn column, then a filler that is not a column**
   (`minmax(0,1fr)`). Each column owns its width, so a border drag changes that column alone and the
   total grows or shrinks; the filler takes the slack — without it a 1,250 px pane with 528 px of
@@ -71,7 +74,7 @@ divergence from file-manager peers and the shape of the general-purpose grids. `
 - [Drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md) —
   `visibleColumns` is the list the other sites must all be handed; `gridTemplate` is the track side.
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
-  bounds, sort direction, comparator and hideability are the spec's, never defaults here.
+  bounds, sort direction, comparator, hideability and movability are the spec's, never defaults here.
 
 ## Blast radius
 
@@ -82,6 +85,7 @@ divergence from file-manager peers and the shape of the general-purpose grids. `
 - [Grid scaffold](grid-scaffold.md) — `colCount` is the drawn-column count; a change to what is drawn
   changes what it must be told.
 - [Column resize](column-resize.md) — reports an unclamped width and relies on `withWidth` to clamp.
+- [Column move](column-move.md) — `withOrder` and the order `visibleColumns` reads are its model half.
 - [Auto-fit](auto-fit.md) — its measured width is also unclamped; same reliance.
 
 ## Known holes / open
