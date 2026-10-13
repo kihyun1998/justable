@@ -40,6 +40,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **A column that cannot hide is drawn even if the layout lists it.** `visibleColumns` filters on
   `!hideable || !hidden`; `isHidden` answers list membership only. The type parameter `H` is how a
   consumer narrows `hidden` to the hideable keys.
+- **`columnOrder` is every column, hidden ones included, in the layout's order** (#64), and
+  `visibleColumns` is it filtered to the drawn ones.
 - **Drawn columns come out in the layout's order** — spec order when it has none — never in the order
   they were un-hidden. How the order is read and written: [column move](column-move.md).
 - **The grid template is one px track per drawn column, then a filler that is not a column**

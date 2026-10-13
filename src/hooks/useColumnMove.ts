@@ -11,6 +11,11 @@ export interface ColumnMoveOptions<K extends string> {
   refusePress: (event: ReactMouseEvent) => boolean;
   /** How far, in screen px on either axis, the pointer moves before a press becomes a move. */
   threshold: number;
+  /**
+   * Where `key` may land, per drawn slot — before each drawn column, then the end: the `beforeKey` to
+   * report for a drop there, or `undefined` where none is allowed. The model's `moveTargets`.
+   */
+  targets: (key: K) => readonly (K | null | undefined)[];
   /** The drop: `key` goes before `beforeKey`, or to the end for `null`. */
   onMove: (key: K, beforeKey: K | null) => void;
 }
@@ -22,21 +27,21 @@ export interface ColumnMoving<K extends string> {
 }
 
 /**
- * The drawn column a move of column `from` lands before — `screen.length` for the end — for a pointer
- * at `x`, kept between the unmovable columns around `from`. `screen` is each column's screen box.
+ * The drawn slot a move lands in — before each drawn column, then `screen.length` for the end — for a
+ * pointer at `x`: the allowed slot nearest the one under the pointer. `screen` is each column's screen
+ * box; `allowed` has one entry per slot.
  */
 export function moveSlot(
   screen: readonly { left: number; right: number }[],
-  movable: readonly boolean[],
-  from: number,
+  allowed: readonly boolean[],
   x: number,
 ): number {
-  let lo = from;
-  while (lo > 0 && movable[lo - 1]) lo--;
-  let hi = from + 1;
-  while (hi < movable.length && movable[hi]) hi++;
-  const slot = screen.filter((box) => (box.left + box.right) / 2 < x).length;
-  return Math.min(hi, Math.max(lo, slot));
+  const under = screen.filter((box) => (box.left + box.right) / 2 < x).length;
+  let slot = -1;
+  allowed.forEach((ok, s) => {
+    if (ok && (slot < 0 || Math.abs(s - under) < Math.abs(slot - under))) slot = s;
+  });
+  return slot;
 }
 
 /**
@@ -54,10 +59,17 @@ export function useColumnMove<K extends string>(
   const drag = useDrag();
 
   const onMouseDown = (from: number) => (press: ReactMouseEvent) => {
-    if (!options || !columns[from]?.movable || options.refusePress(press)) return;
+    if (!options || !columns[from] || options.refusePress(press)) return;
     const { threshold, onMove } = options;
     const keys = columns.map((c) => c.key);
-    const movable = columns.map((c) => c.movable === true);
+    const offered = options.targets(keys[from]!);
+    const own = (s: number) => s === from || s === from + 1;
+    // The column's own two slots drop it where it is, so they are always there to land in.
+    const allowed = Array.from(
+      { length: keys.length + 1 },
+      (_, s) => own(s) || offered[s] !== undefined,
+    );
+    if (allowed.every((ok, s) => !ok || own(s))) return;
 
     drag.begin(press.button, scroller?.current ?? null, () => {
       let x = press.clientX;
@@ -73,8 +85,7 @@ export function useColumnMove<K extends string>(
         const drawn = cells();
         slot = moveSlot(
           drawn.map((cell) => cell.getBoundingClientRect()),
-          movable,
-          from,
+          allowed,
           x,
         );
         const at = drawn[slot];
@@ -105,7 +116,10 @@ export function useColumnMove<K extends string>(
           if (!started) return;
           update();
           swallowNextClick();
-          if (slot !== from && slot !== from + 1) onMove(keys[from]!, keys[slot] ?? null);
+          const beforeKey = offered[slot];
+          if (!own(slot) && beforeKey !== undefined) {
+            onMove(keys[from]!, beforeKey);
+          }
         },
         ended: () => setMoving(null),
       };

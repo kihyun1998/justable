@@ -230,6 +230,65 @@ describe('the column order around a pin in the middle', () => {
   });
 });
 
+describe('where a column may land', () => {
+  it('the full order lists hidden columns too, in their places', () => {
+    const layout = model.toggleHidden(model.withOrder(EMPTY, 'owner', 'due'), 'owner');
+    expect(model.columnOrder(layout)).toEqual(['title', 'owner', 'due']);
+    expect(model.visibleColumns(layout)).toEqual(['title', 'due']);
+  });
+
+  it('answers per drawn slot: the key to report there, or nothing where the move is refused', () => {
+    expect(model.moveTargets(EMPTY, 'owner')).toEqual([undefined, 'due', undefined, null]);
+    expect(model.moveTargets(EMPTY, 'title')).toEqual([undefined, undefined, undefined, undefined]);
+  });
+});
+
+describe('where a column may land around a hidden pin', () => {
+  type P = 'a' | 'b' | 'pin' | 'c' | 'd';
+  const column = (key: P, movable: boolean): ColumnSpec<Task, P> => ({
+    key,
+    defaultWidth: 10,
+    minWidth: 10,
+    maxWidth: 10,
+    hideable: true,
+    movable,
+    firstSortDesc: false,
+    compare: () => 0,
+  });
+  const pinned = createTableModel<Task, P>([
+    column('a', true),
+    column('b', true),
+    column('pin', false),
+    column('c', true),
+    column('d', true),
+  ]);
+  const HIDDEN: ColumnLayout<P> = { widths: {}, hidden: ['pin'] };
+
+  it('the slot after the run reports the hidden pin, and no slot past it is offered', () => {
+    expect(pinned.visibleColumns(HIDDEN)).toEqual(['a', 'b', 'c', 'd']);
+    expect(pinned.moveTargets(HIDDEN, 'a')).toEqual([undefined, 'b', 'pin', undefined, undefined]);
+    expect(pinned.moveTargets(HIDDEN, 'd')).toEqual([undefined, undefined, 'c', undefined, null]);
+  });
+
+  it('a slot with a hidden movable column before its drawn one lands next to the drawn one', () => {
+    const layout: ColumnLayout<P> = { widths: {}, hidden: ['b'] };
+    expect(pinned.moveTargets(layout, 'a')).toEqual([undefined, 'pin', undefined, undefined, undefined]);
+  });
+
+  it('every slot it offers is a move withOrder makes', () => {
+    for (const layout of [HIDDEN, { ...HIDDEN, order: ['b', 'a', 'pin', 'd', 'c'] as P[] }]) {
+      for (const key of ['a', 'b', 'c', 'd'] as const) {
+        for (const before of pinned.moveTargets(layout, key)) {
+          if (before === undefined) continue;
+          const moved = pinned.withOrder(layout, key, before);
+          const at = pinned.columnOrder(moved).indexOf(key);
+          expect(pinned.columnOrder(moved)[at + 1] ?? null, `${key} before ${before}`).toBe(before);
+        }
+      }
+    }
+  });
+});
+
 describe('the sort cycle', () => {
   it('starts in the column’s first direction', () => {
     expect(model.nextSort(undefined, 'title')).toEqual({ key: 'title', desc: false });

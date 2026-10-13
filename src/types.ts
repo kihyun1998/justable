@@ -34,8 +34,6 @@ export interface HeaderColumn<K extends string> {
   key: K;
   label: string;
   width: number;
-  /** Whether a header press may move this column. Absent: it may not. */
-  movable?: boolean;
 }
 
 /** Rows the viewport can see, by index. `end` is exclusive. */

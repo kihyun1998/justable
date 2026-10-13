@@ -193,11 +193,15 @@ ascending order.
   `beforeKey`, or to the end for `null`, and drops an order equal to spec order. A column that is not
   `movable` keeps its spec position and no column moves past it: `withOrder` returns the layout
   unchanged for such a move. A stored order may name columns the spec no longer has — they are
-  ignored — and may lack ones it gained — they follow the listed ones, in spec order. In the header,
-  pass `move={{ refusePress, threshold, onMove }}` and give each `HeaderColumn` its `movable`: a press
-  on a movable column that travels more than `threshold` screen px becomes a drag, shows where the
-  column will land, and calls `onMove(key, beforeKey)` once at the drop — then no `onSort`. A shorter
-  press is a sort press, and a press on a resize handle never moves. Without `move`, nothing moves.
+  ignored — and may lack ones it gained — they follow the listed ones, in spec order.
+  `model.columnOrder(layout)` is every column, hidden ones included, in that order — for a column
+  chooser. In the header, pass
+  `move={{ refusePress, threshold, targets: (key) => model.moveTargets(layout, key), onMove }}`: a
+  press on a column `moveTargets` lets move that travels more than `threshold` screen px becomes a
+  drag, shows where the column will land — only where `moveTargets` allows, so a hidden unmovable
+  column still bounds it — and calls `onMove(key, beforeKey)` once at
+  the drop, then no `onSort`. A shorter press is a sort press, and a press on a resize handle never
+  moves. Without `move`, nothing moves.
 - **Auto-fit.** `useColumnAutoFit()` measures the widest cell of a column. Render its `TableRuler`
   with `ref={rulerRef}` and `column={measuring}` while `measuring` is set — without the ref,
   `measure` answers `null` — and call `measure(key)` from `TableHeader`'s `onAutoFit`, a

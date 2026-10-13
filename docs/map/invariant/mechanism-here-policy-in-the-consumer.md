@@ -45,8 +45,8 @@ consumer's policy that the consumer cannot see.
 - [Auto-fit](../territory/auto-fit.md) — the renderer, the classes, and the clamp.
 - [Grid scaffold](../territory/grid-scaffold.md) — the label, the floor click, the scroller wrapper,
   and whether the grid is multi-selectable.
-- [Column move](../territory/column-move.md) — `refusePress` and `threshold` are required inside
-  `move`; which columns move is the spec's `movable`, and what a drop does is the consumer's
+- [Column move](../territory/column-move.md) — `refusePress`, `threshold` and `targets` are required
+  inside `move`; which columns move is the spec's `movable`, and what a drop does is the consumer's
   `withOrder` call.
 - [Marquee](../territory/marquee.md) — `refusePress` and `threshold` are required; what a range
   selects, and the edge-scroll loop, are the consumer's.
