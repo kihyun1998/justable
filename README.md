@@ -317,7 +317,8 @@ The table draws it and tells you which rows it touches; what that selects is you
   axis — px on screen, so inside a scaled copy of the table it is not scaled. A press that moves less
   is an ordinary click. After a real drag, the click the browser sends
   for the release reaches neither your row's `onClick` nor `onFloorClick`, nor does the double-click
-  that follows when the drag began as a second click.
+  that follows when the drag began as a second click. The same holds for a drag cancelled with the
+  button still held: the click its later release sends is swallowed too.
 - **The range.** `{ anchor, head }`, in the same row indexes as `focus` and `renderRow`: `anchor` is
   the touched row nearest the press, `head` the one nearest the pointer, so `head < anchor` when
   dragging up. Only the rectangle's height counts: every row it overlaps top to bottom is touched,

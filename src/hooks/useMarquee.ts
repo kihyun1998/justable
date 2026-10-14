@@ -165,6 +165,7 @@ export function useMarquee(
       };
       const cancel = () => {
         report('cancel');
+        swallowNextClick();
         end();
       };
       const onKey = (ev: KeyboardEvent) => {
@@ -200,9 +201,10 @@ export function useMarquee(
 }
 
 /**
- * Eats the one mouse click a browser sends for the release that ended a drag, and the double-click
- * that follows it when the drag was pressed as a second click; gives up at the next press. A click
- * with no press behind it (`detail` 0, e.g. from a key) passes.
+ * Eats the one mouse click a browser sends for the release that ended a drag, or for the later
+ * release of a drag cancelled with its button held, and the double-click that follows it when the
+ * drag was pressed as a second click; gives up at the next primary press. A click with no press
+ * behind it (`detail` 0, e.g. from a key) passes.
  */
 export function swallowNextClick() {
   const swallow = (ev: MouseEvent) => {
@@ -211,7 +213,8 @@ export function swallowNextClick() {
     ev.stopPropagation();
     window.removeEventListener(ev.type as 'click' | 'dblclick', swallow, true);
   };
-  const off = () => {
+  const off = (ev: MouseEvent) => {
+    if (ev.button !== 0) return;
     window.removeEventListener('click', swallow, true);
     window.removeEventListener('dblclick', swallow, true);
     window.removeEventListener('mousedown', off, true);

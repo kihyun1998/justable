@@ -122,19 +122,33 @@ places the press, the pointer and the rectangle on the canvas. The engine draws 
   is reported only when it changes the range. A derivation; #9's spec said "whenever the range
   changes".
 - **The release's click is swallowed on `window`, capture phase, and so is the `dblclick` after it,
-  bounded by the next press, never by a timer.** Measured in Chrome: a click, then a drag pressed within
+  bounded by the next primary press, never by a timer.** Measured in Chrome: a click, then a drag pressed within
   the double-click time, releases a click with `detail` 2 and then a `dblclick` on the row — which
   in a file list opens the file. Each listener leaves once it has eaten its event; a `dblclick`
   listener left waiting after a single click costs nothing, since a double-click needs a press first
   and the press removes it. Chrome sends the click as its own task after `mouseup` — measured 13 ms apart — so a
   `setTimeout(0)` bound, the first version's, can expire before the click arrives; in the one probe
   run the click still came first, so this is the ordering, not an observed miss. Every mouse click
-  follows a press, so the next `mousedown` is the exact bound. A click with `detail` 0 (from a key) is not the release's and passes. The click lands
+  follows a primary press, so the next primary `mousedown` is the exact bound (#73; before it, any press). A click with `detail` 0 (from a key) is not the release's and passes. The click lands
   on the press's and release's common ancestor, so it reaches a row's `onClick` only when both were on
   that row — the example's browser check drags inside one row with Ctrl for exactly that reason.
 - **Escape is claimed only while a marquee runs**: `window` capture phase, `preventDefault` and
   `stopPropagation`, so a consumer's grid-level Escape (clear the selection) does not undo the restore
   its `cancel` just did. Before the threshold, Escape is the consumer's.
+- **A cancel swallows the click its later release sends** (#73). Escape and blur end the drag with
+  the button still held, so the release — and its click on the press's and release's common ancestor
+  — comes after every drag listener is gone. `cancel` arms `swallowNextClick` before it ends the drag,
+  and the swallow's next-press bound is what makes that safe: a blur whose button is let go outside
+  the window sends no click, and the next press takes the swallow away. Measured in Chrome
+  (`check:example`, 2026-10-14): without it, a marquee pressed on row 10, cancelled with Escape and
+  released on row 10 left the selection `[10]` — the click selecting that row alone, undoing the
+  restore `cancel` had just made. A cancel by a new press arms nothing: that press is itself the
+  swallow's bound. The existing tests missed it because each released without sending the click.
+  A derivation, 2026-10-14; #73 asked for a separate "after release" helper, and none was needed.
+- **The swallow gives up at the next *primary* press, not at any press** (#73). A `click` follows a
+  primary press only, so a right or middle press while the button is held — between a cancel and its
+  release — would otherwise end the swallow and let the release's click through. Pinned in jsdom; not
+  measured in a browser.
 - **A drag cannot outlive its component or another drag** — the [drag lifetime](drag-lifetime.md)'s,
   shared with [column resize](column-resize.md). What this drag says when interrupted is its own: a
   new press **cancels** a running drag that had started — its consumer is alive and would otherwise be
