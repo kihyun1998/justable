@@ -4,6 +4,36 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
+## 0.4.0 — 2026-10-14
+
+### Breaking
+
+- **`ColumnSpec` takes a required `movable`.** A column that cannot move keeps its spec position,
+  and no movable column passes it. Every spec must now say `movable: true` or `false`; one written
+  for 0.3 does not type-check until it does (#61).
+
+### Added
+
+- **Columns move.** `ColumnLayout` takes an optional `order` — every column, hidden ones included,
+  in the order they are drawn; absent, spec order — and `visibleColumns` and `gridTemplate` follow
+  it. The model gains `withOrder(layout, key, beforeKey)`, which moves a column or returns the same
+  layout where the move is refused; `columnOrder(layout)`, the full order as read; `moveTargets(layout,
+  key)`, where a column may land, one entry per drawn slot; and `moveBy(layout, key, ±1)`, the
+  `beforeKey` one drawn place over, or `undefined` (#61, #62, #64, #63).
+- **`TableHeader` takes `move`** — `{ refusePress, threshold, targets, onMove }`, all required
+  inside it — so a press on a column's cell dragged past `threshold` screen px moves it, with a
+  landing line between the columns, and reports the drop as `onMove(key, beforeKey)`. A press below
+  the threshold still sorts. The line is painted with the new `--table-move-indicator` and carries
+  `data-table-move-indicator`. `ColumnMoveOptions` is exported (#61, #62).
+- **`TableHeader` takes `onColumnKeyDown(key, event)`**, for a key on a column's header cell. The
+  engine binds no key: a consumer moves a column with it through `moveBy` and `withOrder`, or resizes
+  one through `withWidth` (#63, #67).
+- **`TableGrid` takes `onKeyDown`**, called only for a key on the grid element itself — not for one
+  on a header's sort button or a control inside a cell. Call `step` from it: README § Keyboard now
+  says so, where it said to call `step` from a handler around the grid, which also heard those keys,
+  so ↓ on a sort button moved the rows and Space there could select a row instead of sorting. A
+  handler around the grid still hears every key (#68).
+
 ## 0.3.3 — 2026-10-06
 
 ### Fixed
