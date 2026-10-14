@@ -984,6 +984,46 @@ try {
     await ghosted.close();
   }
 
+  // A header move cancelled with Escape mid-drag, then released back on the column it was pressed on,
+  // where a click that got through would sort.
+  {
+    const cancelled = await browser.newPage();
+    cancelled.on('pageerror', (e) => errors.push(String(e)));
+    await cancelled.goto(url, { waitUntil: 'networkidle0' });
+    await cancelled.waitForSelector('[role="grid"] [data-table-header]');
+    const state = () =>
+      cancelled.evaluate(() => ({
+        labels: [...document.querySelectorAll('[data-table-header] [role="columnheader"]')].map((h) => h.textContent),
+        sort: [...document.querySelectorAll('[data-table-header] [aria-sort]')].map((h) => h.getAttribute('aria-sort')),
+        feedback: document.querySelector('[data-table-move-indicator], [data-table-moving]') !== null,
+      }));
+    const box = (i) =>
+      cancelled.$eval(`[data-table-header] [role="columnheader"][aria-colindex="${i}"]`, (h) => {
+        const r = h.getBoundingClientRect();
+        return { left: r.left, right: r.right, y: r.top + r.height / 2 };
+      });
+    const kind = await box(2);
+    const size = await box(3);
+    const before = await state();
+    await cancelled.mouse.move((size.left + size.right) / 2, size.y);
+    await cancelled.mouse.down();
+    await cancelled.mouse.move(kind.left + 3, size.y, { steps: 8 });
+    const dragging = await state();
+    await cancelled.keyboard.press('Escape');
+    const afterEscape = await state();
+    await cancelled.mouse.move((size.left + size.right) / 2, size.y, { steps: 4 });
+    await cancelled.mouse.up();
+    const afterRelease = await state();
+    check(
+      'Escape mid-drag ends a header move at once, and its release moves and sorts nothing',
+      dragging.feedback &&
+        !afterEscape.feedback &&
+        JSON.stringify(afterRelease) === JSON.stringify(before),
+      { before, dragging, afterEscape, afterRelease },
+    );
+    await cancelled.close();
+  }
+
   // A column moved from the keyboard: Shift+→ twice and Shift+← once on Kind's sort button.
   {
     const keyed = await browser.newPage();

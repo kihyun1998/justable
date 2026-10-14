@@ -52,11 +52,11 @@ nothing to a consumer itself; each drag says what its own moments mean.
 - **Four moments, and the order they run in.** `release` runs with the listeners still attached, then
   the drag ends. `interrupted(why)` runs before the drag ends. `ended` runs last on every path, the
   listeners already gone. `start` is handed `end`, which ends the drag from inside with no release —
-  the marquee's Escape and blur. So a drag that must tell its consumer on every end reports in `ended`
+  the marquee's and the column move's Escape and blur (#75). So a drag that must tell its consumer on every end reports in `ended`
   (the border drag's `null`), and one that reports only some interruptions reports in `interrupted`
   (the marquee's `cancel`, only when replaced after it started).
-- **`end` has no guard against a second call.** Every caller that holds it — the marquee's Escape and
-  blur listeners — is removed in `ended`, so no path calls it on a drag already over. Measured
+- **`end` has no guard against a second call.** Every caller that holds it — the marquee's and the
+  column move's Escape and blur listeners — is removed in `ended`, so no path calls it on a drag already over. Measured
   2026-09-30: a guard there survived every test as a mutation. A caller that keeps `end` past `ended`
   would null out a newer drag. A consumer that unmounts the component synchronously inside a release
   (`flushSync` in `onResize` or an `end` report) runs `ended` twice — a second `onDrag(null)` and
@@ -66,7 +66,7 @@ nothing to a consumer itself; each drag says what its own moments mean.
   width hold are each drag's own, attached and released through their own code. The click swallow's
   function, `swallowNextClick`, is the marquee's, which the column move calls too: shared code, but
   each drag decides whether to call it — at the release, and, for a drag ended from inside with its
-  button still held (the marquee's Escape and blur), at that end, since its release comes after this
+  button still held (the marquee's and the column move's Escape and blur), at that end, since its release comes after this
   primitive has let go (#73).
 
 ## Code

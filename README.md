@@ -199,7 +199,9 @@ ascending order.
   drag, shows where the column will land — only where `moveTargets` allows, so a hidden unmovable
   column still bounds it — and calls `onMove(key, beforeKey)` once at
   the drop, then no `onSort`. A shorter press is a sort press, and a press on a resize handle never
-  moves. Without `move`, nothing moves.
+  moves. Without `move`, nothing moves. Escape, or the window losing focus, cancels a running move:
+  no `onMove`, and no `onSort` when the button is let go. That Escape reaches no handler on the
+  document or an element; before the threshold, Escape is yours.
 - **Drawing the move yourself.** While a move runs, the moved column's header cell carries
   `data-table-moving` — dim it or set a cursor in your CSS. Give `move` an `onDrag` and the table
   draws no landing line: `onDrag` hears each pointer move and each scroll of the running move as a
@@ -211,7 +213,8 @@ ascending order.
   for an edge-scroll loop, as with `onResizeDrag`. The example's `?ghost` page draws a ghost and a
   line this way.
 - **Moving from the keyboard.** Each header cell's sort button is a Tab stop. `TableHeader`'s
-  `onColumnKeyDown(key, event)` hands you a key pressed on a column; the table binds no key itself.
+  `onColumnKeyDown(key, event)` hands you a key pressed on a column; the table binds no key itself to
+  move one (it claims Escape only while a mouse move runs).
   `model.moveBy(layout, key, -1 | 1)` is the `beforeKey` that moves that column one drawn place left
   or right — pass it to `withOrder` — or `undefined` where it cannot go, under the same rules as a
   drag. Focus stays on the moved column's button. Announce the move yourself, for example in a
