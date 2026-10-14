@@ -219,6 +219,21 @@ ascending order.
     if (beforeKey !== undefined) setLayout(model.withOrder(layout, key, beforeKey));
   }}
   ```
+- **Resizing from the keyboard.** The same `onColumnKeyDown` can change a width: bind a key to
+  `model.withWidth(layout, key, model.columnWidth(layout, key) ± step)`, which clamps to the column's
+  `minWidth`–`maxWidth`. The key and the step are yours; the table binds none. The resize handle
+  itself is not focusable — it is no Tab stop — so a keyboard user resizes from the column's sort
+  button. Alt+←/→, as
+  [AG Grid](https://www.ag-grid.com/react-data-grid/column-sizing/) binds it:
+
+  ```tsx
+  onColumnKeyDown={(key, e) => {
+    const step = e.key === 'ArrowLeft' ? -10 : e.key === 'ArrowRight' ? 10 : 0;
+    if (!e.altKey || step === 0) return;
+    e.preventDefault();
+    setLayout(model.withWidth(layout, key, model.columnWidth(layout, key) + step));
+  }}
+  ```
 - **Auto-fit.** `useColumnAutoFit()` measures the widest cell of a column. Render its `TableRuler`
   with `ref={rulerRef}` and `column={measuring}` while `measuring` is set — without the ref,
   `measure` answers `null` — and call `measure(key)` from `TableHeader`'s `onAutoFit`, a
@@ -371,6 +386,9 @@ while it measures.
 - The grid is `role="grid"` with one tab stop; the focused row is announced through
   `aria-activedescendant`, and rows and cells carry their row and column indexes.
 - `label` names the grid. `colCount` is the number of drawn columns, for `aria-colcount`.
+- Each header cell's sort button is a Tab stop; the resize handles are not. A column is moved and
+  resized from the keyboard through `onColumnKeyDown`, with keys you bind — see
+  [Columns](#columns).
 - `aria-selected` on a row is yours to set. Pass `multiselectable` when several rows can be selected
   at once; it is off by default.
 - A `disabled` grid ignores the pointer and says `aria-disabled`, but stays focusable, so a screen

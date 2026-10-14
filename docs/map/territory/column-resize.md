@@ -12,6 +12,16 @@ right edge, the press handler that arms a drag, and `useColumnResize`, which fol
   runs on the [drag lifetime](drag-lifetime.md) the marquee shares; what an interrupted drag tells its
   consumer stays this drag's. What they were shown, and what they did not cover, is in that note.
 
+- **#67, the maintainer's call at triage, 2026-10-14: the handle stays pointer-only, and a keyboard
+  resize goes through `onColumnKeyDown` + `withWidth`.** Shown: the handle's code (`separator`, no
+  `tabIndex`, no value); PenTerm's ADR-0099 (read in PenTerm's tree); a jsdom check that
+  `onColumnKeyDown` bound to `withWidth` already resizes within the bounds; and four directions:
+  (a) document that path, (b) an opt-in focusable handle, (c) an always-focusable handle per the APG
+  window splitter, (d) wontfix without documenting. Chosen: **(a)**. The record of why is
+  [`.out-of-scope/a-focusable-resize-handle.md`](../../../.out-of-scope/a-focusable-resize-handle.md).
+  It did not cover Escape mid-drag, nor the binding the README shows (Alt+←/→, from AG Grid's docs),
+  which is the example's and not the engine's.
+
 Nothing else is decided in this repository. Adjacent, in PenTerm: ADR-0099 (a resize boundary is not
 keyboard-operable) and ADR-0100 (a resize in flight is not cancelled) roster this column border among
 PenTerm's resize boundaries. They decide PenTerm's policy across its boundaries; nothing here adopts
@@ -131,5 +141,9 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **Mouse only.** No touch or pen drag: the handlers are `mousedown`/`mousemove`/`mouseup`, and
   touch input produces no compatible `mousemove` stream. Whether that is policy or omission is
   recorded nowhere here (PenTerm is a desktop app).
-- **Not keyboard-operable, and Escape does nothing mid-drag.** Decided for PenTerm by its ADR-0099
-  and ADR-0100; undecided for any other consumer.
+- **The handle is not keyboard-operable** — decided here by #67, above; a column is resized from the
+  keyboard through its sort button instead. **Whether Alt+← still navigates Back** in a browser when
+  the consumer's handler calls `preventDefault` is not measured: Puppeteer's keys reach the page
+  through CDP and never the browser's own shortcuts, so the probe of 2026-10-14 could not tell.
+- **Escape does nothing mid-drag.** Decided for PenTerm by its ADR-0100; undecided for any other
+  consumer.
