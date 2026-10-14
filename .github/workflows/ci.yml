@@ -50,11 +50,7 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - name: npm token
-        run: npm whoami
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: npm can publish by OIDC
+        run: node -e "const [a,b,c]=process.argv[1].split('.').map(Number); if (a*1e6+b*1e3+c < 11005001) { console.error('npm ' + process.argv[1] + ' is below 11.5.1'); process.exit(1) }" "$(npm --version)"
       - name: publish
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
