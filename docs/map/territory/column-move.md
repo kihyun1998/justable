@@ -100,7 +100,8 @@ the layout.
   `movable` — #61 added one and #62 removed it before any release (the maintainer's call, below),
   so the header holds no second copy of which columns move.
 - **A key reaches the consumer through `onColumnKeyDown(key, event)`, on the header cell**, so it
-  takes keys from the sort button inside it; absent, the cell has no key handler. The engine binds
+  takes keys from the sort button inside it; absent, the cell has no key handler. The grid's
+  `onKeyDown` never hears those keys ([grid scaffold](grid-scaffold.md), #68). The engine binds
   no key and renders no announcement. `moveBy(layout, key, ±1)` reads `moveTargets` at the slot one
   drawn place over — `from − 1` left, `from + 2` right, the second because `from + 1` is the column's
   own right edge — so a key step obeys every boundary a drag does.

@@ -265,8 +265,7 @@ export function FileTable({
         </span>
       </div>
 
-      {/* The table reports keys; this wrapper is the consumer's listener. */}
-      <div className="pane" style={{ flex: 1 }} onKeyDown={onKeyDown}>
+      <div className="pane" style={{ flex: 1 }}>
         <TableGrid
           label="Files"
           header={header}
@@ -314,6 +313,7 @@ export function FileTable({
           multiselectable
           rowHeightRem={1.75}
           keyboard={keyboard.link}
+          onKeyDown={onKeyDown}
           onFloorClick={() => setSelected(new Set())}
           marquee={{
             // A press on a file's name is a click on that file, never a marquee.

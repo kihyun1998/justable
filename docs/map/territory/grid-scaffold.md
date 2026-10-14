@@ -5,12 +5,19 @@
 The `role="grid"` structure `TableGrid` draws: one focusable container with the header lane over a
 scroller, the ARIA that names rows and the focused row, the leading rows that sit above the data,
 and the grid-wide switches — `fill`, `disabled`, `showRows` — plus the consumer's hooks into the
-scroller (`onFloorClick`, `wrapScroller`, `scrollerProps`, `marquee`). It is the shape every other component is
-drawn inside.
+scroller (`onFloorClick`, `wrapScroller`, `scrollerProps`, `marquee`) and its own keys
+(`onKeyDown`). It is the shape every other component is drawn inside.
 
 ## Governing decisions
 
-**None.**
+- **Which element a key belongs to is the engine's: the grid's `onKeyDown` hears only keys whose
+  target is the grid element** — the maintainer's call at triage, 2026-10-14, #68. Shown: the
+  measurement below, and three directions — (a) README and example only, (b) `step` ignoring keys
+  not aimed at the grid, (c) this prop. Rejected: (a), because the README's own pattern stays a
+  trap every consumer must know about; (b), because the consumer's own Space and Enter would still
+  need the same check. Not covered: the prop's name and type, the check being
+  `target === currentTarget`, the scroller counting as not the grid, and propagation left alone —
+  derivations, under `## Design model`. Theirs to reverse.
 
 ## Design model
 
@@ -59,12 +66,23 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   [marquee](marquee.md)'s.
 - **The scroller holds one element that is not a row**: the empty-gutter spacer after the canvas,
   `aria-hidden` and invisible ([header lane](header-lane.md)).
+- **`onKeyDown` is called only when `event.target` is the grid element** (#68), the tab stop that
+  holds the row focus, and is absent unless given. A key on a header's sort button (which reports
+  through `onColumnKeyDown`, [header row](header-row.md)), on a control inside a row, or on the
+  scroller is not reported; nothing stops its propagation, so a handler around the grid still hears
+  every key and an existing consumer wired that way behaves as before. Measured at triage in Chrome
+  155, 2026-10-14, with the example's handler around the grid and focus on the Size sort button: ↓
+  moved the row focus; `n` started a row type-ahead; `n e w` Space hit `new folder`, `step` claimed
+  the Space and nothing sorted; `n` Space missed and sorted; with a row focused, Space selected the
+  row through the example's own Space branch and nothing sorted. The check is
+  `target === currentTarget` rather than a list of what to exclude, so a control a consumer adds
+  later is excluded without the engine knowing of it.
 - **`wrapScroller` wraps the scroller element**, e.g. in a context-menu trigger; a wrapper that
   injects props must pass them through, as [table row](table-row.md) records for rows.
 
 ## Code
 
-- `src/components/TableGrid.tsx` — `TableGrid`, `TableGridProps`, `RowPlace`, `multiselectable`, `rowIdPrefix`, `firstDataRow`, `leadingRows`, `onFloorClick`, `wrapScroller`, `scrollerProps`, `GridScrollerContext`, `gridRef`, `scrollerRef`, `marquee`; it calls `useRowWindow` ([row windowing](row-windowing.md)) and `useHeaderLane` ([header lane](header-lane.md)) and draws what they answer
+- `src/components/TableGrid.tsx` — `TableGrid`, `TableGridProps`, `RowPlace`, `multiselectable`, `rowIdPrefix`, `firstDataRow`, `leadingRows`, `onFloorClick`, `wrapScroller`, `scrollerProps`, `GridScrollerContext`, `gridRef`, `scrollerRef`, `marquee`, `onKeyDown`; it calls `useRowWindow` ([row windowing](row-windowing.md)) and `useHeaderLane` ([header lane](header-lane.md)) and draws what they answer
 
 ## Reference behaviour
 
@@ -78,14 +96,16 @@ APG grid pattern and VS Code's list (one focusable container) as what this shape
 - [Drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md) —
   `aria-colcount` is the consumer's `colCount`, which nothing checks against the drawn columns.
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
-  the label, what a floor click does, and what wraps the scroller are the consumer's.
+  the label, what a floor click does, what wraps the scroller, and what a key does are the
+  consumer's; `onKeyDown` absent, the grid handles no key.
 
 ## Blast radius
 
 - [Row windowing](row-windowing.md) — which rows exist to be named by `aria-activedescendant`.
 - [Header lane](header-lane.md) — the first child of the grid, and a `rowgroup` it declares.
 - [Keyboard movement](keyboard-movement.md) — `focus` is the keyboard's row; the grid shows it and
-  writes the page size back.
+  writes the page size back; `onKeyDown` is where a consumer calls `step`.
+- [Header row](header-row.md) — its buttons' keys go to `onColumnKeyDown` and never to `onKeyDown`.
 - [Table row](table-row.md) — receives `RowPlace` and must carry its `id` and `rowIndex`.
 - [Colour variables](colour-variables.md) — the grid root carries `data-table`, where the consumer
   binds the colours.

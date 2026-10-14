@@ -56,13 +56,7 @@ export function People({ people }: { people: readonly Person[] }) {
   const gridStyle = { gridTemplateColumns: model.gridTemplate(layout) };
 
   return (
-    <div
-      style={{ height: 400, display: 'flex', flexDirection: 'column' }}
-      onKeyDown={(e) => {
-        const answer = keyboard.step(e, { focus, names: rows.map((p) => p.name) });
-        if (answer?.to != null) setFocus(answer.to);
-      }}
-    >
+    <div style={{ height: 400, display: 'flex', flexDirection: 'column' }}>
       <TableGrid
         label="People"
         header={
@@ -100,6 +94,10 @@ export function People({ people }: { people: readonly Person[] }) {
         rowIdPrefix="people"
         rowHeightRem={2}
         keyboard={keyboard.link}
+        onKeyDown={(e) => {
+          const answer = keyboard.step(e, { focus, names: rows.map((p) => p.name) });
+          if (answer?.to != null) setFocus(answer.to);
+        }}
       />
     </div>
   );

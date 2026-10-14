@@ -123,11 +123,13 @@ be run by hand.
   the landing line on the border it lands at with no text selected, a drop onto the pinned first
   column landing after it, and the header and rows reordered together (#61); and a column moved from
   the keyboard — Shift+→ twice and Shift+← once, focus still on its button, and a step past the
-  pinned first column refused and said (#63). It **exits 1 when no browser is found**,
-  since a run that inspected nothing is not a pass. Proven failing: removing the button reset,
-  dropping a placed row's `right: 0`, and refusing the space mid-query each fail it; so does drawing
-  the move's landing line from screen boxes rather than `offsetLeft`, inside `scale(0.5)`. The type-ahead
-  check first asserts that "new" lands on `news.txt` — without that, `new folder` came first and the
+  pinned first column refused and said (#63); and keys on a header button staying the button's —
+  ↓ moving no row, `n e w` Space sorting, and Space sorting with a row focused (#68). It **exits 1
+  when no browser is found**, since a run that inspected nothing is not a pass. Proven failing:
+  removing the button reset, dropping a placed row's `right: 0`, and refusing the space mid-query
+  each fail it; so does drawing the move's landing line from screen boxes rather than `offsetLeft`,
+  inside `scale(0.5)`; so does putting the example's row key handler back around the grid, which
+  fails all three #68 checks. The type-ahead check first asserts that "new" lands on `news.txt` — without that, `new folder` came first and the
   check passed with the space refused. The click check first asserts that "c" lands on
   `Cherry.png`, then clicks `new folder` and types "i": it lands on an `invoice-` row, where a query
   left running narrows "ci" to `citrus.csv` — proven failing by removing the example's `end()` on a

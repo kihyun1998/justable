@@ -84,6 +84,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - [Column model](column-model.md) — the sort shown here is the one `nextSort` produced.
 - [Colour variables](colour-variables.md) — every colour this component paints.
 - [Header lane](header-lane.md) — the strip this row sits in.
+- [Grid scaffold](grid-scaffold.md) — a key on this row's buttons is not the grid's: its `onKeyDown`
+  never hears it (#68).
 - [Stylesheet and prefix](stylesheet-and-prefix.md) — its hover and focus utilities are the most
   variant-heavy classes in the package.
 

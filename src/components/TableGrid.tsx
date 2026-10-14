@@ -4,7 +4,7 @@
  * is named by `aria-activedescendant`.
  */
 import { Fragment, useRef } from 'react';
-import type { CSSProperties, ReactElement, ReactNode } from 'react';
+import type { CSSProperties, KeyboardEvent, ReactElement, ReactNode } from 'react';
 
 import { useHeaderLane } from '../hooks/useHeaderLane.js';
 import { type MarqueeOptions, useMarquee } from '../hooks/useMarquee.js';
@@ -63,6 +63,11 @@ export interface TableGridProps {
   scrollerProps?: Record<string, string | boolean>;
   /** A rectangle dragged over the rows, reporting the rows it touches; absent, there is none. */
   marquee?: MarqueeOptions;
+  /**
+   * A key whose target is the grid element itself, the tab stop holding the row focus; keys from
+   * controls inside the grid are not reported. Absent, the grid handles no key.
+   */
+  onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
 }
 
 /** The `aria-rowindex` of the first row after the header: `docs/map/invariant/row-one-is-the-header.md`. */
@@ -88,6 +93,7 @@ export function TableGrid({
   wrapScroller,
   scrollerProps,
   marquee,
+  onKeyDown,
 }: TableGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -191,6 +197,13 @@ export function TableGrid({
       aria-disabled={disabled || undefined}
       aria-label={label}
       tabIndex={0}
+      onKeyDown={
+        onKeyDown
+          ? (e) => {
+              if (e.target === e.currentTarget) onKeyDown(e);
+            }
+          : undefined
+      }
       // Removed while the focused row is not drawn: `docs/map/territory/grid-scaffold.md`.
       aria-activedescendant={
         showRows && focus !== null && focus >= rowWindow.start && focus < rowWindow.end

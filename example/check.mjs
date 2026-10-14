@@ -952,6 +952,56 @@ try {
     await keyed.close();
   }
 
+  // Keys on a header button are the button's: none of them moves the rows.
+  {
+    const headed = await browser.newPage();
+    headed.on('pageerror', (e) => errors.push(String(e)));
+    await headed.goto(url, { waitUntil: 'networkidle0' });
+    await headed.waitForSelector('[role="grid"] [data-table-header]');
+    const size = '[data-table-header] [role="columnheader"][aria-colindex="3"]';
+    const state = () =>
+      headed.evaluate((size) => {
+        const grid = document.querySelector('[role="grid"]');
+        return {
+          row: grid.getAttribute('aria-activedescendant'),
+          sort: document.querySelector(size).getAttribute('aria-sort'),
+          onButton: document.activeElement === document.querySelector(`${size} button`),
+        };
+      }, size);
+
+    await headed.focus(`${size} button`);
+    const before = await state();
+    await headed.keyboard.press('ArrowDown');
+    const down = await state();
+    check(
+      'ArrowDown on a header button leaves the row focus where it was',
+      down.row === before.row && down.onButton,
+      { before, down },
+    );
+
+    await headed.keyboard.type('new', { delay: 40 });
+    await headed.keyboard.press('Space');
+    const typed = await state();
+    check(
+      'n e w Space on a header button sorts and moves no row',
+      typed.row === before.row && typed.sort !== before.sort && typed.onButton,
+      { before, typed },
+    );
+
+    await headed.focus('[role="grid"]');
+    await headed.keyboard.press('ArrowDown');
+    await headed.focus(`${size} button`);
+    const rowFocused = await state();
+    await headed.keyboard.press('Space');
+    const spaced = await state();
+    check(
+      'with a row focused, Space on a header button sorts and leaves the row',
+      rowFocused.row !== null && spaced.sort !== rowFocused.sort && spaced.row === rowFocused.row,
+      { rowFocused, spaced },
+    );
+    await headed.close();
+  }
+
   check('no page errors', errors.length === 0, errors);
 } finally {
   await browser.close();
