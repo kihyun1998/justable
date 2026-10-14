@@ -21,7 +21,8 @@ the layout.
   - the landing line paints a **new role, `--table-move-indicator`**, rather than reusing
     `--table-resize-line-active`;
   - **`ColumnSpec.movable` is required**, a breaking change to the spec type;
-  - **Escape and blur do not cancel a move** in this change.
+  - **Escape and blur do not cancel a move** in this change — reversed by the maintainer at #72
+    (below).
 
   It did not cover: the line's shape and placement, how the landing slot is computed, the rule for a
   stored order that crosses a pin, `HeaderColumn.movable` being optional, the data attribute's name,
@@ -36,6 +37,13 @@ the layout.
   `columnOrder` and `targets`, `targets` being required, and which insert point a slot takes — those
   are derivations, below. Then, shown that `HeaderColumn.movable` overlapped `targets` and was
   unreleased: **removed**, the press deciding from `targets` alone.
+- **#72, the maintainer's calls at the to-spec stop, 2026-10-14: Escape and a lost window cancel a
+  move, the way they cancel the marquee.** This reverses #61's call. Shown: PenTerm's ADR-0100 (every
+  gesture that commits at the release answers Escape; a column move commits at the release), the
+  marquee's existing Escape and blur in `useMarquee`, and the alternative of handing the consumer a
+  `cancel()` so the engine binds no key. Chose the marquee's shape — the engine claims Escape while a
+  move runs — over `cancel()` and over both. Theirs to reverse. It did not cover what a cancel reports,
+  the click after it, or Escape before the threshold — those are derivations, below (#75).
 - **#63, the maintainer's call at triage, 2026-10-14.** Shown: no key path anywhere in `src/`; AG
   Grid's column-moving docs (Shift+←/→ on a focused header) and MUI X's column-ordering page (drag
   only, keyboard not stated); three directions — (a) mechanism here, key and announcement the
@@ -102,7 +110,8 @@ the layout.
 - **A key reaches the consumer through `onColumnKeyDown(key, event)`, on the header cell**, so it
   takes keys from the sort button inside it; absent, the cell has no key handler. The grid's
   `onKeyDown` never hears those keys ([grid scaffold](grid-scaffold.md), #68). The engine binds
-  no key and renders no announcement. `moveBy(layout, key, ±1)` reads `moveTargets` at the slot one
+  no key to move a column and renders no announcement; the one key it claims is Escape, while a
+  mouse move runs (#75). `moveBy(layout, key, ±1)` reads `moveTargets` at the slot one
   drawn place over — `from − 1` left, `from + 2` right, the second because `from + 1` is the column's
   own right edge — so a key step obeys every boundary a drag does.
 - **Focus survives a move without the engine's help — React DOM restores it.** Measured in Chrome
@@ -135,6 +144,17 @@ the layout.
 - **The moved column's cell carries `data-table-moving`** from the first move past the threshold
   until the move ends, with or without `onDrag`. It follows the same state as the line, so it never
   shows for a sort press.
+- **Escape and a lost window cancel a running move** (#75), as the [marquee](marquee.md)'s do:
+  `window` keydown in the capture phase, Escape only, only past the threshold, with
+  `preventDefault` and `stopPropagation` — so neither `onColumnKeyDown` nor the grid's `onKeyDown`
+  hears the Escape that cancelled. Before the threshold Escape is the consumer's, and a lost window
+  ends the armed press quietly. A cancel calls no `onMove`; it ends the drag through `useDrag`'s
+  `end`, so `ended` clears the line and `data-table-moving` and sends `onDrag(null)` once, as on
+  every other end. It arms `swallowNextClick` first, because the held button's release comes after
+  the drag has let go ([marquee](marquee.md), #73). Measured in Chrome (`check:example`, 2026-10-14):
+  a drag of Size onto Kind, Escape, then released back on Size left the order and the sort as they
+  were; without the swallow the release sorted Size. The listeners are removed in `ended`, so an
+  Escape after a move has ended does nothing.
 - **The handle's press never reaches the cell**: `startResize` stops its propagation, which is all
   that keeps a border drag from also being a move.
 
@@ -171,7 +191,6 @@ the layout.
 
 ## Known holes / open
 
-- **No Escape or blur cancel**, where the marquee has both — out of #61 by the maintainer's call.
 - **No edge scroll.** A column dragged past the header's edge does not scroll the grid. Since #74
   `onDrag` reports the pointer and the scroller, so a consumer's loop can, as for the border drag;
   the example runs none for a move.

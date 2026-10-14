@@ -689,6 +689,138 @@ describe('moving', () => {
     expect(onSort).toHaveBeenCalledWith('b');
   });
 
+  describe('cancelled', () => {
+    function renderCancellable() {
+      const onDrag = vi.fn();
+      const onMove = vi.fn();
+      const onColumnKeyDown = vi.fn();
+      const view = renderMovable({
+        move: { refusePress: () => false, threshold: 4, targets, onMove, onDrag },
+        onColumnKeyDown,
+      });
+      const moving = () => view.header.querySelectorAll('[data-table-moving]').length;
+      /** Press `key`, travel past the threshold. */
+      const start = (key: M, from: number, to: number) => {
+        fireEvent.mouseDown(view.button(key), { button: 0, clientX: from, clientY: 5 });
+        move(to, { clientY: 5 });
+      };
+      const releaseAndClick = (key: M) => {
+        act(() => {
+          fireEvent.mouseUp(document, { button: 0 });
+        });
+        fireEvent.click(view.button(key), { detail: 1 });
+      };
+      return { ...view, onDrag, onMove, onColumnKeyDown, moving, start, releaseAndClick };
+    }
+    const escape = (target: Element) =>
+      act(() => {
+        fireEvent.keyDown(target, { key: 'Escape' });
+      });
+
+    it('Escape past the threshold ends the move: no drop, null once, no mark, no line', () => {
+      const { button, onDrag, onMove, moving, indicator, start, releaseAndClick } = renderCancellable();
+      start('b', 150, 290);
+      const reported = onDrag.mock.calls.length;
+      escape(button('b'));
+      expect(onDrag.mock.calls.slice(reported)).toEqual([[null]]);
+      expect(moving()).toBe(0);
+      expect(indicator()).toBeNull();
+      move(200, { clientY: 5 });
+      releaseAndClick('b');
+      expect(onMove).not.toHaveBeenCalled();
+      expect(onDrag.mock.calls.slice(reported)).toEqual([[null]]);
+    });
+
+    it('the engine’s line goes with the Escape too', () => {
+      const { button, indicator } = renderMovable();
+      fireEvent.mouseDown(button('b'), { button: 0, clientX: 150, clientY: 5 });
+      move(290, { clientY: 5 });
+      expect(indicator()).not.toBeNull();
+      escape(button('b'));
+      expect(indicator()).toBeNull();
+    });
+
+    it('the cancelling Escape reaches neither the column’s key handler nor the document', () => {
+      const { button, onColumnKeyDown, start } = renderCancellable();
+      const heard = vi.fn();
+      document.addEventListener('keydown', heard);
+      start('b', 150, 290);
+      escape(button('b'));
+      document.removeEventListener('keydown', heard);
+      expect(onColumnKeyDown).not.toHaveBeenCalled();
+      expect(heard).not.toHaveBeenCalled();
+    });
+
+    it('⚠️ the release after an Escape sorts nothing', () => {
+      const { button, onSort, start, releaseAndClick } = renderCancellable();
+      start('b', 150, 290);
+      escape(button('b'));
+      releaseAndClick('b');
+      expect(onSort).not.toHaveBeenCalled();
+    });
+
+    it('a lost window past the threshold cancels the same way', () => {
+      const { onDrag, onMove, onSort, moving, start, releaseAndClick } = renderCancellable();
+      start('b', 150, 290);
+      const reported = onDrag.mock.calls.length;
+      act(() => {
+        fireEvent.blur(window);
+      });
+      expect(onDrag.mock.calls.slice(reported)).toEqual([[null]]);
+      expect(moving()).toBe(0);
+      releaseAndClick('b');
+      expect(onMove).not.toHaveBeenCalled();
+      expect(onSort).not.toHaveBeenCalled();
+    });
+
+    it('Escape before the threshold is the consumer’s, and the press still sorts', () => {
+      const { button, onSort, onColumnKeyDown, onDrag, releaseAndClick } = renderCancellable();
+      fireEvent.mouseDown(button('b'), { button: 0, clientX: 150, clientY: 5 });
+      escape(button('b'));
+      expect(onColumnKeyDown).toHaveBeenCalledTimes(1);
+      releaseAndClick('b');
+      expect(onSort).toHaveBeenCalledWith('b');
+      expect(onDrag).not.toHaveBeenCalled();
+    });
+
+    it('a lost window before the threshold ends the press: a later move starts nothing', () => {
+      const { button, onDrag, onMove, moving } = renderCancellable();
+      fireEvent.mouseDown(button('b'), { button: 0, clientX: 150, clientY: 5 });
+      act(() => {
+        fireEvent.blur(window);
+      });
+      move(290, { clientY: 5 });
+      act(() => {
+        fireEvent.mouseUp(document, { button: 0 });
+      });
+      expect(onDrag).not.toHaveBeenCalled();
+      expect(moving()).toBe(0);
+      expect(onMove).not.toHaveBeenCalled();
+    });
+
+    it('⚠️ once a move has ended, Escape and a lost window do nothing more', () => {
+      const { button, onDrag, start, releaseAndClick } = renderCancellable();
+      start('b', 150, 290);
+      releaseAndClick('b');
+      const reported = onDrag.mock.calls.length;
+      escape(button('b'));
+      act(() => {
+        fireEvent.blur(window);
+      });
+      expect(onDrag.mock.calls.length).toBe(reported);
+    });
+
+    it('a key other than Escape leaves a running move alone', () => {
+      const { button, onMove, start, releaseAndClick } = renderCancellable();
+      start('b', 150, 290);
+      act(() => {
+        fireEvent.keyDown(button('b'), { key: 'Enter' });
+      });
+      releaseAndClick('b');
+      expect(onMove).toHaveBeenCalledWith('b', null);
+    });
+  });
+
   describe('drawn by the consumer', () => {
     /** `renderMovable` with `onDrag` given; the header row's screen box is 0–20 px tall. */
     function renderDrawn(scale = 1) {

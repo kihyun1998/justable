@@ -67,7 +67,8 @@ export function moveSlot(
 
 /**
  * A header move drag: a press on a movable column's cell arms it, a move past the threshold starts
- * it, and the pressing button's release drops the column where the line shows.
+ * it, and the pressing button's release drops the column where the line shows. Escape and a lost
+ * window cancel it.
  */
 export function useColumnMove<K extends string>(
   columns: readonly HeaderColumn<K>[],
@@ -92,7 +93,7 @@ export function useColumnMove<K extends string>(
     );
     if (allowed.every((ok, s) => !ok || own(s))) return;
 
-    drag.begin(press.button, scroller?.current ?? null, () => {
+    drag.begin(press.button, scroller?.current ?? null, (end) => {
       let x = press.clientX;
       let y = press.clientY;
       let started = false;
@@ -136,6 +137,23 @@ export function useColumnMove<K extends string>(
         setMoving({ key: keys[from]!, left });
       };
 
+      const cancel = () => {
+        swallowNextClick();
+        end();
+      };
+      const onKey = (ev: KeyboardEvent) => {
+        if (!started || ev.key !== 'Escape') return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        cancel();
+      };
+      const onBlur = () => {
+        if (started) cancel();
+        else end();
+      };
+      window.addEventListener('keydown', onKey, true);
+      window.addEventListener('blur', onBlur);
+
       return {
         move: (ev) => {
           x = ev.clientX;
@@ -163,6 +181,8 @@ export function useColumnMove<K extends string>(
           }
         },
         ended: () => {
+          window.removeEventListener('keydown', onKey, true);
+          window.removeEventListener('blur', onBlur);
           setMoving(null);
           if (started) onDrag?.(null);
         },

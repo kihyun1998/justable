@@ -6,6 +6,13 @@ anything else the patch.
 
 ## Unreleased
 
+### Changed
+
+- **Escape and a lost window cancel a column move**, as they cancel a marquee: no `onMove`, the
+  line and `data-table-moving` go, `onDrag` hears `null`, and letting the button go afterwards sorts
+  nothing. The cancelling Escape reaches no other handler; before the threshold it is the
+  consumer's. 0.4 ignored both (#75).
+
 ### Added
 
 - **A column move can be drawn by the consumer.** `move` takes an optional `onDrag`, which hears
