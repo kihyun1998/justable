@@ -7,12 +7,14 @@ import {
   useColumnAutoFit,
   useTableKeyboard,
   type ColumnLayout,
+  type ColumnMoveDrag,
   type ColumnSpec,
   type MarqueeReport,
   type TableSort,
 } from '@kihyun1998/justable';
 import { useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import type { Modifiers } from './App.js';
 import { useEdgeScroll } from './edgeScroll.js';
@@ -20,6 +22,9 @@ import { formatSize, type FileEntry } from './files.js';
 
 type Key = 'name' | 'kind' | 'size' | 'modified';
 type Hideable = Exclude<Key, 'name'>;
+
+/** `?ghost` draws a column move's feedback here, through `onDrag`, instead of the engine's line. */
+const GHOST = new URLSearchParams(location.search).has('ghost');
 
 const LABELS: Record<Key, string> = { name: 'Name', kind: 'Kind', size: 'Size', modified: 'Modified' };
 
@@ -101,6 +106,7 @@ export function FileTable({
   const [focus, setFocus] = useState<number | null>(null);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [anchor, setAnchor] = useState<number | null>(null);
+  const [moveDrag, setMoveDrag] = useState<ColumnMoveDrag<Key> | null>(null);
   const keyboard = useTableKeyboard({ windowMs: 700 });
   const autoFit = useColumnAutoFit<Key>();
 
@@ -240,6 +246,7 @@ export function FileTable({
           setLayout((l) => model.withOrder(l, key, beforeKey));
           onStatus(`move: ${key} before ${beforeKey ?? 'the end'}`);
         },
+        onDrag: GHOST ? setMoveDrag : undefined,
       }}
     />
   );
@@ -333,6 +340,27 @@ export function FileTable({
           cellClassName={cellClass}
         />
       )}
+      {moveDrag && createPortal(<MoveFeedback drag={moveDrag} />, document.body)}
+    </>
+  );
+}
+
+/** A ghost of the moved column's label under the pointer, and a landing line, both in screen px. */
+function MoveFeedback({ drag }: { drag: ColumnMoveDrag<Key> }) {
+  return (
+    <>
+      <div
+        className="move-line"
+        data-example-move-line
+        style={{ left: drag.line.x, top: drag.line.top, height: drag.line.bottom - drag.line.top }}
+      />
+      <div
+        className="move-ghost"
+        data-example-move-ghost
+        style={{ left: drag.clientX, top: drag.clientY, width: drag.cell.right - drag.cell.left }}
+      >
+        {LABELS[drag.key]}
+      </div>
     </>
   );
 }

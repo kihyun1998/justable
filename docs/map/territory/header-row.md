@@ -37,8 +37,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   that keeps its `z-10` handles with it; the surface keeps rows scrolled under the lane from showing
   through.
 - **Data attributes are how a consumer finds the header**: `data-table-header` on the row,
-  `data-table-resize="<key>"` on each handle, and `data-table-move-indicator` on the landing line
-  while a move runs. PenTerm's guide tour and its checks select by them, and
+  `data-table-resize="<key>"` on each handle, `data-table-move-indicator` on the landing line
+  while a move runs, and `data-table-moving` on the moved column's cell (#74). PenTerm's guide tour and its checks select by them, and
   `README.md` names them, with `data-table` and `data-table-ruler`, as stable.
 - **Height and type are the consumer's**, as `className` on the row, except what the sort button
   sets itself: `font-medium`, `text-left`, and `px-2`. The weight is the engine's, and a class on

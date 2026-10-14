@@ -414,7 +414,7 @@ describe('moving', () => {
     const onSort = vi.fn();
     const onMove = vi.fn();
     const refusePress = vi.fn(() => false);
-    const { container } = render(
+    const { container, unmount } = render(
       <TableHeader
         columns={MOVE_COLUMNS}
         sort={undefined}
@@ -438,7 +438,7 @@ describe('moving', () => {
     });
     const button = (key: M) => cells[MOVE_COLUMNS.findIndex((c) => c.key === key)]!.querySelector('button')!;
     const indicator = () => header.querySelector<HTMLElement>('[data-table-move-indicator]');
-    return { header, button, indicator, onSort, onMove, refusePress };
+    return { header, button, indicator, onSort, onMove, refusePress, unmount };
   }
 
   /** A press on `key`'s sort button, moves to each x, then the release and the click it brings. */
@@ -687,6 +687,202 @@ describe('moving', () => {
     });
     fireEvent.click(button('b'), { detail: 1 });
     expect(onSort).toHaveBeenCalledWith('b');
+  });
+
+  describe('drawn by the consumer', () => {
+    /** `renderMovable` with `onDrag` given; the header row's screen box is 0–20 px tall. */
+    function renderDrawn(scale = 1) {
+      const onDrag = vi.fn();
+      const onMove = vi.fn();
+      const view = renderMovable(
+        { move: { refusePress: () => false, threshold: 4, targets, onMove, onDrag } },
+        scale,
+      );
+      view.header.getBoundingClientRect = () =>
+        ({ left: 0, right: 300 * scale, top: 0, bottom: 20 }) as DOMRect;
+      const moving = () =>
+        [...view.header.querySelectorAll<HTMLElement>('[data-table-moving]')].map((c) => c.textContent);
+      return { ...view, onDrag, onMove, moving };
+    }
+    const press = (button: HTMLElement, x: number) =>
+      fireEvent.mouseDown(button, { button: 0, clientX: x, clientY: 5 });
+    const release = () =>
+      act(() => {
+        fireEvent.mouseUp(document, { button: 0 });
+      });
+
+    it('reports nothing and marks nothing below the threshold', () => {
+      const { button, onDrag, moving } = renderDrawn();
+      press(button('b'), 150);
+      move(154, { clientY: 5 });
+      expect(onDrag).not.toHaveBeenCalled();
+      expect(moving()).toEqual([]);
+      release();
+      expect(onDrag).not.toHaveBeenCalled();
+    });
+
+    it('reports nothing for a column with no slot but its own', () => {
+      const { button, onDrag, moving } = renderDrawn();
+      press(button('a'), 50);
+      move(290, { clientY: 5 });
+      release();
+      expect(onDrag).not.toHaveBeenCalled();
+      expect(moving()).toEqual([]);
+    });
+
+    it('past the threshold, reports each move in screen px: the column, the drop, the pointer, the line and the cell', () => {
+      const { button, onDrag } = renderDrawn();
+      press(button('b'), 150);
+      move(200, { clientY: 6 });
+      move(290, { clientY: 7 });
+      expect(onDrag.mock.calls.map(([d]) => d)).toEqual([
+        {
+          key: 'b',
+          beforeKey: undefined,
+          clientX: 200,
+          clientY: 6,
+          line: { x: 200, top: 0, bottom: 20 },
+          cell: { left: 100, top: 0, right: 200, bottom: 20 },
+          scroller: null,
+        },
+        {
+          key: 'b',
+          beforeKey: null,
+          clientX: 290,
+          clientY: 7,
+          line: { x: 300, top: 0, bottom: 20 },
+          cell: { left: 100, top: 0, right: 200, bottom: 20 },
+          scroller: null,
+        },
+      ]);
+    });
+
+    it('inside a scaled copy, the line and the cell are where they are on screen', () => {
+      const { button, onDrag } = renderDrawn(0.5);
+      press(button('c'), 125);
+      move(40, { clientY: 5 });
+      expect(onDrag.mock.calls.at(-1)![0]).toMatchObject({
+        beforeKey: 'b',
+        line: { x: 50 },
+        cell: { left: 100, right: 150 },
+      });
+    });
+
+    it('reports every move, even one that keeps the drop', () => {
+      const { button, onDrag } = renderDrawn();
+      press(button('b'), 150);
+      move(260, { clientY: 5 });
+      move(270, { clientY: 5 });
+      move(280, { clientY: 5 });
+      expect(onDrag.mock.calls.map(([d]) => d.clientX)).toEqual([260, 270, 280]);
+    });
+
+    it('then reports null once at the release, and nothing for the release itself', () => {
+      const { button, onDrag, onMove } = renderDrawn();
+      press(button('b'), 150);
+      move(290, { clientY: 5 });
+      const reported = onDrag.mock.calls.length;
+      release();
+      expect(onDrag.mock.calls.slice(reported)).toEqual([[null]]);
+      expect(onMove).toHaveBeenCalledWith('b', null);
+    });
+
+    it('⚠️ reports null for the first move before a second press reports anything', () => {
+      const { button, onDrag } = renderDrawn();
+      press(button('b'), 150);
+      move(290, { clientY: 5 });
+      const reported = onDrag.mock.calls.length;
+      press(button('c'), 250);
+      expect(onDrag.mock.calls.slice(reported)).toEqual([[null]]);
+    });
+
+    it('⚠️ reports null when the header goes mid-move', () => {
+      const { button, onDrag, unmount } = renderDrawn();
+      press(button('b'), 150);
+      move(290, { clientY: 5 });
+      const reported = onDrag.mock.calls.length;
+      unmount();
+      move(200, { clientY: 5 });
+      expect(onDrag.mock.calls.slice(reported)).toEqual([[null]]);
+    });
+
+    it('marks the moved column’s cell from the threshold to the end', () => {
+      const { button, moving } = renderDrawn();
+      press(button('b'), 150);
+      move(290, { clientY: 5 });
+      expect(moving()).toEqual(['Beta']);
+      release();
+      expect(moving()).toEqual([]);
+    });
+
+    it('marks the cell without `onDrag` too', () => {
+      const { header, button } = renderMovable();
+      fireEvent.mouseDown(button('b'), { button: 0, clientX: 150, clientY: 5 });
+      move(290, { clientY: 5 });
+      expect([...header.querySelectorAll('[data-table-moving]')].map((c) => c.textContent)).toEqual(['Beta']);
+    });
+
+    it('inside a grid, reports the grid’s scroller, and again when a scroll under a still pointer moves the drop', () => {
+      const onDrag = vi.fn();
+      const { container } = render(
+        <TableGrid
+          label="t"
+          header={
+            <TableHeader
+              columns={MOVE_COLUMNS}
+              sort={undefined}
+              gridStyle={{}}
+              onSort={vi.fn()}
+              onResize={vi.fn()}
+              resizeLabel="Resize"
+              refusePress={() => false}
+              move={{ refusePress: () => false, threshold: 4, targets, onMove: vi.fn(), onDrag }}
+            />
+          }
+          colCount={3}
+          total={0}
+          renderRow={() => null}
+          rowKey={String}
+          fill
+          focus={null}
+          rowIdPrefix="t"
+          rowHeightRem={2}
+        />,
+      );
+      const grid = container.firstElementChild as HTMLElement;
+      const scroller = grid.querySelectorAll(':scope > [role="rowgroup"]')[1] as HTMLElement;
+      let scrolled = 0;
+      const cells = [...grid.querySelectorAll<HTMLElement>('[role="columnheader"]')];
+      cells.forEach((cell, i) => {
+        Object.defineProperty(cell, 'offsetLeft', { get: () => i * 100 });
+        Object.defineProperty(cell, 'offsetWidth', { get: () => 100 });
+        cell.getBoundingClientRect = () =>
+          ({ left: i * 100 - scrolled, right: (i + 1) * 100 - scrolled, top: 0, bottom: 20 }) as DOMRect;
+      });
+      press(cells[1]!.querySelector('button')!, 150);
+      move(240, { clientY: 5 });
+      expect(onDrag.mock.calls.at(-1)![0].beforeKey).toBeUndefined();
+      expect(onDrag.mock.calls.at(-1)![0].scroller).toBe(scroller);
+      act(() => {
+        scrolled = 100;
+        fireEvent.scroll(scroller);
+      });
+      expect(onDrag.mock.calls.at(-1)![0]).toMatchObject({
+        beforeKey: null,
+        clientX: 240,
+        cell: { left: 100, right: 200 },
+      });
+      expect(onDrag.mock.calls.at(-1)![0].scroller).toBe(scroller);
+    });
+
+    it('draws no landing line', () => {
+      const { button, indicator, onMove } = renderDrawn();
+      press(button('b'), 150);
+      move(290, { clientY: 5 });
+      expect(indicator()).toBeNull();
+      release();
+      expect(onMove).toHaveBeenCalledWith('b', null);
+    });
   });
 });
 

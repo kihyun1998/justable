@@ -112,13 +112,37 @@ the layout.
   commit (19.2.8, `react-dom-client`) focuses the element that was focused before the mutation when
   it is still in the document. A bare `insertBefore` of the focused cell left focus on `body`. So a
   consumer listening for `focusout` on the header sees one transient blur per move to the right.
+- **The consumer can draw the whole move (#74).** `move.onDrag` hears every pointer move and every
+  scroll past the threshold as a `ColumnMoveDrag`, then `null` from the drag's `ended`, so exactly
+  once on every ending path — release, a second press, unmount — as `onResizeDrag` does; never below
+  the threshold, never for a press that starts no move, and nothing for the release itself, whose
+  only report is the `null`. Every move is reported, not only a changed slot, as the marquee reports
+  every move: an edge-scroll loop reads the pointer from it. A derivation, 2026-10-14, at #74's
+  confirm; #72 is the spec.
+  - **Screen px throughout**, unlike the engine's own line: a consumer draws in a portal, where a
+    screen box is exact under any `scale`. `line.x` is the landing cell's screen left (the last
+    cell's right for the end), `top` and `bottom` the header row's; `cell` is the moved cell's
+    screen box read once, at the first report, so a scroll does not move it. Measured in Chrome
+    (`check:example`, `?ghost`), unscaled and inside `scale(0.5)`: the portal line within 1.5 px of
+    the border, the ghost as wide as the column on screen; with `line.x` taken from `offsetLeft`
+    both line checks fail, unscaled too (260 against 520), since `offsetLeft` is the header row's.
+  - **`beforeKey` is `undefined` on the column's own two slots**, where a drop reports nothing —
+    otherwise `targets`' entry.
+  - **Given `onDrag`, the engine draws no line**; absent, the line is drawn as before. That keeps
+    every consumer of 0.4 unchanged; #72 recorded it as the spec's choice.
+  - The report adds no render: it is called from the move handler, and the line's state is still
+    set only when its place changes.
+- **The moved column's cell carries `data-table-moving`** from the first move past the threshold
+  until the move ends, with or without `onDrag`. It follows the same state as the line, so it never
+  shows for a sort press.
 - **The handle's press never reaches the cell**: `startResize` stops its propagation, which is all
   that keeps a border drag from also being a move.
 
 ## Code
 
-- `src/hooks/useColumnMove.ts` — `useColumnMove`, `ColumnMoveOptions`, `ColumnMoving`, `moveSlot`
-- `src/components/TableHeader.tsx` — `move`, `onColumnKeyDown`, `rowRef`, `data-table-move-indicator`
+- `src/hooks/useColumnMove.ts` — `useColumnMove`, `ColumnMoveOptions`, `ColumnMoveDrag`, `ColumnMoving`, `moveSlot`
+- `src/components/TableHeader.tsx` — `move`, `onColumnKeyDown`, `rowRef`, `data-table-move-indicator`, `data-table-moving`
+- `example/FileTable.tsx` — `GHOST`, `MoveFeedback` (the `?ghost` page)
 - `src/lib/tableModel.ts` — `withOrder`, `columnOrder`, `moveTargets`, `moveBy`, `moved`
 - `src/types.ts` — `ColumnLayout.order`, `ColumnSpec.movable`
 
@@ -148,8 +172,9 @@ the layout.
 ## Known holes / open
 
 - **No Escape or blur cancel**, where the marquee has both — out of #61 by the maintainer's call.
-- **No edge scroll.** A column dragged past the header's edge does not scroll the grid, and unlike
-  the border drag nothing reports the pointer for a consumer's loop.
+- **No edge scroll.** A column dragged past the header's edge does not scroll the grid. Since #74
+  `onDrag` reports the pointer and the scroller, so a consumer's loop can, as for the border drag;
+  the example runs none for a move.
 - **The drag is mouse only**, as every drag here; the keyboard moves a column through
   `onColumnKeyDown` and `moveBy`.
 - **Firefox and Safari not measured** for the focus a move keeps; the restore is React's, not the

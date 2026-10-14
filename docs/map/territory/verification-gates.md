@@ -61,6 +61,10 @@ be run by hand.
   test gives it (#47), and an unstyled row's `height` is `auto`. One trap there: with no border
   style, jsdom answers `border-top-width` as `medium`, where Chrome answers `0px` (2026-10-06), so
   a length read from computed style is parsed with a fallback to 0 (`lengthPx`).
+- **A DOM element is compared by identity, never structurally.** `toMatchObject({ scroller })` or
+  `toEqual` with a jsdom element inside walks the element's whole graph: under Vitest 4.1 the worker
+  died (`Worker exited unexpectedly`, every test in the file skipped) instead of failing, measured
+  2026-10-14 writing #74's scroll test. Assert the element with `.toBe`, and the rest structurally.
 - **When the grid renders is a jsdom test of its own** (`TableGrid.renders.test.tsx`, #32): a
   `Profiler` counts commits by phase, so a `nested-update` is told from an `update`, and it replaces
   `ResizeObserver` with one it can fire, since jsdom has none. One rerender from the parent is not

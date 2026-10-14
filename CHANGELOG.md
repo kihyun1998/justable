@@ -6,6 +6,15 @@ anything else the patch.
 
 ## Unreleased
 
+### Added
+
+- **A column move can be drawn by the consumer.** `move` takes an optional `onDrag`, which hears
+  each pointer move and each scroll of a running move as a `ColumnMoveDrag` (exported) — the column,
+  the `beforeKey` a drop now would report, the pointer, the landing line, the moved cell's box and
+  the grid's scroller, all in screen px — then `null` once when the move ends. Given `onDrag`, the
+  header draws no landing line. While a move runs, the moved column's header cell carries
+  `data-table-moving` (#74).
+
 ### Fixed
 
 - **A marquee cancelled with the button still held no longer lets the release's click through.**

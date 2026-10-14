@@ -200,6 +200,16 @@ ascending order.
   column still bounds it — and calls `onMove(key, beforeKey)` once at
   the drop, then no `onSort`. A shorter press is a sort press, and a press on a resize handle never
   moves. Without `move`, nothing moves.
+- **Drawing the move yourself.** While a move runs, the moved column's header cell carries
+  `data-table-moving` — dim it or set a cursor in your CSS. Give `move` an `onDrag` and the table
+  draws no landing line: `onDrag` hears each pointer move and each scroll of the running move as a
+  `ColumnMoveDrag` — the column `key`, the `beforeKey` a drop now would report (`undefined` where it
+  would change nothing), the pointer (`clientX`, `clientY`), the landing `line` (`x`, and the header
+  row's `top` and `bottom`), the moved `cell`'s box when the move started, and the grid's `scroller`
+  — then `null` once when the move ends, however it ends. All of it is screen px, so a ghost you
+  portal to `document.body` lands under the pointer inside a scaled copy too; the scroller is there
+  for an edge-scroll loop, as with `onResizeDrag`. The example's `?ghost` page draws a ghost and a
+  line this way.
 - **Moving from the keyboard.** Each header cell's sort button is a Tab stop. `TableHeader`'s
   `onColumnKeyDown(key, event)` hands you a key pressed on a column; the table binds no key itself.
   `model.moveBy(layout, key, -1 | 1)` is the `beforeKey` that moves that column one drawn place left
@@ -373,7 +383,7 @@ which carries `data-table`:
 | `--table-focus-ring` | a header cell's keyboard focus ring |
 | `--table-marquee-fill` | the marquee rectangle's inside |
 | `--table-marquee-border` | the marquee rectangle's edge |
-| `--table-move-indicator` | where a column being moved will land |
+| `--table-move-indicator` | where a column being moved will land, unless you draw it (`onDrag`) |
 
 If you point them at your own design tokens (`var(--border)`), bind them on `[data-table]` rather
 than `:root`: a variable holding `var(--x)` is resolved where it is declared, so a theme that
@@ -382,8 +392,8 @@ redefines `--x` further down the page only reaches the table if the binding sits
 The table's parts carry stable data attributes to select by: `data-table` on the root,
 `data-table-header` on the header row, `data-table-resize="<key>"` on a column's resize handle,
 `data-table-marquee` on the marquee rectangle, `data-table-move-indicator` on the line showing
-where a moved column will land, and `data-table-ruler="<key>"` on an auto-fit ruler
-while it measures.
+where a moved column will land, `data-table-moving` on the header cell of a column being moved, and
+`data-table-ruler="<key>"` on an auto-fit ruler while it measures.
 
 ## Accessibility
 

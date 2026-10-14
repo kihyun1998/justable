@@ -915,6 +915,75 @@ try {
     await moving.close();
   }
 
+  // The same drag on `?ghost`, where the example draws the feedback from `onDrag` in a portal.
+  for (const scale of [1, 0.5]) {
+    const ghosted = await browser.newPage();
+    ghosted.on('pageerror', (e) => errors.push(String(e)));
+    await ghosted.goto(`${url}?ghost`, { waitUntil: 'networkidle0' });
+    await ghosted.waitForSelector('[role="grid"] [data-table-header]');
+    await ghosted.evaluate((s) => {
+      const grid = document.querySelector('[role="grid"]');
+      grid.style.transform = `scale(${s})`;
+      grid.style.transformOrigin = '0 0';
+    }, scale);
+    const cell = (i) =>
+      ghosted.$eval(`[data-table-header] [role="columnheader"][aria-colindex="${i}"]`, (h) => {
+        const r = h.getBoundingClientRect();
+        return { left: r.left, right: r.right, y: r.top + r.height / 2 };
+      });
+    const kind = await cell(2);
+    const size = await cell(3);
+    const to = { x: kind.left + 3, y: size.y + 2 };
+    await ghosted.mouse.move((size.left + size.right) / 2, size.y);
+    await ghosted.mouse.down();
+    await ghosted.mouse.move(to.x, to.y, { steps: 8 });
+    const during = await ghosted.evaluate(() => {
+      const box = (el) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, parent: el.parentElement === document.body };
+      };
+      const moved = document.querySelector('[data-table-moving]');
+      return {
+        ghost: box(document.querySelector('[data-example-move-ghost]')),
+        line: box(document.querySelector('[data-example-move-line]')),
+        engineLine: document.querySelector('[data-table-move-indicator]') !== null,
+        moved: moved?.textContent ?? null,
+        movedOpacity: moved ? getComputedStyle(moved).opacity : null,
+      };
+    });
+    await ghosted.mouse.up();
+    const after = await ghosted.evaluate(() => ({
+      labels: [...document.querySelectorAll('[data-table-header] [role="columnheader"]')].map((h) => h.textContent),
+      feedback: document.querySelector('[data-example-move-ghost], [data-example-move-line], [data-table-moving]') !== null,
+    }));
+    const tag = scale === 1 ? 'unscaled' : `inside scale(${scale})`;
+    const g = during.ghost;
+    check(
+      `${tag}, onDrag draws a portal ghost under the pointer as wide as the moved column, and the engine draws no line`,
+      g !== null &&
+        g.parent &&
+        g.left <= to.x && to.x <= g.right && g.top <= to.y && to.y <= g.bottom &&
+        Math.abs(g.right - g.left - (size.right - size.left)) <= 1.5 &&
+        !during.engineLine,
+      { during, to, sizeWidth: size.right - size.left },
+    );
+    check(
+      `${tag}, onDrag's line sits on the border the column will land at, and the moved column is marked`,
+      during.line !== null &&
+        Math.abs((during.line.left + during.line.right) / 2 - kind.left) <= 1.5 &&
+        during.moved === 'Size' &&
+        during.movedOpacity === '0.45',
+      { line: during.line, kindLeft: kind.left, moved: during.moved, movedOpacity: during.movedOpacity },
+    );
+    check(
+      `${tag}, the drop moves the column and the feedback goes`,
+      JSON.stringify(after.labels) === JSON.stringify(['Name', 'Size', 'Kind', 'Modified']) && !after.feedback,
+      after,
+    );
+    await ghosted.close();
+  }
+
   // A column moved from the keyboard: Shift+→ twice and Shift+← once on Kind's sort button.
   {
     const keyed = await browser.newPage();

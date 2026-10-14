@@ -49,7 +49,9 @@ consumer's policy that the consumer cannot see.
 - [Column move](../territory/column-move.md) — `refusePress`, `threshold` and `targets` are required
   inside `move`; which columns move is the spec's `movable`, and what a drop does is the consumer's
   `withOrder` call. Which key moves a column, and what is announced, are the consumer's:
-  `onColumnKeyDown` only reports the key.
+  `onColumnKeyDown` only reports the key. What a running move looks like beyond the engine's line â a
+  ghost, how the moved column is marked, a line of the consumer's own â is the consumer's, through
+  `onDrag` and `data-table-moving` (#74).
 - [Marquee](../territory/marquee.md) — `refusePress` and `threshold` are required; what a range
   selects, and the edge-scroll loop, are the consumer's.
 - [Verification gates](../territory/verification-gates.md) — the import rule is the mechanical half.

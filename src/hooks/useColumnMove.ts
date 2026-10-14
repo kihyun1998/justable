@@ -18,6 +18,27 @@ export interface ColumnMoveOptions<K extends string> {
   targets: (key: K) => readonly (K | null | undefined)[];
   /** The drop: `key` goes before `beforeKey`, or to the end for `null`. */
   onMove: (key: K, beforeKey: K | null) => void;
+  /**
+   * Each pointer move and each scroll of a running move past its threshold, then `null` once when it
+   * ends, however it ends. Given it, the header draws no landing line.
+   */
+  onDrag?: (drag: ColumnMoveDrag<K> | null) => void;
+}
+
+/** One step of a running move, in screen px. */
+export interface ColumnMoveDrag<K extends string> {
+  /** The column being moved. */
+  key: K;
+  /** What a drop now would report: before this key, the end for `null`, nothing for `undefined`. */
+  beforeKey: K | null | undefined;
+  clientX: number;
+  clientY: number;
+  /** The landing line: its x, and the header row's top and bottom. */
+  line: { x: number; top: number; bottom: number };
+  /** The moved column's header cell, as it was when the move started. */
+  cell: { left: number; top: number; right: number; bottom: number };
+  /** The grid's scroller, or `null` outside a grid. */
+  scroller: HTMLElement | null;
 }
 
 /** A running move past its threshold: the column moved, and where its landing line is in table px. */
@@ -60,7 +81,7 @@ export function useColumnMove<K extends string>(
 
   const onMouseDown = (from: number) => (press: ReactMouseEvent) => {
     if (!options || !columns[from] || options.refusePress(press)) return;
-    const { threshold, onMove } = options;
+    const { threshold, onMove, onDrag } = options;
     const keys = columns.map((c) => c.key);
     const offered = options.targets(keys[from]!);
     const own = (s: number) => s === from || s === from + 1;
@@ -73,7 +94,9 @@ export function useColumnMove<K extends string>(
 
     drag.begin(press.button, scroller?.current ?? null, () => {
       let x = press.clientX;
+      let y = press.clientY;
       let started = false;
+      let cell: ColumnMoveDrag<K>['cell'] | null = null;
       let slot = from;
       /** The line's place as last drawn; `null` before the first. */
       let shown: number | null = null;
@@ -81,13 +104,30 @@ export function useColumnMove<K extends string>(
       const cells = () => [
         ...(row.current?.querySelectorAll<HTMLElement>(':scope > [role="columnheader"]') ?? []),
       ];
-      const update = () => {
+      const update = (report: boolean) => {
         const drawn = cells();
-        slot = moveSlot(
-          drawn.map((cell) => cell.getBoundingClientRect()),
-          allowed,
-          x,
-        );
+        const boxes = drawn.map((c) => c.getBoundingClientRect());
+        slot = moveSlot(boxes, allowed, x);
+        if (report && onDrag) {
+          if (!cell) {
+            const { left, top, right, bottom } = boxes[from]!;
+            cell = { left, top, right, bottom };
+          }
+          const rowBox = row.current?.getBoundingClientRect();
+          onDrag({
+            key: keys[from]!,
+            beforeKey: own(slot) ? undefined : offered[slot],
+            clientX: x,
+            clientY: y,
+            line: {
+              x: boxes[slot]?.left ?? boxes.at(-1)?.right ?? 0,
+              top: rowBox?.top ?? 0,
+              bottom: rowBox?.bottom ?? 0,
+            },
+            cell,
+            scroller: scroller?.current ?? null,
+          });
+        }
         const at = drawn[slot];
         const last = drawn.at(-1);
         const left = at ? at.offsetLeft : last ? last.offsetLeft + last.offsetWidth : 0;
@@ -99,6 +139,7 @@ export function useColumnMove<K extends string>(
       return {
         move: (ev) => {
           x = ev.clientX;
+          y = ev.clientY;
           if (!started) {
             const far = Math.max(
               Math.abs(ev.clientX - press.clientX),
@@ -107,21 +148,24 @@ export function useColumnMove<K extends string>(
             if (far <= threshold) return;
             started = true;
           }
-          update();
+          update(true);
         },
         scroll: () => {
-          if (started) update();
+          if (started) update(true);
         },
         release: () => {
           if (!started) return;
-          update();
+          update(false);
           swallowNextClick();
           const beforeKey = offered[slot];
           if (!own(slot) && beforeKey !== undefined) {
             onMove(keys[from]!, beforeKey);
           }
         },
-        ended: () => setMoving(null),
+        ended: () => {
+          setMoving(null);
+          if (started) onDrag?.(null);
+        },
       };
     });
   };

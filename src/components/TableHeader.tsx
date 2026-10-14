@@ -112,6 +112,7 @@ export function TableHeader<K extends string>({
           }
           // `self-stretch` is deliberate: `docs/map/territory/header-row.md`.
           className="justable:relative justable:flex justable:min-w-0 justable:items-center justable:self-stretch"
+          data-table-moving={moveDrag.moving?.key === column.key || undefined}
           onMouseDown={move ? moveDrag.onMouseDown(i) : undefined}
           onKeyDown={onColumnKeyDown ? (e) => onColumnKeyDown(column.key, e) : undefined}
         >
@@ -161,7 +162,7 @@ export function TableHeader<K extends string>({
           </button>
         </div>
       ))}
-      {moveDrag.moving && (
+      {moveDrag.moving && !move?.onDrag && (
         // Where the dragged column lands, straddling that border.
         <div
           aria-hidden
