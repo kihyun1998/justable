@@ -36,6 +36,8 @@ export interface TableHeaderProps<K extends string> {
   refusePress: (event: React.MouseEvent) => boolean;
   /** A press on a movable column's cell that travels past the threshold moves it. Without it, nothing moves. */
   move?: ColumnMoveOptions<K>;
+  /** A key pressed on a column's header cell, with that column. Without it, the header handles no key. */
+  onColumnKeyDown?: (key: K, event: React.KeyboardEvent) => void;
   className?: string;
 }
 
@@ -61,6 +63,7 @@ export function TableHeader<K extends string>({
   scale = 1,
   refusePress,
   move,
+  onColumnKeyDown,
   className,
 }: TableHeaderProps<K>) {
   const { resizing, begin } = useColumnResize(onResize, onResizeDrag);
@@ -110,6 +113,7 @@ export function TableHeader<K extends string>({
           // `self-stretch` is deliberate: `docs/map/territory/header-row.md`.
           className="justable:relative justable:flex justable:min-w-0 justable:items-center justable:self-stretch"
           onMouseDown={move ? moveDrag.onMouseDown(i) : undefined}
+          onKeyDown={onColumnKeyDown ? (e) => onColumnKeyDown(column.key, e) : undefined}
         >
           {/* The handle straddles this column's right border. */}
           <div

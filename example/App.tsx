@@ -47,7 +47,9 @@ export function App() {
         <FileTable files={FILES} disabled={disabled} parentRow={PARENT_ROW} onStatus={setStatus} />
       </section>
 
-      <footer className="status">{status}</footer>
+      <footer className="status" role="status">
+        {status}
+      </footer>
     </div>
   );
 }
