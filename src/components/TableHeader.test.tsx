@@ -6,6 +6,8 @@ import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { Profiler } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { createTableModel } from '../lib/tableModel.js';
+import type { ColumnLayout, ColumnSpec } from '../types.js';
 import { TableGrid } from './TableGrid.js';
 import { TableHeader, type TableHeaderProps } from './TableHeader.js';
 
@@ -384,10 +386,24 @@ describe('sorting', () => {
 
 describe('moving', () => {
   type M = 'a' | 'b' | 'c';
+  const spec = (key: M, movable: boolean): ColumnSpec<unknown, M> => ({
+    key,
+    defaultWidth: 100,
+    minWidth: 10,
+    maxWidth: 500,
+    hideable: false,
+    movable,
+    firstSortDesc: false,
+    compare: () => 0,
+  });
+  const model = createTableModel<unknown, M>([spec('a', false), spec('b', true), spec('c', true)]);
+  const LAYOUT: ColumnLayout<M> = { widths: {}, hidden: [] };
+  const targets = (key: M) => model.moveTargets(LAYOUT, key);
+
   const MOVE_COLUMNS = [
-    { key: 'a' as const, label: 'Alpha', width: 100, movable: false },
-    { key: 'b' as const, label: 'Beta', width: 100, movable: true },
-    { key: 'c' as const, label: 'Gamma', width: 100, movable: true },
+    { key: 'a' as const, label: 'Alpha', width: 100 },
+    { key: 'b' as const, label: 'Beta', width: 100 },
+    { key: 'c' as const, label: 'Gamma', width: 100 },
   ];
 
   /**
@@ -407,7 +423,7 @@ describe('moving', () => {
         onResize={vi.fn()}
         resizeLabel="Resize"
         refusePress={() => false}
-        move={{ refusePress, threshold: 4, onMove }}
+        move={{ refusePress, threshold: 4, targets, onMove }}
         scale={scale}
         {...over}
       />,
@@ -509,7 +525,7 @@ describe('moving', () => {
             onResize={vi.fn()}
             resizeLabel="Resize"
             refusePress={() => false}
-            move={{ refusePress: () => false, threshold: 4, onMove }}
+            move={{ refusePress: () => false, threshold: 4, targets, onMove }}
           />
         }
         colCount={3}
@@ -557,7 +573,7 @@ describe('moving', () => {
           onResize={vi.fn()}
           resizeLabel="Resize"
           refusePress={() => false}
-          move={{ refusePress: () => false, threshold: 4, onMove: vi.fn() }}
+          move={{ refusePress: () => false, threshold: 4, targets, onMove: vi.fn() }}
         />
       </Profiler>,
     );
@@ -573,6 +589,61 @@ describe('moving', () => {
     move(270, { clientY: 5 });
     move(280, { clientY: 5 });
     expect(commits).toBe(shown);
+  });
+
+  it('a hidden unmovable column bounds the move: the line stops before it, and the drop is one the model makes', () => {
+    type Q = 'a' | 'b' | 'pin' | 'c';
+    const hideable = (key: Q, movable: boolean): ColumnSpec<unknown, Q> => ({
+      key,
+      defaultWidth: 100,
+      minWidth: 10,
+      maxWidth: 500,
+      hideable: true,
+      movable,
+      firstSortDesc: false,
+      compare: () => 0,
+    });
+    const pinned = createTableModel<unknown, Q>([
+      hideable('a', true),
+      hideable('b', true),
+      hideable('pin', false),
+      hideable('c', true),
+    ]);
+    const layout: ColumnLayout<Q> = { widths: {}, hidden: ['pin'] };
+    const onMove = vi.fn();
+    const { container } = render(
+      <TableHeader
+        columns={pinned.visibleColumns(layout).map((key) => ({ key, label: key, width: 100 }))}
+        sort={undefined}
+        gridStyle={{}}
+        onSort={vi.fn()}
+        onResize={vi.fn()}
+        resizeLabel="Resize"
+        refusePress={() => false}
+        move={{
+          refusePress: () => false,
+          threshold: 4,
+          targets: (key) => pinned.moveTargets(layout, key),
+          onMove,
+        }}
+      />,
+    );
+    const cells = [...container.querySelectorAll<HTMLElement>('[role="columnheader"]')];
+    cells.forEach((cell, i) => {
+      Object.defineProperty(cell, 'offsetLeft', { get: () => i * 100 });
+      Object.defineProperty(cell, 'offsetWidth', { get: () => 100 });
+      cell.getBoundingClientRect = () =>
+        ({ left: i * 100, right: (i + 1) * 100, top: 0, bottom: 20 }) as DOMRect;
+    });
+    fireEvent.mouseDown(cells[0]!.querySelector('button')!, { button: 0, clientX: 50, clientY: 5 });
+    move(290, { clientY: 5 });
+    expect(container.querySelector<HTMLElement>('[data-table-move-indicator]')!.style.left).toBe('200px');
+    act(() => {
+      fireEvent.mouseUp(document, { button: 0 });
+    });
+    expect(onMove).toHaveBeenCalledWith('a', 'pin');
+    const [key, before] = onMove.mock.calls[0]!;
+    expect(pinned.visibleColumns(pinned.withOrder(layout, key, before))).toEqual(['b', 'a', 'c']);
   });
 
   it('a press on a resize handle never starts a move', () => {

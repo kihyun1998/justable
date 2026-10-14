@@ -209,12 +209,7 @@ export function FileTable({
   const header = (
     <TableHeader
       className="header"
-      columns={columns.map((key) => ({
-        key,
-        label: LABELS[key],
-        width: model.columnWidth(layout, key),
-        movable: SPEC.find((c) => c.key === key)!.movable,
-      }))}
+      columns={columns.map((key) => ({ key, label: LABELS[key], width: model.columnWidth(layout, key) }))}
       sort={sort}
       gridStyle={gridStyle}
       onSort={(key) => setSort((s) => model.nextSort(s, key))}
@@ -226,6 +221,7 @@ export function FileTable({
       move={{
         refusePress: (e) => e.button !== 0,
         threshold: 4,
+        targets: (key) => model.moveTargets(layout, key),
         onMove: (key, beforeKey) => {
           setLayout((l) => model.withOrder(l, key, beforeKey));
           onStatus(`move: ${key} before ${beforeKey ?? 'the end'}`);

@@ -27,6 +27,16 @@ the layout.
   stored order that crosses a pin, `HeaderColumn.movable` being optional, the data attribute's name,
   or the press not being prevented — those below are derivations.
 
+- **#62, the maintainer's call at triage, 2026-10-14.** Shown: a jsdom reproduction (a hidden
+  unmovable column; the line drawn past it, `onMove('a', null)`, `withOrder` refusing) and three
+  directions — (a) the model's rule handed to the header, (b) a hidden unmovable column stops being a
+  boundary in the model, (c) leave it documented. Chosen: **(a)**; (b) would break #61's promise that
+  an unmovable column keeps its spec position. At the confirm stop, **#64 (a public full order) joined
+  the same change**. Not covered: the shape of the answer (per drawn slot), the names `moveTargets`,
+  `columnOrder` and `targets`, `targets` being required, and which insert point a slot takes — those
+  are derivations, below. Then, shown that `HeaderColumn.movable` overlapped `targets` and was
+  unreleased: **removed**, the press deciding from `targets` alone.
+
 ## Design model
 
 - **The order lists every column, hidden ones too**, so a column hidden and shown again returns to
@@ -50,9 +60,20 @@ the layout.
   screen px on either axis, the marquee's rule — the release swallows the click the browser sends
   next (`swallowNextClick`, shared with the [marquee](marquee.md)), so no `onSort` follows a drop,
   even a drop where the column already was.
-- **The landing slot is found on screen; the line is drawn in layout px.** The slot is the count of
-  drawn cells whose screen middle lies left of the pointer, clamped to the run the dragged column is
-  in; both are screen px, so a scale needs no division. The line sits at that cell's `offsetLeft`
+- **Where a column may land is the model's answer, per drawn slot** (#62). `moveTargets(layout, key)`
+  has one entry per drawn slot — before each drawn column, then the end — holding the `beforeKey` to
+  report there, or `undefined` where `withOrder` refuses. It and `withOrder` share one internal
+  `moved`, so they agree by construction; the header keeps no copy of the run rule and takes the
+  answer through the required `move.targets`. A set of allowed `beforeKey`s would not do: with a
+  hidden pin after the dragged column's run, the end of the run is "before the pin", a key the header
+  never draws — it would report the drawn column past the pin and be refused.
+- **A slot between two drawn columns takes the last accepted insert point between them**, the one
+  next to the drawn column on its right; a hidden movable column in the gap keeps its place before
+  the dropped one.
+- **The landing slot is found on screen; the line is drawn in layout px.** The slot under the pointer
+  is the count of drawn cells whose screen middle lies left of it, moved to the nearest allowed slot;
+  the column's own two slots are always allowed, and a drop there reports nothing. Both are screen
+  px, so a scale needs no division. The line sits at that cell's `offsetLeft`
   (or the last cell's right edge for the end), layout px inside the scaled tree. Measured in Chrome
   2026-10-14: computing it from screen boxes instead put it 65 px off inside `scale(0.5)`.
 - **A scroll under a still pointer re-reads the slot**, through the drag's scroll moment — the cells
@@ -66,8 +87,10 @@ the layout.
 - **A drop on the slot either side of the column itself reports nothing.**
 - **The line is a child of the header row, absolutely positioned**, so it takes no track; see
   [drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md).
-- **`HeaderColumn.movable` is optional; absent, the column does not move.** The header's identity
-  default, so a consumer that passes no `move` changes nothing. A derivation, 2026-10-14.
+- **Whether a press may move a column is `targets`' answer too**: a press on a column whose targets
+  offer no slot but its own two starts no move, and stays a sort press. `HeaderColumn` carries no
+  `movable` — #61 added one and #62 removed it before any release (the maintainer's call, below),
+  so the header holds no second copy of which columns move.
 - **The handle's press never reaches the cell**: `startResize` stops its propagation, which is all
   that keeps a border drag from also being a move.
 
@@ -75,8 +98,8 @@ the layout.
 
 - `src/hooks/useColumnMove.ts` — `useColumnMove`, `ColumnMoveOptions`, `ColumnMoving`, `moveSlot`
 - `src/components/TableHeader.tsx` — `move`, `rowRef`, `data-table-move-indicator`
-- `src/lib/tableModel.ts` — `withOrder`, `columnOrder`
-- `src/types.ts` — `ColumnLayout.order`, `ColumnSpec.movable`, `HeaderColumn.movable`
+- `src/lib/tableModel.ts` — `withOrder`, `columnOrder`, `moveTargets`, `moved`
+- `src/types.ts` — `ColumnLayout.order`, `ColumnSpec.movable`
 
 ## Reference behaviour
 
@@ -85,7 +108,8 @@ the layout.
 ## Cross-cutting invariants
 
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
-  `refusePress` and `threshold` are required inside `move`, and which columns move is the spec's.
+  `refusePress`, `threshold` and `targets` are required inside `move`, and which columns move is the
+  spec's.
 - [Drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md) — the
   order is `visibleColumns`' order, so the header, rows and template move together.
 
@@ -102,10 +126,6 @@ the layout.
 
 ## Known holes / open
 
-- **A hidden unmovable column is no boundary to the header.** The header finds runs among the drawn
-  columns, so with a pinned, hideable column hidden it shows a landing place past it, and `withOrder`
-  then refuses the drop: the line promised a move that did not happen. No consumer has a hideable pin
-  today.
 - **No Escape or blur cancel**, where the marquee has both — out of #61 by the maintainer's call.
 - **No edge scroll.** A column dragged past the header's edge does not scroll the grid, and unlike
   the border drag nothing reports the pointer for a consumer's loop.
