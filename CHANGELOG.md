@@ -4,6 +4,17 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
+## Unreleased
+
+### Fixed
+
+- **A marquee cancelled with the button still held no longer lets the release's click through.**
+  After Escape or a lost window, letting go on the row the drag was pressed on clicked that row, and
+  letting go on the floor called `onFloorClick` — undoing a selection the `cancel` report had just
+  put back. That click is now swallowed as a finished drag's is. The swallow now gives up only at the
+  next primary press, so another button pressed while the first is held no longer lets the click
+  through either (#73).
+
 ## 0.4.0 — 2026-10-14
 
 ### Breaking

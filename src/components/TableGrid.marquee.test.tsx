@@ -459,6 +459,79 @@ describe('cancelling', () => {
     expect(onMarquee).toHaveBeenCalledTimes(2);
   });
 
+  it('⚠️ the click a browser sends at the release after an Escape does not reach the floor', () => {
+    const { scroller, onFloorClick } = renderGrid();
+    press(scroller, 10, 30);
+    moveTo(10, 100);
+    act(() => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
+    release();
+    clickAfter(scroller);
+    expect(onFloorClick).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ the click at the release after an Escape, pressed and released on one row, does not reach the row', () => {
+    const { scroller, grid, rowClick } = renderGrid();
+    const row = grid.querySelector('[data-row="1"]') as HTMLElement;
+    press(scroller, 10, 30);
+    moveTo(10, 100);
+    act(() => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
+    release();
+    clickAfter(row);
+    expect(rowClick).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ the click at the release after a lost window does not reach the floor', () => {
+    const { scroller, onFloorClick } = renderGrid();
+    press(scroller, 10, 30);
+    moveTo(10, 100);
+    act(() => {
+      fireEvent.blur(window);
+    });
+    release();
+    clickAfter(scroller);
+    expect(onFloorClick).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ another button pressed between the cancel and the release does not let the release’s click through', () => {
+    const { scroller, onFloorClick } = renderGrid();
+    press(scroller, 10, 30);
+    moveTo(10, 100);
+    act(() => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    });
+    fireEvent.mouseDown(document, { button: 2, buttons: 3 });
+    fireEvent.mouseUp(document, { button: 2, buttons: 1 });
+    release();
+    clickAfter(scroller);
+    expect(onFloorClick).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ a cancel whose release sends no click — the button let go outside the window — leaves the next press’s click alone', () => {
+    const { scroller, onFloorClick } = renderGrid();
+    press(scroller, 10, 30);
+    moveTo(10, 100);
+    act(() => {
+      fireEvent.blur(window);
+    });
+    press(scroller, 10, 30);
+    release();
+    clickAfter(scroller);
+    expect(onFloorClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('Escape before the threshold leaves the press a click', () => {
+    const { scroller, onFloorClick } = renderGrid();
+    press(scroller, 10, 30);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    release();
+    clickAfter(scroller);
+    expect(onFloorClick).toHaveBeenCalledTimes(1);
+  });
+
   it('Escape before the threshold is the consumer’s', () => {
     const { scroller, onMarquee } = renderGrid();
     const heard = vi.fn();

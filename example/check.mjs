@@ -324,6 +324,17 @@ try {
   const toggled = await selectedRows();
   check('a Ctrl marquee inside one row adds it, and the click on that row does not toggle it back', toggled.join() === '3,4,5,6,8', toggled);
 
+  // Cancelled with the button still held, then released on the row it was pressed on: the click that
+  // release sends would select that row alone, undoing the selection Escape put back.
+  const r10 = await rowBox(10);
+  await mq.mouse.move(px, r10.y + r10.height / 2);
+  await mq.mouse.down();
+  await mq.mouse.move(px - 60, r10.y + r10.height / 2, { steps: 6 });
+  await mq.keyboard.press('Escape');
+  await mq.mouse.up();
+  const afterCancel = await selectedRows();
+  check('a marquee cancelled with Escape, then released on its row, leaves the selection as it was', afterCancel.join() === toggled.join(), afterCancel);
+
   // A file's name refuses a marquee, and only its text: the rest of the name column starts one.
   const nameGeo = await mq.$eval('[role="grid"] [role="row"][aria-rowindex="10"] [data-name]', (span) => {
     const text = document.createRange();

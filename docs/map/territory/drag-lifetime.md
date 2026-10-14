@@ -65,7 +65,9 @@ nothing to a consumer itself; each drag says what its own moments mean.
 - **Only the lifetime is shared.** Threshold, Escape, blur, the click swallow, scale, `Δscroll` and the
   width hold are each drag's own, attached and released through their own code. The click swallow's
   function, `swallowNextClick`, is the marquee's, which the column move calls too: shared code, but
-  each drag decides whether to call it.
+  each drag decides whether to call it — at the release, and, for a drag ended from inside with its
+  button still held (the marquee's Escape and blur), at that end, since its release comes after this
+  primitive has let go (#73).
 
 ## Code
 
