@@ -21,6 +21,11 @@ export interface TableModel<Row, K extends string, H extends K> {
    * `withOrder` takes for a drop there, or `undefined` where it refuses one.
    */
   moveTargets: (layout: ColumnLayout<K, H>, key: K) => (K | null | undefined)[];
+  /**
+   * The `beforeKey` that moves drawn column `key` one drawn place left (`-1`) or right (`1`), or
+   * `undefined` where it cannot move that way.
+   */
+  moveBy: (layout: ColumnLayout<K, H>, key: K, delta: -1 | 1) => K | null | undefined;
   /** The drawn columns, in the layout's order. */
   visibleColumns: (layout: ColumnLayout<K, H>) => K[];
   /** `grid-template-columns`: one px track per drawn column, then a filler that is not a column. */
@@ -137,6 +142,12 @@ export function createTableModel<Row, K extends string, H extends K = K>(
     withOrder,
     columnOrder,
     moveTargets,
+    moveBy: (layout, key, delta) => {
+      column(key);
+      const from = visibleColumns(layout).indexOf(key);
+      if (from < 0) return undefined;
+      return moveTargets(layout, key)[delta < 0 ? from - 1 : from + 2];
+    },
     visibleColumns,
     gridTemplate: (layout) =>
       [

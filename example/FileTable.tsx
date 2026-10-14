@@ -218,6 +218,20 @@ export function FileTable({
       onAutoFit={onAutoFit}
       resizeLabel="Resize column"
       refusePress={(e) => e.button !== 0}
+      onColumnKeyDown={(key, e) => {
+        const delta = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
+        if (!e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || delta === 0) return;
+        e.preventDefault();
+        const beforeKey = model.moveBy(layout, key, delta);
+        if (beforeKey === undefined) {
+          onStatus(`${LABELS[key]} cannot move ${delta < 0 ? 'left' : 'right'}`);
+          return;
+        }
+        const next = model.withOrder(layout, key, beforeKey);
+        const drawn = model.visibleColumns(next);
+        setLayout(next);
+        onStatus(`${LABELS[key]} moved to column ${drawn.indexOf(key) + 1} of ${drawn.length}`);
+      }}
       move={{
         refusePress: (e) => e.button !== 0,
         threshold: 4,

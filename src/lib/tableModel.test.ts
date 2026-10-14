@@ -275,6 +275,32 @@ describe('where a column may land around a hidden pin', () => {
     expect(pinned.moveTargets(layout, 'a')).toEqual([undefined, 'pin', undefined, undefined, undefined]);
   });
 
+  it('one step answers the neighbouring place, and nothing past the pin or the ends', () => {
+    expect(pinned.moveBy(HIDDEN, 'a', -1)).toBeUndefined();
+    expect(pinned.moveBy(HIDDEN, 'a', 1)).toBe('pin');
+    expect(pinned.moveBy(HIDDEN, 'b', -1)).toBe('a');
+    expect(pinned.moveBy(HIDDEN, 'b', 1)).toBeUndefined();
+    expect(pinned.moveBy(HIDDEN, 'c', -1)).toBeUndefined();
+    expect(pinned.moveBy(HIDDEN, 'c', 1)).toBe(null);
+    expect(pinned.moveBy(HIDDEN, 'd', 1)).toBeUndefined();
+  });
+
+  it('one step moves the column one drawn place, in either direction', () => {
+    for (const key of ['a', 'b', 'c', 'd'] as const) {
+      for (const delta of [-1, 1] as const) {
+        const before = pinned.moveBy(HIDDEN, key, delta);
+        if (before === undefined) continue;
+        const drawn = pinned.visibleColumns(HIDDEN);
+        const after = pinned.visibleColumns(pinned.withOrder(HIDDEN, key, before));
+        expect(after.indexOf(key) - drawn.indexOf(key), `${key} ${delta}`).toBe(delta);
+      }
+    }
+  });
+
+  it('a hidden column takes no step', () => {
+    expect(pinned.moveBy({ widths: {}, hidden: ['b'] }, 'b', 1)).toBeUndefined();
+  });
+
   it('every slot it offers is a move withOrder makes', () => {
     for (const layout of [HIDDEN, { ...HIDDEN, order: ['b', 'a', 'pin', 'd', 'c'] as P[] }]) {
       for (const key of ['a', 'b', 'c', 'd'] as const) {

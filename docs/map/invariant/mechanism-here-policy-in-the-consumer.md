@@ -12,7 +12,7 @@ Checkable: the engine imports nothing but itself, React, React DOM and the icon 
 prop carrying a consumer's choice is either required (`refusePress`, `label`, `resizeLabel`, the
 marquee's and the column move's `refusePress` and `threshold`, the type-ahead's `windowMs`) or, when
 optional, absent means the engine does nothing (`onAutoFit`, `onFloorClick`, `cellClassName`,
-`marquee`, `move`, a header column's `movable`). A default
+`marquee`, `move`, `onColumnKeyDown`). A default
 that does exist is an identity — the value that leaves the prop doing nothing: no scale, not
 disabled, rows shown, no leading rows, not multi-selectable, no scroller, the real clock. The list
 is the code's:
@@ -47,7 +47,8 @@ consumer's policy that the consumer cannot see.
   and whether the grid is multi-selectable.
 - [Column move](../territory/column-move.md) — `refusePress`, `threshold` and `targets` are required
   inside `move`; which columns move is the spec's `movable`, and what a drop does is the consumer's
-  `withOrder` call.
+  `withOrder` call. Which key moves a column, and what is announced, are the consumer's:
+  `onColumnKeyDown` only reports the key.
 - [Marquee](../territory/marquee.md) — `refusePress` and `threshold` are required; what a range
   selects, and the edge-scroll loop, are the consumer's.
 - [Verification gates](../territory/verification-gates.md) — the import rule is the mechanical half.

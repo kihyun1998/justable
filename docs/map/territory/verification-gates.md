@@ -121,7 +121,9 @@ be run by hand.
   border held past the scroller's right edge scrolling the grid while the column keeps pace, and a
   header column move — unscaled and inside `scale(0.5)`, a press under the threshold still sorting,
   the landing line on the border it lands at with no text selected, a drop onto the pinned first
-  column landing after it, and the header and rows reordered together (#61). It **exits 1 when no browser is found**,
+  column landing after it, and the header and rows reordered together (#61); and a column moved from
+  the keyboard — Shift+→ twice and Shift+← once, focus still on its button, and a step past the
+  pinned first column refused and said (#63). It **exits 1 when no browser is found**,
   since a run that inspected nothing is not a pass. Proven failing: removing the button reset,
   dropping a placed row's `right: 0`, and refusing the space mid-query each fail it; so does drawing
   the move's landing line from screen boxes rather than `offsetLeft`, inside `scale(0.5)`. The type-ahead

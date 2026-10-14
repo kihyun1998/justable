@@ -689,3 +689,15 @@ describe('moving', () => {
     expect(onSort).toHaveBeenCalledWith('b');
   });
 });
+
+describe('keys on a column', () => {
+  it('reach the consumer with the column they were pressed on', () => {
+    const onColumnKeyDown = vi.fn();
+    const { header } = renderHeader({ onColumnKeyDown });
+    fireEvent.keyDown(header.querySelectorAll('button')[1]!, { key: 'ArrowRight', shiftKey: true });
+    expect(onColumnKeyDown).toHaveBeenCalledTimes(1);
+    const [key, event] = onColumnKeyDown.mock.calls[0]!;
+    expect(key).toBe('b');
+    expect(event.key).toBe('ArrowRight');
+  });
+});

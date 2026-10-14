@@ -904,6 +904,54 @@ try {
     await moving.close();
   }
 
+  // A column moved from the keyboard: Shift+→ twice and Shift+← once on Kind's sort button.
+  {
+    const keyed = await browser.newPage();
+    keyed.on('pageerror', (e) => errors.push(String(e)));
+    await keyed.goto(url, { waitUntil: 'networkidle0' });
+    await keyed.waitForSelector('[role="grid"] [data-table-header]');
+    const state = () =>
+      keyed.evaluate(() => {
+        const heads = [...document.querySelectorAll('[data-table-header] [role="columnheader"]')];
+        const focused = document.activeElement;
+        return {
+          labels: heads.map((h) => h.textContent),
+          focused: focused?.closest('[role="columnheader"]')?.textContent ?? focused?.tagName ?? null,
+          ring: focused?.matches(':focus-visible') ?? false,
+          status: document.querySelector('[role="status"]')?.textContent ?? null,
+        };
+      });
+    await keyed.focus('[data-table-header] [role="columnheader"][aria-colindex="2"] button');
+    const steps = [];
+    for (const key of ['ArrowRight', 'ArrowRight', 'ArrowLeft']) {
+      await keyed.keyboard.down('Shift');
+      await keyed.keyboard.press(key);
+      await keyed.keyboard.up('Shift');
+      steps.push(await state());
+    }
+    check(
+      'Shift+arrows on a header button move its column a place at a time and keep the focus on it',
+      JSON.stringify(steps.map((s) => s.labels)) ===
+        JSON.stringify([
+          ['Name', 'Size', 'Kind', 'Modified'],
+          ['Name', 'Size', 'Modified', 'Kind'],
+          ['Name', 'Size', 'Kind', 'Modified'],
+        ]) && steps.every((s) => s.focused === 'Kind'),
+      steps,
+    );
+    await keyed.focus('[data-table-header] [role="columnheader"][aria-colindex="2"] button');
+    await keyed.keyboard.down('Shift');
+    await keyed.keyboard.press('ArrowLeft');
+    await keyed.keyboard.up('Shift');
+    const pinned = await state();
+    check(
+      'a column cannot step past the pinned first column, and says so',
+      pinned.labels[0] === 'Name' && pinned.status === 'Size cannot move left',
+      pinned,
+    );
+    await keyed.close();
+  }
+
   check('no page errors', errors.length === 0, errors);
 } finally {
   await browser.close();

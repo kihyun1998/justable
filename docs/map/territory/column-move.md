@@ -36,6 +36,14 @@ the layout.
   `columnOrder` and `targets`, `targets` being required, and which insert point a slot takes — those
   are derivations, below. Then, shown that `HeaderColumn.movable` overlapped `targets` and was
   unreleased: **removed**, the press deciding from `targets` alone.
+- **#63, the maintainer's call at triage, 2026-10-14.** Shown: no key path anywhere in `src/`; AG
+  Grid's column-moving docs (Shift+←/→ on a focused header) and MUI X's column-ordering page (drag
+  only, keyboard not stated); three directions — (a) mechanism here, key and announcement the
+  consumer's, (b) the engine binds a key in the header, (c) not now. Chosen: **(a)**; (b) holds a key
+  choice as an engine default, against
+  [mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md).
+  Not covered: the names `moveBy` and `onColumnKeyDown`, the callback on the cell, and whether the
+  engine restores focus — derivations, below.
 
 ## Design model
 
@@ -91,14 +99,26 @@ the layout.
   offer no slot but its own two starts no move, and stays a sort press. `HeaderColumn` carries no
   `movable` — #61 added one and #62 removed it before any release (the maintainer's call, below),
   so the header holds no second copy of which columns move.
+- **A key reaches the consumer through `onColumnKeyDown(key, event)`, on the header cell**, so it
+  takes keys from the sort button inside it; absent, the cell has no key handler. The engine binds
+  no key and renders no announcement. `moveBy(layout, key, ±1)` reads `moveTargets` at the slot one
+  drawn place over — `from − 1` left, `from + 2` right, the second because `from + 1` is the column's
+  own right edge — so a key step obeys every boundary a drag does.
+- **Focus survives a move without the engine's help — React DOM restores it.** Measured in Chrome
+  155, 2026-10-14: moving a column right, React moves the focused cell itself (`insertBefore`), focus
+  falls to `body` and a `focusout` fires (`Kind→null`); moving one left, React moves the neighbour and
+  focus is never lost. Either way the button ends focused, with `:focus-visible`, because React DOM's
+  commit (19.2.8, `react-dom-client`) focuses the element that was focused before the mutation when
+  it is still in the document. A bare `insertBefore` of the focused cell left focus on `body`. So a
+  consumer listening for `focusout` on the header sees one transient blur per move to the right.
 - **The handle's press never reaches the cell**: `startResize` stops its propagation, which is all
   that keeps a border drag from also being a move.
 
 ## Code
 
 - `src/hooks/useColumnMove.ts` — `useColumnMove`, `ColumnMoveOptions`, `ColumnMoving`, `moveSlot`
-- `src/components/TableHeader.tsx` — `move`, `rowRef`, `data-table-move-indicator`
-- `src/lib/tableModel.ts` — `withOrder`, `columnOrder`, `moveTargets`, `moved`
+- `src/components/TableHeader.tsx` — `move`, `onColumnKeyDown`, `rowRef`, `data-table-move-indicator`
+- `src/lib/tableModel.ts` — `withOrder`, `columnOrder`, `moveTargets`, `moveBy`, `moved`
 - `src/types.ts` — `ColumnLayout.order`, `ColumnSpec.movable`
 
 ## Reference behaviour
@@ -129,4 +149,7 @@ the layout.
 - **No Escape or blur cancel**, where the marquee has both — out of #61 by the maintainer's call.
 - **No edge scroll.** A column dragged past the header's edge does not scroll the grid, and unlike
   the border drag nothing reports the pointer for a consumer's loop.
-- **Mouse only**, as every drag here.
+- **The drag is mouse only**, as every drag here; the keyboard moves a column through
+  `onColumnKeyDown` and `moveBy`.
+- **Firefox and Safari not measured** for the focus a move keeps; the restore is React's, not the
+  browser's, so it should hold, but nothing here has run there.

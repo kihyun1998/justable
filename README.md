@@ -202,6 +202,23 @@ ascending order.
   column still bounds it — and calls `onMove(key, beforeKey)` once at
   the drop, then no `onSort`. A shorter press is a sort press, and a press on a resize handle never
   moves. Without `move`, nothing moves.
+- **Moving from the keyboard.** Each header cell's sort button is a Tab stop. `TableHeader`'s
+  `onColumnKeyDown(key, event)` hands you a key pressed on a column; the table binds no key itself.
+  `model.moveBy(layout, key, -1 | 1)` is the `beforeKey` that moves that column one drawn place left
+  or right — pass it to `withOrder` — or `undefined` where it cannot go, under the same rules as a
+  drag. Focus stays on the moved column's button. Announce the move yourself, for example in a
+  `role="status"` element; the table renders no announcement. The example binds Shift+←/→, as
+  [AG Grid](https://www.ag-grid.com/react-data-grid/column-moving/) does:
+
+  ```tsx
+  onColumnKeyDown={(key, e) => {
+    const delta = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
+    if (!e.shiftKey || delta === 0) return;
+    e.preventDefault();
+    const beforeKey = model.moveBy(layout, key, delta);
+    if (beforeKey !== undefined) setLayout(model.withOrder(layout, key, beforeKey));
+  }}
+  ```
 - **Auto-fit.** `useColumnAutoFit()` measures the widest cell of a column. Render its `TableRuler`
   with `ref={rulerRef}` and `column={measuring}` while `measuring` is set — without the ref,
   `measure` answers `null` — and call `measure(key)` from `TableHeader`'s `onAutoFit`, a
