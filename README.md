@@ -95,13 +95,7 @@ export function People({ people }: { people: readonly Person[] }) {
   const gridStyle = { gridTemplateColumns: model.gridTemplate(layout) };
 
   return (
-    <div
-      style={{ height: 400, display: 'flex', flexDirection: 'column' }}
-      onKeyDown={(e) => {
-        const answer = keyboard.step(e, { focus, names: rows.map((p) => p.name) });
-        if (answer?.to != null) setFocus(answer.to);
-      }}
-    >
+    <div style={{ height: 400, display: 'flex', flexDirection: 'column' }}>
       <TableGrid
         label="People"
         header={
@@ -139,6 +133,10 @@ export function People({ people }: { people: readonly Person[] }) {
         rowIdPrefix="people"
         rowHeightRem={2}
         keyboard={keyboard.link}
+        onKeyDown={(e) => {
+          const answer = keyboard.step(e, { focus, names: rows.map((p) => p.name) });
+          if (answer?.to != null) setFocus(answer.to);
+        }}
       />
     </div>
   );
@@ -252,10 +250,15 @@ ascending order.
 ## Keyboard
 
 The grid is one tab stop. Pass the `link` from `useTableKeyboard({ windowMs })` to it as `keyboard`,
-and call `step(event, { focus, names })` from a `keydown` handler around it — `names` is each row's
-text in screen order, for type-ahead. `windowMs` is yours and has no default: how long, in ms, a
-query stays open after its last key. `0` keeps none open, so every letter starts a new query, and so
-does a negative or `NaN` window; `Infinity` lets no pause end one. `step` answers:
+and call `step(event, { focus, names })` from the grid's `onKeyDown` — `names` is each row's text in
+screen order, for type-ahead. `onKeyDown` hears only keys on the grid element itself, so a header's
+sort button and any control you put in a cell keep their own keys: ↓ there moves no row, and Space
+and Enter press the button. A `keydown` handler around the grid still hears every key, theirs too,
+so a key there is the rows' only when `event.target` is the grid.
+
+`windowMs` is yours and has no default: how long, in ms, a query stays open after its last key. `0`
+keeps none open, so every letter starts a new query, and so does a negative or `NaN` window;
+`Infinity` lets no pause end one. `step` answers:
 
 - `{ by: 'move', to }` for ↑ ↓ Home End Page Up Page Down (a page is the rows in view);
 - `{ by: 'typeAhead', to }` for a printable key: a row whose name starts with what was typed, each
@@ -389,6 +392,8 @@ while it measures.
 - Each header cell's sort button is a Tab stop; the resize handles are not. A column is moved and
   resized from the keyboard through `onColumnKeyDown`, with keys you bind — see
   [Columns](#columns).
+- The grid's `onKeyDown` hears only keys on the grid itself, so a sort button, or a control you put
+  in a cell, keeps Space, Enter and the arrows — see [Keyboard](#keyboard).
 - `aria-selected` on a row is yours to set. Pass `multiselectable` when several rows can be selected
   at once; it is off by default.
 - A `disabled` grid ignores the pointer and says `aria-disabled`, but stays focusable, so a screen

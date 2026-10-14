@@ -46,6 +46,9 @@ moves the row by other means.
   did not cover the engine noticing a replaced list by itself (that would be policy here, against
   [mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md)),
   nor `step`'s identity, which is still new each render. Theirs to reverse.
+- **`step` is called from the grid's `onKeyDown`, which hears only the grid element's own keys** —
+  the maintainer's call at triage, 2026-10-14, #68, recorded in [grid scaffold](grid-scaffold.md).
+  `step` itself was left unchanged: it still answers whatever key it is given.
 - **Earlier calls are recorded where they were written, in `## Design model`**: #1 (a movement key
   ends the query; Shift+Space inside a running query extends it) and #5 (a miss ends the query;
   type-ahead is its own hook).
@@ -56,7 +59,10 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 
 - **A hook the consumer calls, not a key handler on the grid.** PenTerm's Explorer receives keys on
   its pane, which holds focus whenever the grid does not; a handler on the grid would leave arrows dead
-  there (`penterm 7032eb5d0`). The grid writes `rowsPerPage` into the hook's `link`, so the consumer
+  there (`penterm 7032eb5d0`). The grid's optional `onKeyDown` (#68) does not change that: it holds
+  no rule, only says which keys are the grid's own, and a consumer listening on a pane still calls
+  `step` from there — and then hears the header's and the cells' keys too, unless it checks that
+  the target is the grid. The grid writes `rowsPerPage` into the hook's `link`, so the consumer
   never holds that number; `link` is one object for the hook's life so the grid can keep it.
 - **The answer is where the row goes; what that selects or opens is the consumer's.** `step` returns
   `{ by: 'move', to }`, `{ by: 'typeAhead', to }`, or `null` for a key that is not the table's.
@@ -214,7 +220,7 @@ unchecked.
 ## Blast radius
 
 - [Grid scaffold](grid-scaffold.md) — the consumer feeds the answer back as the grid's `focus`,
-  which drives `aria-activedescendant`.
+  which drives `aria-activedescendant`; the grid's `onKeyDown` decides which keys reach `step`.
 - [Row windowing](row-windowing.md) — writes `rowsPerPage`, and reveals the row a move lands on.
 - [Verification gates](verification-gates.md) — `check:example` types through a space, moves, and
   clicks a row between two letters, so `end()` on the example's click is held in Chrome.

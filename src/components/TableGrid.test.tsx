@@ -3,7 +3,7 @@
  * The windowed grid's semantics, against rows of its own. jsdom has no layout, so
  * the window is the unmeasured cap unless a case stubs the viewport's height.
  */
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, fireEvent, render } from '@testing-library/react';
 import type { CSSProperties } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -162,6 +162,79 @@ function Keyed({ rows }: { rows: string[] }) {
     />
   );
 }
+
+describe('keys', () => {
+  /** A grid whose header and rows hold a button each, inside a listener around it. */
+  function renderKeyed(onKeyDown?: TableGridProps['onKeyDown']) {
+    const around = vi.fn();
+    const { container } = render(
+      <div onKeyDown={(e) => around(e.target)}>
+        <TableGrid
+          label="Keys"
+          header={
+            <div role="row" aria-rowindex={1}>
+              <div role="columnheader">
+                <button type="button" data-sort>
+                  Name
+                </button>
+              </div>
+            </div>
+          }
+          colCount={1}
+          total={2}
+          rowKey={(i) => String(i)}
+          renderRow={(i, place) => (
+            <div role="row" id={place.id} aria-rowindex={place.rowIndex} data-row={i}>
+              <div role="gridcell">
+                <button type="button" data-in-row={i}>
+                  open
+                </button>
+              </div>
+            </div>
+          )}
+          fill
+          focus={null}
+          rowIdPrefix="keys"
+          rowHeightRem={1.75}
+          onKeyDown={onKeyDown}
+        />
+      </div>,
+    );
+    const grid = container.querySelector('[role="grid"]') as HTMLElement;
+    return { grid, around };
+  }
+
+  it('reports a key on the grid element itself, with its event', () => {
+    const onKeyDown = vi.fn();
+    const { grid } = renderKeyed(onKeyDown);
+    fireEvent.keyDown(grid, { key: 'ArrowDown' });
+    expect(onKeyDown).toHaveBeenCalledTimes(1);
+    expect(onKeyDown.mock.calls[0]![0].key).toBe('ArrowDown');
+    expect(onKeyDown.mock.calls[0]![0].target).toBe(grid);
+  });
+
+  it('⚠️ does not report a key on a header button, a control in a row, or the scroller', () => {
+    const onKeyDown = vi.fn();
+    const { grid } = renderKeyed(onKeyDown);
+    fireEvent.keyDown(grid.querySelector('[data-sort]')!, { key: 'ArrowDown' });
+    fireEvent.keyDown(grid.querySelector('[data-in-row="0"]')!, { key: ' ' });
+    fireEvent.keyDown(grid.querySelectorAll('[role="rowgroup"]')[1]!, { key: 'n' });
+    expect(onKeyDown).not.toHaveBeenCalled();
+  });
+
+  it('⚠️ stops no key: a listener around the grid still hears every one', () => {
+    const { grid, around } = renderKeyed(vi.fn());
+    const sort = grid.querySelector('[data-sort]')!;
+    fireEvent.keyDown(sort, { key: 'ArrowDown' });
+    fireEvent.keyDown(grid, { key: 'ArrowDown' });
+    expect(around.mock.calls.map(([target]) => target)).toEqual([sort, grid]);
+  });
+
+  it('claims nothing when absent', () => {
+    const { grid } = renderKeyed();
+    expect(fireEvent.keyDown(grid, { key: 'ArrowDown' })).toBe(true);
+  });
+});
 
 describe('the keyboard link', () => {
   /** jsdom lays nothing out; a viewport height is what lets the grid measure at all. */
