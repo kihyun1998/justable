@@ -52,6 +52,32 @@
   box-sizing: border-box;
 }
 
+/* A column move drawn by the example (`?ghost`): the moved column dims where it was. */
+[data-table-moving] {
+  opacity: 0.45;
+}
+
+.move-line {
+  position: fixed;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--primary);
+  pointer-events: none;
+}
+
+.move-ghost {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  padding: 2px 8px;
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--fg);
+  font-weight: 500;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
 html,
 body,
 #root {
