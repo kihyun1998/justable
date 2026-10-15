@@ -20,8 +20,10 @@ anything else the patch.
   `translate`s read from `--justable-move-shift-N`. The slot follows the moved column's leading edge,
   so a column moves aside when about half covered, whatever the widths or the grab point. `band`
   (required) is how far, in screen px, that edge must pass a centre. `data-table-sliding` marks the
-  grid while a slide runs, for the consumer's transition. `ColumnMoveDrag` gains `grab`. The header
-  slides; the body cells follow in a later change (#77).
+  grid while a slide runs, for the consumer's transition. `ColumnMoveDrag` gains `grab`. Header and
+  body cells slide together, rows drawn mid-drag included, and every cell of the moved column reads
+  `--justable-moving` as 1 for the seat's look. A cell carries only custom properties at rest, so it
+  has no `translate` of its own (#77, #78).
 - **A column move can be drawn by the consumer.** `move` takes an optional `onDrag`, which hears
   each pointer move and each scroll of a running move as a `ColumnMoveDrag` (exported) — the column,
   the `beforeKey` a drop now would report, the pointer, the landing line, the moved cell's box and

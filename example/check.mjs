@@ -1039,6 +1039,95 @@ try {
     );
   }
 
+  // On `?ghost`, the body cells slide with their header: the same translate, the same screen x, rows
+  // drawn mid-drag included; the seat's cells dim; at rest and from the drop's first frame, no translate.
+  for (const scale of [1, 0.5]) {
+    const page = await browser.newPage();
+    page.on('pageerror', (e) => errors.push(String(e)));
+    await page.goto(`${url}?ghost`, { waitUntil: 'networkidle0' });
+    await page.waitForSelector('[role="grid"] [data-table-header]');
+    await page.evaluate((s) => {
+      const grid = document.querySelector('[role="grid"]');
+      grid.style.transform = `scale(${s})`;
+      grid.style.transformOrigin = '0 0';
+    }, scale);
+    /** Each column's header and first drawn body row: computed translate and screen left. */
+    const columns = () =>
+      page.evaluate(() => {
+        const heads = [...document.querySelectorAll('[data-table-header] [role="columnheader"]')];
+        const row = document.querySelector('[role="rowgroup"] [role="row"][aria-rowindex]:not([aria-rowindex="1"])');
+        const cells = [...row.querySelectorAll('[role="gridcell"]')];
+        const read = (el) => ({ t: getComputedStyle(el).translate, left: el.getBoundingClientRect().left, o: getComputedStyle(el).opacity });
+        return { row: row.getAttribute('aria-rowindex'), heads: heads.map(read), cells: cells.map(read) };
+      });
+    const aligned = (c) =>
+      c.heads.length === c.cells.length &&
+      c.heads.every((h, i) => h.t === c.cells[i].t && Math.abs(h.left - c.cells[i].left) <= 1);
+    const rest = await columns();
+    const head = (i) =>
+      page.$eval(`[data-table-header] [role="columnheader"][aria-colindex="${i}"]`, (h) => {
+        const r = h.getBoundingClientRect();
+        return { left: r.left, right: r.right, y: r.top + r.height / 2 };
+      });
+    const kind = await head(2);
+    const size = await head(3);
+    await page.mouse.move((size.left + size.right) / 2, size.y);
+    await page.mouse.down();
+    await page.mouse.move(kind.left + 3, size.y, { steps: 8 });
+    await new Promise((r) => setTimeout(r, 300));
+    const sliding = await columns();
+    // Scroll far down mid-drag: the rows drawn now were not there when the slide began.
+    await page.evaluate(() => {
+      [...document.querySelectorAll('[role="grid"] div')].find((d) => getComputedStyle(d).overflowY === 'auto').scrollTop = 40000;
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    const scrolled = await columns();
+    // The drop's first frames: every header and body cell's translate, with the new order.
+    await page.evaluate(() => {
+      window.__frames = [];
+      const grab = () => {
+        const heads = [...document.querySelectorAll('[data-table-header] [role="columnheader"]')];
+        const cells = [...document.querySelectorAll('[role="rowgroup"] [role="gridcell"]')];
+        window.__frames.push({
+          labels: heads.map((h) => h.textContent).join(),
+          moved: [...heads, ...cells].filter((el) => getComputedStyle(el).translate !== 'none').length,
+        });
+        if (window.__frames.length < 4) requestAnimationFrame(grab);
+      };
+      document.addEventListener('mouseup', () => requestAnimationFrame(grab), { once: true, capture: true });
+    });
+    await page.mouse.up();
+    await new Promise((r) => setTimeout(r, 200));
+    const frames = await page.evaluate(() => window.__frames);
+    const tag = scale === 1 ? 'unscaled' : `inside scale(${scale})`;
+    check(
+      `${tag}, a cell at rest has no translate of its own`,
+      rest.heads.every((h) => h.t === 'none') && rest.cells.every((c) => c.t === 'none'),
+      rest,
+    );
+    check(
+      `${tag}, while a column slides, every body cell moves with its header cell`,
+      aligned(sliding) && sliding.heads.some((h) => h.t !== 'none' && h.t !== '0px'),
+      sliding,
+    );
+    check(
+      `${tag}, the seat's body cells dim and the others do not`,
+      sliding.cells[2].o === '0.7' && sliding.cells.filter((_, i) => i !== 2).every((c) => c.o === '1'),
+      sliding.cells.map((c) => c.o),
+    );
+    check(
+      `${tag}, a row drawn mid-drag by a scroll is already slid with its header`,
+      scrolled.row !== sliding.row && aligned(scrolled),
+      { before: sliding.row, after: scrolled.row, scrolled },
+    );
+    check(
+      `${tag}, from the drop's first frame the new order shows with no cell translated`,
+      frames.length >= 2 && frames.every((f) => f.moved === 0 && f.labels === 'Name,Size,Kind,Modified'),
+      frames,
+    );
+    await page.close();
+  }
+
   // A header move cancelled with Escape mid-drag, then released back on the column it was pressed on,
   // where a click that got through would sort.
   {

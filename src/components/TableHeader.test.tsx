@@ -10,6 +10,7 @@ import { createTableModel } from '../lib/tableModel.js';
 import type { ColumnLayout, ColumnSpec } from '../types.js';
 import { TableGrid } from './TableGrid.js';
 import { TableHeader, type TableHeaderProps } from './TableHeader.js';
+import { TableRow } from './TableRow.js';
 
 afterEach(cleanup);
 
@@ -732,14 +733,96 @@ describe('moving', () => {
       expect(unwritten).toBeTypeOf('function');
     });
 
-    it('each header cell reads its own column’s shift as a translate', () => {
+    /** What a cell reads its slide from: its own column's shift and seat, and the translate class. */
+    const slideReads = (cell: HTMLElement) => ({
+      shift: cell.style.getPropertyValue('--justable-shift'),
+      moving: cell.style.getPropertyValue('--justable-moving'),
+      translate: cell.style.translate,
+      sliding: cell.className.includes('justable:in-data-[table-sliding]:translate-x-(--justable-shift)'),
+    });
+    const expectedReads = (n: number) => ({
+      shift: `var(--justable-move-shift-${n}, 0px)`,
+      moving: `var(--justable-move-seat-${n}, 0)`,
+      translate: '',
+      sliding: true,
+    });
+
+    it('each header cell reads its own column’s shift and seat, and translates only while a slide runs', () => {
       const { header } = renderSliding();
       const cells = [...header.querySelectorAll<HTMLElement>('[role="columnheader"]')];
-      expect(cells.map((c) => c.style.translate)).toEqual([
-        'var(--justable-move-shift-1, 0px) 0',
-        'var(--justable-move-shift-2, 0px) 0',
-        'var(--justable-move-shift-3, 0px) 0',
-      ]);
+      expect(cells.map(slideReads)).toEqual([1, 2, 3].map(expectedReads));
+    });
+
+    it('each body cell reads its own column’s shift and seat the same way, with no translate of its own', () => {
+      const { container } = render(
+        <TableRow
+          columns={['a', 'b', 'c']}
+          gridStyle={{}}
+          rowIndex={2}
+          cell={(key) => key}
+          cellClassName={() => 'mine'}
+        />,
+      );
+      const cells = [...container.querySelectorAll<HTMLElement>('[role="gridcell"]')];
+      expect(cells.map(slideReads)).toEqual([1, 2, 3].map(expectedReads));
+      expect(cells.every((c) => c.classList.contains('mine'))).toBe(true);
+    });
+
+    it('inside a grid, the moved column’s seat is written beside the shifts, and both go at the release', () => {
+      const renderRow = vi.fn((i: number, place: { id: string; rowIndex: number; style?: React.CSSProperties }) => (
+        <TableRow
+          key={i}
+          id={place.id}
+          rowIndex={place.rowIndex}
+          style={place.style}
+          columns={['a', 'b', 'c']}
+          gridStyle={{}}
+          cell={(key) => key}
+        />
+      ));
+      const { container } = render(
+        <TableGrid
+          label="t"
+          header={
+            <TableHeader
+              columns={MOVE_COLUMNS}
+              sort={undefined}
+              gridStyle={{}}
+              onSort={vi.fn()}
+              onResize={vi.fn()}
+              resizeLabel="Resize"
+              refusePress={() => false}
+              move={{ refusePress: () => false, threshold: 4, targets, onMove: vi.fn(), slide: { band: BAND } }}
+            />
+          }
+          colCount={3}
+          total={3}
+          renderRow={renderRow}
+          rowKey={String}
+          fill
+          focus={null}
+          rowIdPrefix="t"
+          rowHeightRem={2}
+        />,
+      );
+      const root = container.querySelector<HTMLElement>('[data-table]')!;
+      const header = container.querySelector<HTMLElement>('[data-table-header]')!;
+      Object.defineProperty(header, 'offsetWidth', { get: () => 300 });
+      header.getBoundingClientRect = () => ({ left: 0, right: 300, width: 300, top: 0, bottom: 20 }) as DOMRect;
+      const cells = [...container.querySelectorAll<HTMLElement>('[role="columnheader"]')];
+      cells.forEach((cell, i) => {
+        Object.defineProperty(cell, 'offsetLeft', { get: () => i * 100 });
+        Object.defineProperty(cell, 'offsetWidth', { get: () => 100 });
+        cell.getBoundingClientRect = () =>
+          ({ left: i * 100, right: (i + 1) * 100, top: 0, bottom: 20 }) as DOMRect;
+      });
+      fireEvent.mouseDown(cells[1]!.querySelector('button')!, { button: 0, clientX: 150, clientY: 5 });
+      move(215, { clientY: 5 });
+      expect([1, 2, 3].map((n) => root.style.getPropertyValue(`--justable-move-seat-${n}`))).toEqual(['', '1', '']);
+      act(() => {
+        fireEvent.mouseUp(document, { button: 0 });
+      });
+      expect([1, 2, 3].map((n) => root.style.getPropertyValue(`--justable-move-seat-${n}`))).toEqual(['', '', '']);
     });
 
     it('the seat slides to its landing slot and the column it passes makes room, once the leading edge passes the centre by the band', () => {

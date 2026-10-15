@@ -13,11 +13,10 @@ For one table, three lists are the same ordered list — the model's `visibleCol
 And the header and every row lay those tracks out in boxes of the same width, so the tracks sit
 over one another. `aria-colcount` is the count of the list.
 
-**One exception, and it is paint only: a running slide** (#77). While `move.slide` runs, a column's
-header cell is drawn `translate`d off its track by `--justable-move-shift-N`. Tracks, `gridTemplate`
-and cell order do not change until the drop, and the shift is gone in the same change that commits
-the new order. Until #78 lands, the body cells keep their tracks, so a running slide draws the header
-apart from the rows.
+**One exception, and it is paint only: a running slide** (#77, #78). While `move.slide` runs, a
+column's header cell and every body cell of it are drawn `translate`d off their track by the same
+`--justable-move-shift-N`, so they stay over one another. Tracks, `gridTemplate` and cell order do
+not change until the drop, and the shift is gone in the same change that commits the new order.
 
 Checkable: in a rendered table, every `[role=row]` has as many children as the template has px
 tracks, and every row's computed track widths equal the header's. One exception, and it takes no

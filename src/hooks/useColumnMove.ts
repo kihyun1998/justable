@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
+import type { CSSProperties, MouseEvent as ReactMouseEvent, RefObject } from 'react';
 
 import type { HeaderColumn } from '../types.js';
 import { useDrag } from './useDrag.js';
@@ -101,6 +101,23 @@ export function slideShifts(widths: readonly number[], from: number, slot: numbe
 /** The custom property a drawn column's header and body cells read their slide from. */
 export const slideVar = (index: number) => `--justable-move-shift-${index + 1}`;
 
+/** The custom property that is 1 on the moved column's index while a slide runs. */
+export const seatVar = (index: number) => `--justable-move-seat-${index + 1}`;
+
+/**
+ * A header or body cell's own slide, read from its column's properties: `--justable-shift` and
+ * `--justable-moving` (1 on the moved column, else 0). Custom properties only, so a cell at rest
+ * carries no `translate` of its own.
+ */
+export const slideCellStyle = (index: number) =>
+  ({
+    '--justable-shift': `var(${slideVar(index)}, 0px)`,
+    '--justable-moving': `var(${seatVar(index)}, 0)`,
+  }) as CSSProperties;
+
+/** Translates a cell by its shift, only while an ancestor carries `data-table-sliding`. */
+export const SLIDE_CELL = 'justable:in-data-[table-sliding]:translate-x-(--justable-shift)';
+
 /**
  * A header move drag: a press on a movable column's cell arms it, a move past the threshold starts
  * it, and the pressing button's release drops the column where the line shows. Escape and a lost
@@ -155,6 +172,7 @@ export function useColumnMove<K extends string>(
         if (written && shifts) {
           const root = written;
           shifts.forEach((_, i) => root.style.removeProperty(slideVar(i)));
+          root.style.removeProperty(seatVar(from));
           root.removeAttribute('data-table-sliding');
         }
         written = null;
@@ -186,6 +204,7 @@ export function useColumnMove<K extends string>(
           if (root) {
             written = root;
             shifts.forEach((px, i) => root.style.setProperty(slideVar(i), `${px}px`));
+            root.style.setProperty(seatVar(from), '1');
             root.setAttribute('data-table-sliding', '');
           }
           slid = drawn[from]!.offsetLeft + shifts[from]!;

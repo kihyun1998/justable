@@ -65,6 +65,10 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   own formatting context, which moves no width: the auto-fit and fit-all checks read the same widths.
 
 - **Row colours are the consumer's classes.** The engine paints none on a row.
+- **Each cell carries its column's slide reads** (#78): `slideCellStyle(i)`, custom properties only,
+  and `SLIDE_CELL`, which translates the cell only while an ancestor carries `data-table-sliding`.
+  At rest a cell has no `translate`, so a consumer's own `translate` class on a cell still applies.
+  Why: [column move](column-move.md).
 
 ## Code
 
@@ -89,7 +93,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - [Grid scaffold](grid-scaffold.md) — `RowPlace` is what the row must carry.
 - [Auto-fit](auto-fit.md) — the ruler must draw what this row's cells draw.
 - [Column model](column-model.md) — `columns` and `gridStyle` come from it.
-- [Stylesheet and prefix](stylesheet-and-prefix.md) — `TABLE_GRID` and `TABLE_CELL`.
+- [Stylesheet and prefix](stylesheet-and-prefix.md) — `TABLE_GRID`, `TABLE_CELL` and `SLIDE_CELL`.
+- [Column move](column-move.md) — a running slide writes the properties the cells read.
 
 ## Known holes / open
 

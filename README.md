@@ -217,18 +217,24 @@ ascending order.
   and the engine's line all follow it. The slot follows the moved column's leading edge, not the
   pointer, so a column moves aside when it is about half covered, whatever the widths and wherever
   it was grabbed. `band` is how many screen px that edge must pass a column's centre before the slot
-  changes. Something wider than a shaking hand works; the example uses 10. The columns read their
-  shift as a `translate`. The animation is yours, and belongs under `[data-table-sliding]`, which
-  the table sets only while a move runs, so the drop lands without sliding back:
+  changes. Something wider than a shaking hand works; the example uses 10. Header and body cells
+  slide together, rows scrolled into view mid-drag included. A cell is translated only while a slide
+  runs, so at rest your own `translate` on a cell is untouched. The animation is yours, and belongs
+  under `[data-table-sliding]`, which the table sets only while a move runs, so the drop lands
+  without sliding back. Every cell of the moved column reads `--justable-moving` as 1 (others 0),
+  for the seat's look:
 
   ```css
-  [data-table-sliding] [role='columnheader'] {
+  [data-table-sliding] [role='columnheader'],
+  [data-table-sliding] [role='gridcell'] {
     transition: translate 150ms ease-out;
+  }
+  [data-table-sliding] [role='gridcell'] {
+    opacity: calc(1 - 0.3 * var(--justable-moving));
   }
   ```
 
-  The example's `?ghost` page slides the columns, dims the seat through `data-table-moving`, and
-  draws a chip from `onDrag`.
+  The example's `?ghost` page slides the columns, dims the seat, and draws a chip from `onDrag`.
 - **Moving from the keyboard.** Each header cell's sort button is a Tab stop. `TableHeader`'s
   `onColumnKeyDown(key, event)` hands you a key pressed on a column; the table binds no key itself to
   move one (it claims Escape only while a mouse move runs).
