@@ -4,9 +4,9 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
-## Unreleased
+## 0.5.0 — 2026-10-15
 
-### Changed
+### Breaking
 
 - **Escape and a lost window cancel a column move**, as they cancel a marquee: no `onMove`, the
   line and `data-table-moving` go, `onDrag` hears `null`, and letting the button go afterwards sorts
