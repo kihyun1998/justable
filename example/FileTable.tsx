@@ -23,7 +23,10 @@ import { formatSize, type FileEntry } from './files.js';
 type Key = 'name' | 'kind' | 'size' | 'modified';
 type Hideable = Exclude<Key, 'name'>;
 
-/** `?ghost` draws a column move's feedback here, through `onDrag`, instead of the engine's line. */
+/**
+ * `?ghost` slides the columns while one moves (`slide`), and draws a chip under the pointer here,
+ * through `onDrag`, instead of the engine's line.
+ */
 const GHOST = new URLSearchParams(location.search).has('ghost');
 
 const LABELS: Record<Key, string> = { name: 'Name', kind: 'Kind', size: 'Size', modified: 'Modified' };
@@ -247,6 +250,7 @@ export function FileTable({
           onStatus(`move: ${key} before ${beforeKey ?? 'the end'}`);
         },
         onDrag: GHOST ? setMoveDrag : undefined,
+        slide: GHOST ? { band: 10 } : undefined,
       }}
     />
   );
@@ -345,22 +349,15 @@ export function FileTable({
   );
 }
 
-/** A ghost of the moved column's label under the pointer, and a landing line, both in screen px. */
+/** A chip of the moved column's label under the pointer, held where it was grabbed, in screen px. */
 function MoveFeedback({ drag }: { drag: ColumnMoveDrag<Key> }) {
   return (
-    <>
-      <div
-        className="move-line"
-        data-example-move-line
-        style={{ left: drag.line.x, top: drag.line.top, height: drag.line.bottom - drag.line.top }}
-      />
-      <div
-        className="move-ghost"
-        data-example-move-ghost
-        style={{ left: drag.clientX, top: drag.clientY, width: drag.cell.right - drag.cell.left }}
-      >
-        {LABELS[drag.key]}
-      </div>
-    </>
+    <div
+      className="move-chip"
+      data-example-move-ghost
+      style={{ left: drag.clientX - drag.grab, top: drag.clientY - 14, width: drag.cell.right - drag.cell.left }}
+    >
+      {LABELS[drag.key]}
+    </div>
   );
 }

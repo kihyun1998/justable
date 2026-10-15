@@ -155,13 +155,47 @@ the layout.
   a drag of Size onto Kind, Escape, then released back on Size left the order and the sort as they
   were; without the swallow the release sorted Size. The listeners are removed in `ended`, so an
   Escape after a move has ended does nothing.
+- **`move.slide: { band }` makes the other columns room while a move runs (#77)**, as #76's verdict
+  decided (the maintainer's call on #72, 2026-10-15). It covers the header; the body cells are #78.
+  - **The moved column is a seat that slides to its landing slot.** `slideShifts` gives every
+    drawn column its shift in layout px: the columns it passes move by its width toward where it
+    was, and it moves by their widths to where it lands. The shifts are written on the DOM as
+    `--justable-move-shift-N` (N the drawn index plus one, `slideVar`), not through state. Inside a
+    grid they go on the grid root (`[data-table]`), so #78's body cells can read them. Outside a
+    grid they go on the header row. Each header cell reads its own as `translate`, only when
+    `slide` is given.
+  - **The slot follows the moved column's leading edge, not the pointer.** The column is held at
+    its grab point (`grab`, the press minus the cell's screen left). The edge is its left while the
+    pointer last moved left, its right while it last moved right, pulled back by `band` screen px.
+    It is compared with the other columns' centres where they are going, the moved one left out.
+    Each centre is `rowBox.left + (offsetLeft + shift + width/2) × scale`. `offsetLeft` ignores
+    `translate`, and the header row's screen box already carries the lane's scroll and the scale,
+    so nothing is captured at pickup and a scroll needs no delta. Measured in #76 (Chrome, columns
+    56–340 px): with the pointer rule a neighbour moved aside 226 px late when the column was
+    grabbed near its far end. With the leading edge it moved aside at 59 % covered from either end,
+    and a ±6 px shake flipped nothing once a 10 px band was there (10 flips without it). Measured
+    here in `check:example` (`?ghost`, Modified over Size): the switch came at the same chip left
+    from either end, 650 px unscaled and 450 px inside `scale(0.5)`. With the pointer it came at
+    650 and 550, and at 455 and 405.
+  - **`band` is required inside `slide`**: a tolerance on a hand, like `threshold`
+    ([mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md)).
+  - **What the consumer is told follows the slide.** `onDrag`'s `beforeKey` and `line` and the
+    drop's `onMove` come from the same slot. `line.x` and the engine's own line sit at the seat's
+    landing left (`offsetLeft + shift`, layout px for the engine's line, screen px for `line.x`).
+  - **The shifts and `data-table-sliding` go at once when the move ends**, on every ending path,
+    from the element they were written on (`written`). On an unmount the header's ref is already
+    gone by `ended`; reading it there left the shifts behind, which the unmount test caught. The
+    consumer's transition lives under `[data-table-sliding]`, so it goes in the same style change
+    and the drop is not animated back. #76 measured that flash: the dropped column was drawn
+    −430 px off in its new place.
+  - **Without `slide`** the pointer rule is unchanged: `moveSlot` over live screen boxes.
 - **The handle's press never reaches the cell**: `startResize` stops its propagation, which is all
   that keeps a border drag from also being a move.
 
 ## Code
 
-- `src/hooks/useColumnMove.ts` — `useColumnMove`, `ColumnMoveOptions`, `ColumnMoveDrag`, `ColumnMoving`, `moveSlot`
-- `src/components/TableHeader.tsx` — `move`, `onColumnKeyDown`, `rowRef`, `data-table-move-indicator`, `data-table-moving`
+- `src/hooks/useColumnMove.ts` — `useColumnMove`, `ColumnMoveOptions`, `ColumnMoveDrag`, `ColumnMoving`, `moveSlot`, `nearestSlot`, `slideShifts`, `slideVar`
+- `src/components/TableHeader.tsx` — `move`, `onColumnKeyDown`, `rowRef`, `data-table-move-indicator`, `data-table-moving`, the header cells' `translate`
 - `example/FileTable.tsx` — `GHOST`, `MoveFeedback` (the `?ghost` page)
 - `src/lib/tableModel.ts` — `withOrder`, `columnOrder`, `moveTargets`, `moveBy`, `moved`
 - `src/types.ts` — `ColumnLayout.order`, `ColumnSpec.movable`
@@ -173,7 +207,7 @@ the layout.
 ## Cross-cutting invariants
 
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
-  `refusePress`, `threshold` and `targets` are required inside `move`, and which columns move is the
+  `refusePress`, `threshold` and `targets` are required inside `move`, and `band` inside `slide`; which columns move is the
   spec's.
 - [Drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md) — the
   order is `visibleColumns`' order, so the header, rows and template move together.

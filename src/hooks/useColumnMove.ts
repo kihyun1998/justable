@@ -23,6 +23,12 @@ export interface ColumnMoveOptions<K extends string> {
    * ends, however it ends. Given it, the header draws no landing line.
    */
   onDrag?: (drag: ColumnMoveDrag<K> | null) => void;
+  /**
+   * The other columns make room while a move runs: the moved column's seat slides to its landing slot,
+   * and the slot follows the moved column's leading edge. `band` is how far, in screen px, that edge
+   * must pass a column's centre before the slot changes. Without it, nothing slides.
+   */
+  slide?: { band: number };
 }
 
 /** One step of a running move, in screen px. */
@@ -37,6 +43,8 @@ export interface ColumnMoveDrag<K extends string> {
   line: { x: number; top: number; bottom: number };
   /** The moved column's header cell, as it was when the move started. */
   cell: { left: number; top: number; right: number; bottom: number };
+  /** Where the press held the moved cell, screen px from its left. */
+  grab: number;
   /** The grid's scroller, or `null` outside a grid. */
   scroller: HTMLElement | null;
 }
@@ -45,6 +53,15 @@ export interface ColumnMoveDrag<K extends string> {
 export interface ColumnMoving<K extends string> {
   key: K;
   left: number;
+}
+
+/** The allowed slot nearest `under`; `allowed` has one entry per drawn slot. */
+function nearestSlot(under: number, allowed: readonly boolean[]): number {
+  let slot = -1;
+  allowed.forEach((ok, s) => {
+    if (ok && (slot < 0 || Math.abs(s - under) < Math.abs(slot - under))) slot = s;
+  });
+  return slot;
 }
 
 /**
@@ -57,13 +74,32 @@ export function moveSlot(
   allowed: readonly boolean[],
   x: number,
 ): number {
-  const under = screen.filter((box) => (box.left + box.right) / 2 < x).length;
-  let slot = -1;
-  allowed.forEach((ok, s) => {
-    if (ok && (slot < 0 || Math.abs(s - under) < Math.abs(slot - under))) slot = s;
-  });
-  return slot;
+  return nearestSlot(
+    screen.filter((box) => (box.left + box.right) / 2 < x).length,
+    allowed,
+  );
 }
+
+/**
+ * Each drawn column's shift, layout px, for the column at `from` landing in `slot`: the columns it
+ * passes move by its width toward where it was, and it moves by their widths to where it lands.
+ */
+export function slideShifts(widths: readonly number[], from: number, slot: number): number[] {
+  const shifts = widths.map(() => 0);
+  const lo = slot > from ? from + 1 : slot;
+  const hi = slot > from ? slot : from;
+  const toward = slot > from ? -1 : 1;
+  let passed = 0;
+  for (let i = lo; i < hi; i++) {
+    shifts[i] = toward * widths[from]!;
+    passed += widths[i]!;
+  }
+  shifts[from] = -toward * passed;
+  return shifts;
+}
+
+/** The custom property a drawn column's header and body cells read their slide from. */
+export const slideVar = (index: number) => `--justable-move-shift-${index + 1}`;
 
 /**
  * A header move drag: a press on a movable column's cell arms it, a move past the threshold starts
@@ -82,7 +118,7 @@ export function useColumnMove<K extends string>(
 
   const onMouseDown = (from: number) => (press: ReactMouseEvent) => {
     if (!options || !columns[from] || options.refusePress(press)) return;
-    const { threshold, onMove, onDrag } = options;
+    const { threshold, onMove, onDrag, slide } = options;
     const keys = columns.map((c) => c.key);
     const offered = options.targets(keys[from]!);
     const own = (s: number) => s === from || s === from + 1;
@@ -98,6 +134,14 @@ export function useColumnMove<K extends string>(
       let y = press.clientY;
       let started = false;
       let cell: ColumnMoveDrag<K>['cell'] | null = null;
+      /** The slide: the shifts last written, the way the pointer last moved, and where they are written. */
+      let shifts: number[] | null = null;
+      /** Where the shifts were written, kept: on an unmount the header's ref is gone before the end. */
+      let written: HTMLElement | null = null;
+      let heading: -1 | 1 = 1;
+      let lastX = press.clientX;
+      const slideRoot = () =>
+        (scroller ? row.current?.closest<HTMLElement>('[data-table]') : null) ?? row.current;
       let slot = from;
       /** The line's place as last drawn; `null` before the first. */
       let shown: number | null = null;
@@ -105,10 +149,50 @@ export function useColumnMove<K extends string>(
       const cells = () => [
         ...(row.current?.querySelectorAll<HTMLElement>(':scope > [role="columnheader"]') ?? []),
       ];
+      const pressed = cells()[from]?.getBoundingClientRect();
+      const grab = press.clientX - (pressed?.left ?? press.clientX);
+      const unslide = () => {
+        if (written && shifts) {
+          const root = written;
+          shifts.forEach((_, i) => root.style.removeProperty(slideVar(i)));
+          root.removeAttribute('data-table-sliding');
+        }
+        written = null;
+        shifts = null;
+      };
       const update = (report: boolean) => {
         const drawn = cells();
         const boxes = drawn.map((c) => c.getBoundingClientRect());
-        slot = moveSlot(boxes, allowed, x);
+        /** Layout px from the header row's left to where the landing line goes, with a slide. */
+        let slid: number | null = null;
+        let lineX: number | null = null;
+        if (slide && row.current) {
+          const rowBox = row.current.getBoundingClientRect();
+          const scale = row.current.offsetWidth ? rowBox.width / row.current.offsetWidth : 1;
+          const widths = drawn.map((c) => c.offsetWidth);
+          const planned = shifts ?? widths.map(() => 0);
+          if (x !== lastX) heading = x < lastX ? -1 : 1;
+          lastX = x;
+          const edge =
+            x - grab + (heading > 0 ? widths[from]! * scale : 0) - heading * slide.band;
+          const passed = drawn.filter(
+            (c, i) =>
+              i !== from &&
+              rowBox.left + (c.offsetLeft + planned[i]! + widths[i]! / 2) * scale < edge,
+          ).length;
+          slot = nearestSlot(passed + (passed > from ? 1 : 0), allowed);
+          shifts = slideShifts(widths, from, slot);
+          const root = written ?? slideRoot();
+          if (root) {
+            written = root;
+            shifts.forEach((px, i) => root.style.setProperty(slideVar(i), `${px}px`));
+            root.setAttribute('data-table-sliding', '');
+          }
+          slid = drawn[from]!.offsetLeft + shifts[from]!;
+          lineX = rowBox.left + slid * scale;
+        } else {
+          slot = moveSlot(boxes, allowed, x);
+        }
         if (report && onDrag) {
           if (!cell) {
             const { left, top, right, bottom } = boxes[from]!;
@@ -121,17 +205,19 @@ export function useColumnMove<K extends string>(
             clientX: x,
             clientY: y,
             line: {
-              x: boxes[slot]?.left ?? boxes.at(-1)?.right ?? 0,
+              x: lineX ?? boxes[slot]?.left ?? boxes.at(-1)?.right ?? 0,
               top: rowBox?.top ?? 0,
               bottom: rowBox?.bottom ?? 0,
             },
             cell,
+            grab,
             scroller: scroller?.current ?? null,
           });
         }
         const at = drawn[slot];
         const last = drawn.at(-1);
-        const left = at ? at.offsetLeft : last ? last.offsetLeft + last.offsetWidth : 0;
+        const left =
+          slid ?? (at ? at.offsetLeft : last ? last.offsetLeft + last.offsetWidth : 0);
         if (left === shown) return;
         shown = left;
         setMoving({ key: keys[from]!, left });
@@ -183,6 +269,7 @@ export function useColumnMove<K extends string>(
         ended: () => {
           window.removeEventListener('keydown', onKey, true);
           window.removeEventListener('blur', onBlur);
+          unslide();
           setMoving(null);
           if (started) onDrag?.(null);
         },

@@ -689,6 +689,309 @@ describe('moving', () => {
     expect(onSort).toHaveBeenCalledWith('b');
   });
 
+  describe('sliding', () => {
+    const BAND = 10;
+    /**
+     * `renderMovable` with `slide`. The header row is 300 layout px wide, its screen box `scale` × that
+     * from 0, so a column's planned centre is `(offsetLeft + shift + 50) × scale`.
+     */
+    function renderSliding(scale = 1, over: Partial<TableHeaderProps<M>> = {}) {
+      const onDrag = vi.fn();
+      const onMove = vi.fn();
+      const view = renderMovable(
+        { move: { refusePress: () => false, threshold: 4, targets, onMove, onDrag, slide: { band: BAND } }, ...over },
+        scale,
+      );
+      Object.defineProperty(view.header, 'offsetWidth', { get: () => 300 });
+      view.header.getBoundingClientRect = () =>
+        ({ left: 0, right: 300 * scale, width: 300 * scale, top: 0, bottom: 20 }) as DOMRect;
+      const shifts = () => [1, 2, 3].map((n) => view.header.style.getPropertyValue(`--justable-move-shift-${n}`));
+      return { ...view, onDrag, onMove, shifts };
+    }
+    const press = (button: HTMLElement, x: number) =>
+      fireEvent.mouseDown(button, { button: 0, clientX: x, clientY: 5 });
+    const release = () =>
+      act(() => {
+        fireEvent.mouseUp(document, { button: 0 });
+      });
+
+    it('is opt-in: without `slide` no shift is written and the header cells read none', () => {
+      const { header, button } = renderMovable();
+      press(button('b'), 150);
+      move(290, { clientY: 5 });
+      expect(header.style.getPropertyValue('--justable-move-shift-2')).toBe('');
+      expect(header.querySelector<HTMLElement>('[role="columnheader"]')!.style.translate).toBe('');
+    });
+
+    it('`band` is required inside `slide`, as the threshold is', () => {
+      // Never called: `pnpm typecheck` is what runs these lines.
+      const unwritten = (): NonNullable<TableHeaderProps<M>['move']>[] => [
+        // @ts-expect-error: the dead band has no default.
+        { refusePress: () => false, threshold: 4, targets, onMove: () => {}, slide: {} },
+      ];
+      expect(unwritten).toBeTypeOf('function');
+    });
+
+    it('each header cell reads its own column’s shift as a translate', () => {
+      const { header } = renderSliding();
+      const cells = [...header.querySelectorAll<HTMLElement>('[role="columnheader"]')];
+      expect(cells.map((c) => c.style.translate)).toEqual([
+        'var(--justable-move-shift-1, 0px) 0',
+        'var(--justable-move-shift-2, 0px) 0',
+        'var(--justable-move-shift-3, 0px) 0',
+      ]);
+    });
+
+    it('the seat slides to its landing slot and the column it passes makes room, once the leading edge passes the centre by the band', () => {
+      const { button, shifts } = renderSliding();
+      // Grabbed 50 px into Beta (100–200): its right edge is the pointer + 50, Gamma's centre 250.
+      press(button('b'), 150);
+      move(205, { clientY: 5 });
+      expect(shifts()).toEqual(['0px', '0px', '0px']);
+      move(215, { clientY: 5 });
+      expect(shifts()).toEqual(['0px', '100px', '-100px']);
+    });
+
+    it('a column makes room at the same point wherever the moved one was grabbed', () => {
+      const switchAt = (grab: number) => {
+        const view = renderSliding();
+        press(view.button('b'), 100 + grab);
+        let x = 100 + grab;
+        while (view.shifts()[2] !== '-100px' && x < 400) {
+          x += 1;
+          move(x, { clientY: 5 });
+        }
+        const chipLeft = x - grab;
+        cleanup();
+        return chipLeft;
+      };
+      expect(switchAt(10)).toBe(switchAt(90));
+    });
+
+    it('a reversal inside the band keeps the slot; one past it gives the slot back', () => {
+      const { button, shifts } = renderSliding();
+      press(button('b'), 150);
+      move(215, { clientY: 5 });
+      expect(shifts()[2]).toBe('-100px');
+      // Back left: the leading edge is now the left, the pointer − 50, and Gamma is planned at 100–200.
+      move(195, { clientY: 5 });
+      expect(shifts()[2]).toBe('-100px');
+      move(185, { clientY: 5 });
+      expect(shifts()).toEqual(['0px', '0px', '0px']);
+    });
+
+    it('onDrag’s drop and line, and the drop itself, follow the drawn gap', () => {
+      const { button, onDrag, onMove } = renderSliding();
+      press(button('b'), 150);
+      move(205, { clientY: 5 });
+      expect(onDrag.mock.calls.at(-1)![0]).toMatchObject({ beforeKey: undefined, line: { x: 100 }, grab: 50 });
+      move(215, { clientY: 5 });
+      expect(onDrag.mock.calls.at(-1)![0]).toMatchObject({ beforeKey: null, line: { x: 200 }, grab: 50 });
+      release();
+      expect(onMove).toHaveBeenCalledWith('b', null);
+    });
+
+    it('the engine’s own line sits where the seat lands', () => {
+      const { button, indicator } = renderSliding(1, {
+        move: { refusePress: () => false, threshold: 4, targets, onMove: vi.fn(), slide: { band: BAND } },
+      });
+      press(button('b'), 150);
+      move(215, { clientY: 5 });
+      expect(indicator()!.style.left).toBe('200px');
+    });
+
+    it('a drop on its own slot still reports nothing', () => {
+      const { button, onMove } = renderSliding();
+      press(button('b'), 150);
+      move(205, { clientY: 5 });
+      release();
+      expect(onMove).not.toHaveBeenCalled();
+    });
+
+    it('inside a scaled copy, shifts stay layout px and the line is on screen', () => {
+      const { button, shifts, onDrag } = renderSliding(0.5);
+      // Screen: Beta 50–100, grabbed at 75 (25 in); Gamma's centre 125; switch past 125 + 5.
+      press(button('b'), 75);
+      move(105, { clientY: 5 });
+      expect(shifts()).toEqual(['0px', '0px', '0px']);
+      move(112, { clientY: 5 });
+      expect(shifts()).toEqual(['0px', '100px', '-100px']);
+      expect(onDrag.mock.calls.at(-1)![0]).toMatchObject({ line: { x: 100 }, grab: 25 });
+    });
+
+    it('marks the header while it slides, and clears every shift and the mark at the release', () => {
+      const { header, button, shifts } = renderSliding();
+      press(button('b'), 150);
+      move(215, { clientY: 5 });
+      expect(header.hasAttribute('data-table-sliding')).toBe(true);
+      release();
+      expect(shifts()).toEqual(['', '', '']);
+      expect(header.hasAttribute('data-table-sliding')).toBe(false);
+    });
+
+    it('clears them on a cancel, a second press and an unmount too', () => {
+      for (const end of ['escape', 'replace', 'unmount'] as const) {
+        const { header, button, shifts, unmount } = renderSliding();
+        press(button('b'), 150);
+        move(215, { clientY: 5 });
+        if (end === 'escape') {
+          act(() => {
+            fireEvent.keyDown(button('b'), { key: 'Escape' });
+          });
+        } else if (end === 'replace') {
+          press(button('c'), 250);
+        } else {
+          unmount();
+        }
+        expect({ end, shifts: shifts(), sliding: header.hasAttribute('data-table-sliding') }).toEqual({
+          end,
+          shifts: ['', '', ''],
+          sliding: false,
+        });
+        cleanup();
+      }
+    });
+
+    it('moves that keep the slot render nothing', () => {
+      let commits = 0;
+      const { container } = render(
+        <Profiler id="header" onRender={() => (commits += 1)}>
+          <TableHeader
+            columns={MOVE_COLUMNS}
+            sort={undefined}
+            gridStyle={{}}
+            onSort={vi.fn()}
+            onResize={vi.fn()}
+            resizeLabel="Resize"
+            refusePress={() => false}
+            move={{ refusePress: () => false, threshold: 4, targets, onMove: vi.fn(), slide: { band: BAND } }}
+          />
+        </Profiler>,
+      );
+      const header = container.querySelector<HTMLElement>('[data-table-header]')!;
+      Object.defineProperty(header, 'offsetWidth', { get: () => 300 });
+      header.getBoundingClientRect = () => ({ left: 0, right: 300, width: 300, top: 0, bottom: 20 }) as DOMRect;
+      const cells = [...container.querySelectorAll<HTMLElement>('[role="columnheader"]')];
+      cells.forEach((cell, i) => {
+        Object.defineProperty(cell, 'offsetLeft', { get: () => i * 100 });
+        Object.defineProperty(cell, 'offsetWidth', { get: () => 100 });
+        cell.getBoundingClientRect = () =>
+          ({ left: i * 100, right: (i + 1) * 100, top: 0, bottom: 20 }) as DOMRect;
+      });
+      fireEvent.mouseDown(cells[1]!.querySelector('button')!, { button: 0, clientX: 150, clientY: 5 });
+      move(220, { clientY: 5 });
+      const shown = commits;
+      move(230, { clientY: 5 });
+      move(240, { clientY: 5 });
+      expect(commits).toBe(shown);
+    });
+
+    it('a hidden unmovable column bounds the slide: nothing shifts past it', () => {
+      type Q = 'a' | 'b' | 'pin' | 'c';
+      const hideable = (key: Q, movable: boolean): ColumnSpec<unknown, Q> => ({
+        key,
+        defaultWidth: 100,
+        minWidth: 10,
+        maxWidth: 500,
+        hideable: true,
+        movable,
+        firstSortDesc: false,
+        compare: () => 0,
+      });
+      const pinned = createTableModel<unknown, Q>([
+        hideable('a', true),
+        hideable('b', true),
+        hideable('pin', false),
+        hideable('c', true),
+      ]);
+      const layout: ColumnLayout<Q> = { widths: {}, hidden: ['pin'] };
+      const onMove = vi.fn();
+      const { container } = render(
+        <TableHeader
+          columns={pinned.visibleColumns(layout).map((key) => ({ key, label: key, width: 100 }))}
+          sort={undefined}
+          gridStyle={{}}
+          onSort={vi.fn()}
+          onResize={vi.fn()}
+          resizeLabel="Resize"
+          refusePress={() => false}
+          move={{
+            refusePress: () => false,
+            threshold: 4,
+            targets: (key) => pinned.moveTargets(layout, key),
+            onMove,
+            slide: { band: BAND },
+          }}
+        />,
+      );
+      const header = container.querySelector<HTMLElement>('[data-table-header]')!;
+      Object.defineProperty(header, 'offsetWidth', { get: () => 300 });
+      header.getBoundingClientRect = () => ({ left: 0, right: 300, width: 300, top: 0, bottom: 20 }) as DOMRect;
+      const cells = [...container.querySelectorAll<HTMLElement>('[role="columnheader"]')];
+      cells.forEach((cell, i) => {
+        Object.defineProperty(cell, 'offsetLeft', { get: () => i * 100 });
+        Object.defineProperty(cell, 'offsetWidth', { get: () => 100 });
+        cell.getBoundingClientRect = () =>
+          ({ left: i * 100, right: (i + 1) * 100, top: 0, bottom: 20 }) as DOMRect;
+      });
+      fireEvent.mouseDown(cells[0]!.querySelector('button')!, { button: 0, clientX: 50, clientY: 5 });
+      move(290, { clientY: 5 });
+      expect([1, 2, 3].map((n) => header.style.getPropertyValue(`--justable-move-shift-${n}`))).toEqual([
+        '100px',
+        '-100px',
+        '0px',
+      ]);
+      act(() => {
+        fireEvent.mouseUp(document, { button: 0 });
+      });
+      expect(onMove).toHaveBeenCalledWith('a', 'pin');
+    });
+
+    it('inside a grid, the shifts are written on the grid root', () => {
+      const { container } = render(
+        <TableGrid
+          label="t"
+          header={
+            <TableHeader
+              columns={MOVE_COLUMNS}
+              sort={undefined}
+              gridStyle={{}}
+              onSort={vi.fn()}
+              onResize={vi.fn()}
+              resizeLabel="Resize"
+              refusePress={() => false}
+              move={{ refusePress: () => false, threshold: 4, targets, onMove: vi.fn(), slide: { band: BAND } }}
+            />
+          }
+          colCount={3}
+          total={0}
+          renderRow={() => null}
+          rowKey={String}
+          fill
+          focus={null}
+          rowIdPrefix="t"
+          rowHeightRem={2}
+        />,
+      );
+      const root = container.querySelector<HTMLElement>('[data-table]')!;
+      const header = container.querySelector<HTMLElement>('[data-table-header]')!;
+      Object.defineProperty(header, 'offsetWidth', { get: () => 300 });
+      header.getBoundingClientRect = () => ({ left: 0, right: 300, width: 300, top: 0, bottom: 20 }) as DOMRect;
+      const cells = [...container.querySelectorAll<HTMLElement>('[role="columnheader"]')];
+      cells.forEach((cell, i) => {
+        Object.defineProperty(cell, 'offsetLeft', { get: () => i * 100 });
+        Object.defineProperty(cell, 'offsetWidth', { get: () => 100 });
+        cell.getBoundingClientRect = () =>
+          ({ left: i * 100, right: (i + 1) * 100, top: 0, bottom: 20 }) as DOMRect;
+      });
+      fireEvent.mouseDown(cells[1]!.querySelector('button')!, { button: 0, clientX: 150, clientY: 5 });
+      move(215, { clientY: 5 });
+      expect(root.style.getPropertyValue('--justable-move-shift-3')).toBe('-100px');
+      expect(root.hasAttribute('data-table-sliding')).toBe(true);
+      expect(header.style.getPropertyValue('--justable-move-shift-3')).toBe('');
+    });
+  });
+
   describe('cancelled', () => {
     function renderCancellable() {
       const onDrag = vi.fn();
@@ -875,6 +1178,7 @@ describe('moving', () => {
           clientY: 6,
           line: { x: 200, top: 0, bottom: 20 },
           cell: { left: 100, top: 0, right: 200, bottom: 20 },
+          grab: 50,
           scroller: null,
         },
         {
@@ -884,6 +1188,7 @@ describe('moving', () => {
           clientY: 7,
           line: { x: 300, top: 0, bottom: 20 },
           cell: { left: 100, top: 0, right: 200, bottom: 20 },
+          grab: 50,
           scroller: null,
         },
       ]);

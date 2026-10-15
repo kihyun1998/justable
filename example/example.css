@@ -52,29 +52,31 @@
   box-sizing: border-box;
 }
 
-/* A column move drawn by the example (`?ghost`): the moved column dims where it was. */
+/* The moved column is a dashed seat where it will land. */
 [data-table-moving] {
-  opacity: 0.45;
+  opacity: 0.7;
+  outline: 2px dashed color-mix(in oklab, var(--primary) 60%, transparent);
+  outline-offset: -2px;
 }
 
-.move-line {
-  position: fixed;
-  width: 2px;
-  transform: translateX(-50%);
-  background: var(--primary);
-  pointer-events: none;
+/* `?ghost`: the columns slide only while a move runs, so the drop lands at once. */
+[data-table-sliding] [role='columnheader'] {
+  transition: translate 150ms ease-out;
 }
 
-.move-ghost {
+.move-chip {
   position: fixed;
-  transform: translate(-50%, -50%);
-  padding: 2px 8px;
-  border: 1px solid var(--primary);
-  border-radius: 4px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid color-mix(in oklab, var(--primary) 70%, transparent);
+  border-radius: 6px;
   background: var(--card);
   color: var(--fg);
   font-weight: 500;
-  opacity: 0.9;
+  opacity: 0.92;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
   pointer-events: none;
 }
 

@@ -47,10 +47,11 @@ consumer's policy that the consumer cannot see.
   whether the grid is multi-selectable, and what a key on the grid does; which keys are the grid's
   is the engine's mechanism (#68).
 - [Column move](../territory/column-move.md) — `refusePress`, `threshold` and `targets` are required
-  inside `move`; which columns move is the spec's `movable`, and what a drop does is the consumer's
+  inside `move`, and `band` inside `slide` (#77), the dead band a hand needs. What a slide looks like,
+  its duration and easing, is the consumer's CSS under `[data-table-sliding]`. Which columns move is the spec's `movable`, and what a drop does is the consumer's
   `withOrder` call. Which key moves a column, and what is announced, are the consumer's:
-  `onColumnKeyDown` only reports the key. What a running move looks like beyond the engine's line â a
-  ghost, how the moved column is marked, a line of the consumer's own â is the consumer's, through
+  `onColumnKeyDown` only reports the key. What a running move looks like beyond the engine's line — a
+  ghost, how the moved column is marked, a line of the consumer's own — is the consumer's, through
   `onDrag` and `data-table-moving` (#74).
 - [Marquee](../territory/marquee.md) — `refusePress` and `threshold` are required; what a range
   selects, and the edge-scroll loop, are the consumer's.

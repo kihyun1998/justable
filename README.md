@@ -210,8 +210,25 @@ ascending order.
   row's `top` and `bottom`), the moved `cell`'s box when the move started, and the grid's `scroller`
   — then `null` once when the move ends, however it ends. All of it is screen px, so a ghost you
   portal to `document.body` lands under the pointer inside a scaled copy too; the scroller is there
-  for an edge-scroll loop, as with `onResizeDrag`. The example's `?ghost` page draws a ghost and a
-  line this way.
+  for an edge-scroll loop, as with `onResizeDrag`. `grab` is where the press held the cell, from
+  its left, so a chip at `clientX - grab` stays under the pointer where it was grabbed.
+- **Making room.** Give `move` a `slide: { band }` and the other columns slide aside while a column
+  moves. The moved column becomes a seat that slides to where it will land, and `onDrag`, `onMove`
+  and the engine's line all follow it. The slot follows the moved column's leading edge, not the
+  pointer, so a column moves aside when it is about half covered, whatever the widths and wherever
+  it was grabbed. `band` is how many screen px that edge must pass a column's centre before the slot
+  changes. Something wider than a shaking hand works; the example uses 10. The columns read their
+  shift as a `translate`. The animation is yours, and belongs under `[data-table-sliding]`, which
+  the table sets only while a move runs, so the drop lands without sliding back:
+
+  ```css
+  [data-table-sliding] [role='columnheader'] {
+    transition: translate 150ms ease-out;
+  }
+  ```
+
+  The example's `?ghost` page slides the columns, dims the seat through `data-table-moving`, and
+  draws a chip from `onDrag`.
 - **Moving from the keyboard.** Each header cell's sort button is a Tab stop. `TableHeader`'s
   `onColumnKeyDown(key, event)` hands you a key pressed on a column; the table binds no key itself to
   move one (it claims Escape only while a mouse move runs).
@@ -395,7 +412,8 @@ redefines `--x` further down the page only reaches the table if the binding sits
 The table's parts carry stable data attributes to select by: `data-table` on the root,
 `data-table-header` on the header row, `data-table-resize="<key>"` on a column's resize handle,
 `data-table-marquee` on the marquee rectangle, `data-table-move-indicator` on the line showing
-where a moved column will land, `data-table-moving` on the header cell of a column being moved, and
+where a moved column will land, `data-table-moving` on the header cell of a column being moved,
+`data-table-sliding` on the grid (or a lone header row) while a slide runs, and
 `data-table-ruler="<key>"` on an auto-fit ruler while it measures.
 
 ## Accessibility

@@ -15,6 +15,13 @@ anything else the patch.
 
 ### Added
 
+- **Columns make room while one moves.** `move` takes an optional `slide: { band }`. The moved
+  column becomes a seat that slides to its landing slot and the columns it passes slide aside, as
+  `translate`s read from `--justable-move-shift-N`. The slot follows the moved column's leading edge,
+  so a column moves aside when about half covered, whatever the widths or the grab point. `band`
+  (required) is how far, in screen px, that edge must pass a centre. `data-table-sliding` marks the
+  grid while a slide runs, for the consumer's transition. `ColumnMoveDrag` gains `grab`. The header
+  slides; the body cells follow in a later change (#77).
 - **A column move can be drawn by the consumer.** `move` takes an optional `onDrag`, which hears
   each pointer move and each scroll of a running move as a `ColumnMoveDrag` (exported) — the column,
   the `beforeKey` a drop now would report, the pointer, the landing line, the moved cell's box and
