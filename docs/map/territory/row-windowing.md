@@ -239,6 +239,9 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   The effect runs on `focus` and the box's viewport and row heights — not on its `canvasTop` (#46,
   above) — and reads the offset from the element, not from state, so a scroll alone does not re-run
   it and pull the list back.
+- **A row the window draws during a column slide is already slid** (#78). The slide lives in
+  custom properties on the grid root that every row's cells read, so the window renders nothing for
+  it and a row scrolled into view mid-drag paints in place ([column move](column-move.md)).
 - **The page size the keyboard moves by is written here.** When `box` changes, the grid writes
   `floor(viewportHeight / rowHeight)` into the keyboard hook's `link.rowsPerPage`.
 

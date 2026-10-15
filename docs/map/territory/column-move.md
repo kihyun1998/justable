@@ -156,14 +156,34 @@ the layout.
   were; without the swallow the release sorted Size. The listeners are removed in `ended`, so an
   Escape after a move has ended does nothing.
 - **`move.slide: { band }` makes the other columns room while a move runs (#77)**, as #76's verdict
-  decided (the maintainer's call on #72, 2026-10-15). It covers the header; the body cells are #78.
+  decided (the maintainer's call on #72, 2026-10-15). The header slides (#77), and the body cells
+  with it (#78).
   - **The moved column is a seat that slides to its landing slot.** `slideShifts` gives every
     drawn column its shift in layout px: the columns it passes move by its width toward where it
     was, and it moves by their widths to where it lands. The shifts are written on the DOM as
     `--justable-move-shift-N` (N the drawn index plus one, `slideVar`), not through state. Inside a
-    grid they go on the grid root (`[data-table]`), so #78's body cells can read them. Outside a
-    grid they go on the header row. Each header cell reads its own as `translate`, only when
-    `slide` is given.
+    grid they go on the grid root (`[data-table]`), where every header and body cell can read them.
+    Outside a grid they go on the header row.
+  - **A cell carries custom properties, never a `translate` of its own** (#78). Every header cell
+    and every `TableRow` cell has `slideCellStyle(i)` inline: `--justable-shift: var(--justable-move-shift-N, 0px)`
+    and `--justable-moving: var(--justable-move-seat-N, 0)`. It also carries `SLIDE_CELL`, a
+    utility compiled to `:where(*[data-table-sliding]) & { translate: … }`, so the `translate`
+    exists only while a slide runs. At rest a cell has no `translate`: no stacking context, and a
+    consumer's own `translate` on a cell is not overridden. A row drawn mid-drag (scrolled into
+    view) reads the same properties on its first paint, with no render. Measured in Chrome
+    (`check:example`, 2026-10-15): with an inline `translate` on every cell instead, five resize
+    and auto-fit checks failed, among them a border drag that no longer widened its column. Each
+    header cell became a stacking context, and the next one covered the handle that straddles the
+    border. The body moving with its header, rows drawn by a 40,000 px scroll mid-drag included,
+    and no translate from the drop's first frame were measured there too, unscaled and in
+    `scale(0.5)`.
+  - **The seat is selectable without a render** (#78, a derivation the ticket asked for). The
+    engine writes `--justable-move-seat-N: 1` for the moved column beside the shifts, so every cell
+    of that column reads `--justable-moving` as 1 and every other cell as 0. The header cell also
+    keeps `data-table-moving`. A consumer dims the body seat with plain CSS, e.g.
+    `opacity: calc(1 - .3 * var(--justable-moving))`. Rejected: an attribute on the body cells (a
+    render, or a DOM write per drawn cell that rows drawn later would miss), and per-index rules
+    (unbounded).
   - **The slot follows the moved column's leading edge, not the pointer.** The column is held at
     its grab point (`grab`, the press minus the cell's screen left). The edge is its left while the
     pointer last moved left, its right while it last moved right, pulled back by `band` screen px.
@@ -194,8 +214,9 @@ the layout.
 
 ## Code
 
-- `src/hooks/useColumnMove.ts` — `useColumnMove`, `ColumnMoveOptions`, `ColumnMoveDrag`, `ColumnMoving`, `moveSlot`, `nearestSlot`, `slideShifts`, `slideVar`
-- `src/components/TableHeader.tsx` — `move`, `onColumnKeyDown`, `rowRef`, `data-table-move-indicator`, `data-table-moving`, the header cells' `translate`
+- `src/hooks/useColumnMove.ts` — `useColumnMove`, `ColumnMoveOptions`, `ColumnMoveDrag`, `ColumnMoving`, `moveSlot`, `nearestSlot`, `slideShifts`, `slideVar`, `seatVar`, `slideCellStyle`, `SLIDE_CELL`
+- `src/components/TableHeader.tsx` — `move`, `onColumnKeyDown`, `rowRef`, `data-table-move-indicator`, `data-table-moving`, the header cells' `slideCellStyle` and `SLIDE_CELL`
+- `src/components/TableRow.tsx` — the body cells' `slideCellStyle` and `SLIDE_CELL`
 - `example/FileTable.tsx` — `GHOST`, `MoveFeedback` (the `?ghost` page)
 - `src/lib/tableModel.ts` — `withOrder`, `columnOrder`, `moveTargets`, `moveBy`, `moved`
 - `src/types.ts` — `ColumnLayout.order`, `ColumnSpec.movable`

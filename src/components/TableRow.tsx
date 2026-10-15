@@ -1,5 +1,6 @@
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react';
 
+import { SLIDE_CELL, slideCellStyle } from '../hooks/useColumnMove.js';
 import { classNames } from '../lib/classNames.js';
 import { TABLE_CELL, TABLE_GRID } from '../lib/tableClasses.js';
 
@@ -47,7 +48,8 @@ export function TableRow<K extends string>({
           key={key}
           role="gridcell"
           aria-colindex={i + 1}
-          className={classNames(TABLE_CELL, cellClassName?.(key))}
+          className={classNames(TABLE_CELL, SLIDE_CELL, cellClassName?.(key))}
+          style={slideCellStyle(i)}
           title={cellTitle?.(key)}
         >
           {cell(key)}
