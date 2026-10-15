@@ -915,7 +915,7 @@ try {
     await moving.close();
   }
 
-  // The same drag on `?ghost`, where the example draws the feedback from `onDrag` in a portal.
+  // The same drag on `?ghost`, where the columns slide and the example draws a chip from `onDrag`.
   for (const scale of [1, 0.5]) {
     const ghosted = await browser.newPage();
     ghosted.on('pageerror', (e) => errors.push(String(e)));
@@ -937,6 +937,8 @@ try {
     await ghosted.mouse.move((size.left + size.right) / 2, size.y);
     await ghosted.mouse.down();
     await ghosted.mouse.move(to.x, to.y, { steps: 8 });
+    // The slide's transition is 150 ms.
+    await new Promise((r) => setTimeout(r, 300));
     const during = await ghosted.evaluate(() => {
       const box = (el) => {
         if (!el) return null;
@@ -944,23 +946,28 @@ try {
         return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, parent: el.parentElement === document.body };
       };
       const moved = document.querySelector('[data-table-moving]');
+      const kindHead = [...document.querySelectorAll('[data-table-header] [role="columnheader"]')].find(
+        (h) => h.textContent === 'Kind',
+      );
       return {
         ghost: box(document.querySelector('[data-example-move-ghost]')),
-        line: box(document.querySelector('[data-example-move-line]')),
         engineLine: document.querySelector('[data-table-move-indicator]') !== null,
         moved: moved?.textContent ?? null,
+        seat: box(moved),
+        kindNow: box(kindHead),
         movedOpacity: moved ? getComputedStyle(moved).opacity : null,
       };
     });
     await ghosted.mouse.up();
     const after = await ghosted.evaluate(() => ({
       labels: [...document.querySelectorAll('[data-table-header] [role="columnheader"]')].map((h) => h.textContent),
-      feedback: document.querySelector('[data-example-move-ghost], [data-example-move-line], [data-table-moving]') !== null,
+      feedback: document.querySelector('[data-example-move-ghost], [data-table-moving], [data-table-sliding]') !== null,
+      shift: document.querySelector('[data-table]').style.getPropertyValue('--justable-move-shift-3'),
     }));
     const tag = scale === 1 ? 'unscaled' : `inside scale(${scale})`;
     const g = during.ghost;
     check(
-      `${tag}, onDrag draws a portal ghost under the pointer as wide as the moved column, and the engine draws no line`,
+      `${tag}, onDrag draws a portal chip under the pointer, held where it was grabbed and as wide as the moved column, and the engine draws no line`,
       g !== null &&
         g.parent &&
         g.left <= to.x && to.x <= g.right && g.top <= to.y && to.y <= g.bottom &&
@@ -969,19 +976,67 @@ try {
       { during, to, sizeWidth: size.right - size.left },
     );
     check(
-      `${tag}, onDrag's line sits on the border the column will land at, and the moved column is marked`,
-      during.line !== null &&
-        Math.abs((during.line.left + during.line.right) / 2 - kind.left) <= 1.5 &&
+      `${tag}, the moved column's seat slides to where it will land and the column it passes makes room`,
+      during.seat !== null &&
         during.moved === 'Size' &&
-        during.movedOpacity === '0.45',
-      { line: during.line, kindLeft: kind.left, moved: during.moved, movedOpacity: during.movedOpacity },
+        Math.abs(during.seat.left - kind.left) <= 1.5 &&
+        Math.abs(during.kindNow.left - (kind.left + (size.right - size.left))) <= 1.5 &&
+        during.movedOpacity === '0.7',
+      { seat: during.seat, kindNow: during.kindNow, kindLeft: kind.left, moved: during.moved, movedOpacity: during.movedOpacity },
     );
     check(
-      `${tag}, the drop moves the column and the feedback goes`,
-      JSON.stringify(after.labels) === JSON.stringify(['Name', 'Size', 'Kind', 'Modified']) && !after.feedback,
+      `${tag}, the drop moves the column and every shift and mark goes`,
+      JSON.stringify(after.labels) === JSON.stringify(['Name', 'Size', 'Kind', 'Modified']) && !after.feedback && after.shift === '',
       after,
     );
     await ghosted.close();
+  }
+
+  // On `?ghost`, a wide column (Modified, 130) dragged left over a narrower one (Size, 100) makes it move
+  // aside at the same point whichever end it was grabbed near — the leading edge decides, not the pointer.
+  for (const scale of [1, 0.5]) {
+    const at = [];
+    for (const grabAt of ['left', 'right']) {
+      const page = await browser.newPage();
+      page.on('pageerror', (e) => errors.push(String(e)));
+      await page.goto(`${url}?ghost`, { waitUntil: 'networkidle0' });
+      await page.waitForSelector('[role="grid"] [data-table-header]');
+      await page.evaluate((s) => {
+        const grid = document.querySelector('[role="grid"]');
+        grid.style.transform = `scale(${s})`;
+        grid.style.transformOrigin = '0 0';
+      }, scale);
+      const head = (i) =>
+        page.$eval(`[data-table-header] [role="columnheader"][aria-colindex="${i}"]`, (h) => {
+          const r = h.getBoundingClientRect();
+          return { left: r.left, right: r.right, y: r.top + r.height / 2 };
+        });
+      const modified = await head(4);
+      // Clear of the resize handle on the right border.
+      const grab = grabAt === 'left' ? 10 * scale : modified.right - modified.left - 20 * scale;
+      let x = modified.left + grab;
+      await page.mouse.move(x, modified.y);
+      await page.mouse.down();
+      let chipLeft = null;
+      for (let k = 0; k < 300; k++) {
+        x -= 1;
+        await page.mouse.move(x, modified.y);
+        const shift = await page.evaluate(() => document.querySelector('[data-table]').style.getPropertyValue('--justable-move-shift-3'));
+        if (shift && shift !== '0px') {
+          chipLeft = x - grab;
+          break;
+        }
+      }
+      await page.mouse.up();
+      at.push(chipLeft);
+      await page.close();
+    }
+    const tag = scale === 1 ? 'unscaled' : `inside scale(${scale})`;
+    check(
+      `${tag}, a column makes room at the same point whichever end the moved one was grabbed near`,
+      at[0] !== null && at[1] !== null && Math.abs(at[0] - at[1]) <= 1.5,
+      { chipLeftAtSwitch: at },
+    );
   }
 
   // A header move cancelled with Escape mid-drag, then released back on the column it was pressed on,

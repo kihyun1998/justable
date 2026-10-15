@@ -7,7 +7,7 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
 import { useContext, useRef } from 'react';
 import type { CSSProperties } from 'react';
 
-import { type ColumnMoveOptions, useColumnMove } from '../hooks/useColumnMove.js';
+import { type ColumnMoveOptions, slideVar, useColumnMove } from '../hooks/useColumnMove.js';
 import { type ResizeDrag, useColumnResize } from '../hooks/useColumnResize.js';
 import { classNames } from '../lib/classNames.js';
 import { TABLE_GRID } from '../lib/tableClasses.js';
@@ -113,6 +113,7 @@ export function TableHeader<K extends string>({
           // `self-stretch` is deliberate: `docs/map/territory/header-row.md`.
           className="justable:relative justable:flex justable:min-w-0 justable:items-center justable:self-stretch"
           data-table-moving={moveDrag.moving?.key === column.key || undefined}
+          style={move?.slide ? { translate: `var(${slideVar(i)}, 0px) 0` } : undefined}
           onMouseDown={move ? moveDrag.onMouseDown(i) : undefined}
           onKeyDown={onColumnKeyDown ? (e) => onColumnKeyDown(column.key, e) : undefined}
         >
