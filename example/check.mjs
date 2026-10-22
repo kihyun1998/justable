@@ -919,7 +919,7 @@ try {
   for (const scale of [1, 0.5]) {
     const ghosted = await browser.newPage();
     ghosted.on('pageerror', (e) => errors.push(String(e)));
-    await ghosted.goto(`${url}?ghost`, { waitUntil: 'networkidle0' });
+    await ghosted.goto(`${url}?ghost&scale=${scale}`, { waitUntil: 'networkidle0' });
     await ghosted.waitForSelector('[role="grid"] [data-table-header]');
     await ghosted.evaluate((s) => {
       const grid = document.querySelector('[role="grid"]');
@@ -996,10 +996,12 @@ try {
   // aside at the same point whichever end it was grabbed near — the leading edge decides, not the pointer.
   for (const scale of [1, 0.5]) {
     const at = [];
+    /** Size's centre on screen: the leading edge switches it at that centre less the 10 px band. */
+    let sizeCentre = null;
     for (const grabAt of ['left', 'right']) {
       const page = await browser.newPage();
       page.on('pageerror', (e) => errors.push(String(e)));
-      await page.goto(`${url}?ghost`, { waitUntil: 'networkidle0' });
+      await page.goto(`${url}?ghost&scale=${scale}`, { waitUntil: 'networkidle0' });
       await page.waitForSelector('[role="grid"] [data-table-header]');
       await page.evaluate((s) => {
         const grid = document.querySelector('[role="grid"]');
@@ -1012,6 +1014,8 @@ try {
           return { left: r.left, right: r.right, y: r.top + r.height / 2 };
         });
       const modified = await head(4);
+      const size = await head(3);
+      sizeCentre = (size.left + size.right) / 2;
       // Clear of the resize handle on the right border.
       const grab = grabAt === 'left' ? 10 * scale : modified.right - modified.left - 20 * scale;
       let x = modified.left + grab;
@@ -1033,9 +1037,9 @@ try {
     }
     const tag = scale === 1 ? 'unscaled' : `inside scale(${scale})`;
     check(
-      `${tag}, a column makes room at the same point whichever end the moved one was grabbed near`,
-      at[0] !== null && at[1] !== null && Math.abs(at[0] - at[1]) <= 1.5,
-      { chipLeftAtSwitch: at },
+      `${tag}, a column makes room at the same point whichever end the moved one was grabbed near, its centre less the band on screen`,
+      at[0] !== null && at[1] !== null && Math.abs(at[0] - at[1]) <= 1.5 && Math.abs(at[0] - (sizeCentre - 10)) <= 1.5,
+      { chipLeftAtSwitch: at, sizeCentre },
     );
   }
 
@@ -1044,7 +1048,7 @@ try {
   for (const scale of [1, 0.5]) {
     const page = await browser.newPage();
     page.on('pageerror', (e) => errors.push(String(e)));
-    await page.goto(`${url}?ghost`, { waitUntil: 'networkidle0' });
+    await page.goto(`${url}?ghost&scale=${scale}`, { waitUntil: 'networkidle0' });
     await page.waitForSelector('[role="grid"] [data-table-header]');
     await page.evaluate((s) => {
       const grid = document.querySelector('[role="grid"]');

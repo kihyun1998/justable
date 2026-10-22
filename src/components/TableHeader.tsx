@@ -35,7 +35,7 @@ export interface TableHeaderProps<K extends string> {
   onAutoFit?: (key: K) => void;
   /** The handles' accessible name. */
   resizeLabel: string;
-  /** Screen px per table px, for a scaled copy of the table. */
+  /** Screen px per table px, for a scaled copy of the table: the border drag's and the slide's. */
   scale?: number;
   /** Whether a press on a handle must not start a resize — the consumer's rule; the engine has none. */
   refusePress: (event: React.MouseEvent) => boolean;
@@ -74,7 +74,7 @@ export function TableHeader<K extends string>({
   const { resizing, begin } = useColumnResize(onResize, onResizeDrag);
   const grid = useContext(GridScrollerContext);
   const rowRef = useRef<HTMLDivElement>(null);
-  const moveDrag = useColumnMove(columns, move, rowRef, grid?.scrollerRef);
+  const moveDrag = useColumnMove(columns, move, rowRef, grid?.scrollerRef, scale);
 
   const startResize = (column: HeaderColumn<K>) => (e: React.MouseEvent) => {
     // Suppressed for every button before `refusePress` decides, deliberately:

@@ -703,7 +703,7 @@ describe('moving', () => {
         { move: { refusePress: () => false, threshold: 4, targets, onMove, onDrag, slide: { band: BAND } }, ...over },
         scale,
       );
-      Object.defineProperty(view.header, 'offsetWidth', { get: () => 300 });
+      Object.defineProperty(view.header, 'offsetWidth', { get: () => 300, configurable: true });
       view.header.getBoundingClientRect = () =>
         ({ left: 0, right: 300 * scale, width: 300 * scale, top: 0, bottom: 20 }) as DOMRect;
       const shifts = () => [1, 2, 3].map((n) => view.header.style.getPropertyValue(`--justable-move-shift-${n}`));
@@ -894,6 +894,24 @@ describe('moving', () => {
     it('inside a scaled copy, shifts stay layout px and the line is on screen', () => {
       const { button, shifts, onDrag } = renderSliding(0.5);
       // Screen: Beta 50–100, grabbed at 75 (25 in); Gamma's centre 125; switch past 125 + 5.
+      press(button('b'), 75);
+      move(105, { clientY: 5 });
+      expect(shifts()).toEqual(['0px', '0px', '0px']);
+      move(112, { clientY: 5 });
+      expect(shifts()).toEqual(['0px', '100px', '-100px']);
+      expect(onDrag.mock.calls.at(-1)![0]).toMatchObject({ line: { x: 100 }, grab: 25 });
+    });
+
+    it.each([
+      ['its on-screen width is its layout width', (h: HTMLElement) => {
+        h.getBoundingClientRect = () => ({ left: 0, right: 300, width: 300, top: 0, bottom: 20 }) as DOMRect;
+      }],
+      ['its offsetWidth is 0', (h: HTMLElement) => {
+        Object.defineProperty(h, 'offsetWidth', { get: () => 0 });
+      }],
+    ])('the slide converts with the header’s `scale`, not the header row’s box, when %s', (_, skew) => {
+      const { header, button, shifts, onDrag } = renderSliding(0.5);
+      skew(header);
       press(button('b'), 75);
       move(105, { clientY: 5 });
       expect(shifts()).toEqual(['0px', '0px', '0px']);

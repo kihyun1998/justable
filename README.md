@@ -465,8 +465,8 @@ For a list with its own markup and movement — a sidebar, a tree:
   - `scrollerProps`: extra attributes on the scroll container. They are spread after the grid's
     own, so a `role` there replaces `rowgroup`.
 - **`TableHeader`**:
-  - `scale`: screen px per table px, for a scaled copy of the table, so a border drag follows the
-    pointer.
+  - `scale`: screen px per table px, for a scaled copy of the table, so a border drag and a column
+    move's `slide` follow the pointer.
   - `className`: goes on the header row, for its height and type.
 - **`TableRow`**: `cellClassName(key)` and `cellTitle(key)` give each cell a class and a `title`.
 - **The model**:

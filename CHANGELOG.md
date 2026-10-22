@@ -4,6 +4,15 @@ Written by hand at each release. Versions follow semver from 0.x: until 1.0, a b
 what `src/index.ts` exports — or to how an export behaves — bumps the minor (0.1 → 0.2), and
 anything else the patch.
 
+## Unreleased
+
+### Breaking
+
+- **A column move's `slide` converts with `TableHeader`'s `scale`**, the number the border drag
+  already uses, instead of a scale it measured from the header row's box. Inside a scaled copy,
+  pass `scale` for the columns to make room under the pointer; without it the slide takes the header
+  as unscaled. A move without `slide` uses no scale and is unchanged (#84).
+
 ## 0.5.0 — 2026-10-15
 
 ### Breaking
