@@ -97,9 +97,11 @@ the layout.
 - **The line is set only when its place changes, checked before `setMoving` is called.** Measured
   2026-10-14 under a `Profiler`: an updater that returned the same state still cost one commit over
   two moves, since React may render once before it bails out; the check outside it costs none.
-- **`threshold`, `refusePress` and `onMove` are read at the press**, where the marquee reads its
-  options through a ref at each report. A consumer whose `onMove` closes over a layout gets the one
-  current at the press, which nothing but the drop itself changes.
+- **Every field of `move` is read at the press** — `refusePress`, `targets` (called once, for the
+  pressed column), `threshold`, `onMove`, `onDrag` and `slide` (`useColumnMove`'s `onMouseDown`,
+  read at `f0b2175`) — where the marquee reads its options through a ref at each report. A consumer
+  whose `onMove` closes over a layout gets the one current at the press, which nothing but the drop
+  itself changes; an `onDrag` or `slide` given or taken away mid-drag takes effect at the next press.
 - **A drop on the slot either side of the column itself reports nothing.**
 - **The line is a child of the header row, absolutely positioned**, so it takes no track; see
   [drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md).
@@ -208,6 +210,14 @@ the layout.
     consumer's transition lives under `[data-table-sliding]`, so it goes in the same style change
     and the drop is not animated back. #76 measured that flash: the dropped column was drawn
     −430 px off in its new place.
+  - **The slide measures its own scale, on the header row's width, unsnapped.** `update` takes
+    `rowBox.width / row.current.offsetWidth` — horizontal, from one element, with no snap to 1 —
+    and 1 while the row's `offsetWidth` is 0. The shifts and widths are `offsetLeft`/`offsetWidth`,
+    layout px; the edge and the centres it is compared with are multiplied into screen px by that
+    scale. It is the third convention beside the consumer's `scale` and `longScale`
+    ([lengths are layout px](../invariant/lengths-are-layout-px.md)). Read from the code at
+    `f0b2175`; #77 asked only that the shifts hold inside `scale(0.5)`, and no call chose this
+    convention (the maintainer, 2026-10-22: not examined).
   - **Without `slide`** the pointer rule is unchanged: `moveSlot` over live screen boxes.
 - **The handle's press never reaches the cell**: `startResize` stops its propagation, which is all
   that keeps a border drag from also being a move.
@@ -231,7 +241,13 @@ the layout.
   `refusePress`, `threshold` and `targets` are required inside `move`, and `band` inside `slide`; which columns move is the
   spec's.
 - [Drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md) — the
-  order is `visibleColumns`' order, so the header, rows and template move together.
+  order is `visibleColumns`' order, so the header, rows and template move together; a slide's
+  `--justable-move-shift-N` is indexed by drawn column, and header and body cells read the same N.
+- [Lengths are layout px](../invariant/lengths-are-layout-px.md) — the slot is found in screen px,
+  the engine's line and the shifts are layout px, `onDrag` is screen px, and the slide converts with
+  a scale of its own.
+- [Zero is no measurement](../invariant/zero-is-no-measurement.md) — the slide's scale is 1 while
+  the header row's `offsetWidth` is 0.
 
 ## Blast radius
 
@@ -242,7 +258,18 @@ the layout.
 - [Marquee](marquee.md) — `swallowNextClick` lives there and is shared.
 - [Colour variables](colour-variables.md) — `--table-move-indicator`.
 - [Verification gates](verification-gates.md) — `check:example` drags Size onto Kind and onto the
-  pinned Name, unscaled and in `scale(0.5)`.
+  pinned Name, unscaled and in `scale(0.5)`, and the `?ghost` page slides and draws from `onDrag`.
+- [Table row](table-row.md) — every body cell reads the slide's custom properties through
+  `slideCellStyle` and `SLIDE_CELL`; a change to their names or to where they are written leaves the
+  body behind its header.
+- [Grid scaffold](grid-scaffold.md) — inside a grid the shifts and `data-table-sliding` are written
+  on the grid root (`[data-table]`); a change to which element carries `data-table` moves where every
+  cell can read them.
+- [Row windowing](row-windowing.md) — a row the window draws mid-drag must paint slid with no
+  render; anything that gives a drawn row its own `translate` or a stacking context breaks that.
+- [Package and release](package-and-release.md) — `ColumnMoveOptions`, `ColumnMoveDrag`,
+  `data-table-moving`, `data-table-sliding` and `--justable-moving` are published in `README.md`
+  § Columns.
 
 ## Known holes / open
 
@@ -253,3 +280,7 @@ the layout.
   `onColumnKeyDown` and `moveBy`.
 - **Firefox and Safari not measured** for the focus a move keeps; the restore is React's, not the
   browser's, so it should hold, but nothing here has run there.
+- **The slide's scale is unexamined** (the maintainer, 2026-10-22). It is taken on the horizontal
+  axis with no snap, where the grid and the marquee take theirs on the vertical one snapped within a
+  px; whether a non-uniform `scale(x, y)` or a ratio within a px of 1 moves the slot was never
+  measured — only `scale(0.5)` is in `check:example`.

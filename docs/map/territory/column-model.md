@@ -25,8 +25,10 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   names and its callers never see the spec.
 - **An unknown key throws where a column is looked up.** A function that reads a column's spec by
   key throws `unknown column` rather than answering for a column the spec does not have:
-  `clampWidth`, `columnWidth`, `withWidth`, `withOrder`, `nextSort`, and `sortRows` given a sort. `gridTemplate`
-  and `visibleColumns` walk the spec, so they never meet one. The hide functions (`isHidden`,
+  `clampWidth`, `columnWidth`, `withWidth`, `withOrder`, `moveTargets`, `moveBy`, `nextSort`, and
+  `sortRows` given a sort (each reaches the internal `column` lookup; read at `f0b2175`).
+  `columnOrder`, `gridTemplate` and `visibleColumns` walk the spec, so they never meet one — a key
+  in a stored `order` the spec lacks is ignored, not thrown on ([column move](column-move.md)). The hide functions (`isHidden`,
   `toggleHidden`) look nothing up: their key is typed `H`, the hideable keys, so an unknown key is
   refused by the compiler, and one cast past it is stored by `toggleHidden` without a word and hides
   nothing.

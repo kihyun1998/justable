@@ -28,7 +28,8 @@ today.
   excluding tests and `src/lint`; then the Tailwind CLI builds `src/style.css` into `dist/style.css`.
   Neither step runs the tests. `dist/` is ignored by git.
 - **The consumer consumes the published package.** PenTerm depends on `@kihyun1998/justable` from
-  npm at an exact version (pinned at 0.1.2 in `penterm 1a8954d1b`, 2026-09-29), so an engine change
+  npm at an exact version (pinned at 0.1.2 in `penterm 1a8954d1b`, 2026-09-29; at `0.5.0` in
+  PenTerm's `package.json` at `penterm 7dadc3c95`, 2026-10-22, read for this map), so an engine change
   reaches it only after a release here and a version bump there; its note keeps the install
   mechanics ([provenance](../MAP.md#penterm-provenance)).
 - **Whether the package is on the registry** is `npm view @kihyun1998/justable version`; not a fact

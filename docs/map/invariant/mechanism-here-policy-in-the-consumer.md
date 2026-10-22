@@ -12,7 +12,10 @@ Checkable: the engine imports nothing but itself, React, React DOM and the icon 
 prop carrying a consumer's choice is either required (`refusePress`, `label`, `resizeLabel`, the
 marquee's and the column move's `refusePress` and `threshold`, the type-ahead's `windowMs`) or, when
 optional, absent means the engine does nothing (`onAutoFit`, `onFloorClick`, `cellClassName`,
-`marquee`, `move`, `onColumnKeyDown`, the grid's `onKeyDown`). A default
+`marquee`, `move`, `move.slide`, `onColumnKeyDown`, the grid's `onKeyDown`, `onResizeDrag`). One
+optional prop is the other way round: **absent `move.onDrag`, the engine draws its own landing
+line**, which is the 0.4 behaviour kept for its consumers (#74; read at `f0b2175`); given it, the
+engine draws nothing. A default
 that does exist is an identity — the value that leaves the prop doing nothing: no scale, not
 disabled, rows shown, no leading rows, not multi-selectable, no scroller, the real clock. The list
 is the code's:

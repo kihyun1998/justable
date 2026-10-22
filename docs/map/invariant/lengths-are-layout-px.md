@@ -25,9 +25,11 @@ is invisible to every layout reading and visible to every screen reading. `clien
 `getBoundingClientRect` and the pointer do not. The sites that mix the two are in territories that do
 not call each other, and each meets the transform on its own.
 
-**Two conventions, deliberately.** Column resize takes the scale from the consumer (`scale`, #8); the
-grid works its scale out itself (#19), and so does the marquee (#28). Unifying them was left out of
-#19 and #28 by the maintainer, so both stand.
+**Three conventions: two deliberate, one unexamined.** Column resize takes the scale from the
+consumer (`scale`, #8); the grid works its scale out itself (#19), and so does the marquee (#28).
+Unifying them was left out of #19 and #28 by the maintainer, so both stand. The column move's slide
+(#77) works out a third, `rowBox.width / offsetWidth` on the header row — horizontal and unsnapped —
+which no call chose (the maintainer, 2026-10-22: not examined).
 
 ## Territories it holds in
 
@@ -59,6 +61,14 @@ grid works its scale out itself (#19), and so does the marquee (#28). Unifying t
   Measured in Chrome before #28, with #19 applied: under `scale(0.5)` a drag over rows 3–6 selected
   2–4, and over 15–18 selected 8–10. `check:example` now drags rows 3–6 under `scale(0.5)` and gets
   3–6, and the same check with the hook's scale forced to 1 gets 2–4 again.
+- [Column move](../territory/column-move.md) — **mixed by design, in three parts** (read at
+  `f0b2175`). Without a slide, the slot is found among the cells' screen boxes against the pointer —
+  screen against screen, so no scale enters — and the engine's line is drawn at a cell's
+  `offsetLeft`, layout px inside the scaled tree; drawing it from screen boxes put it 65 px off
+  inside `scale(0.5)` (Chrome, 2026-10-14). `onDrag`'s report is screen px throughout, for a portal.
+  With a slide, the shifts and widths are layout px and are **multiplied into screen px** by the
+  header row's own `rowBox.width / offsetWidth` before they meet the pointer's edge — the one site
+  that converts layout to screen rather than screen to layout.
 - [Auto-fit](../territory/auto-fit.md) — **not converted; symptom unmeasured.** `useColumnAutoFit`
   takes the widest ruler cell's `getBoundingClientRect().width`, so a fit taken inside a scaled copy
   may come out scaled.
@@ -89,6 +99,9 @@ grid works its scale out itself (#19), and so does the marquee (#28). Unifying t
   The canvas's offset has one — `check:example` reads it as `offsetTop` differences — and #46 kept
   it on screen so as not to assume the scroller is the canvas's `offsetParent`; auto-fit's width
   has one too, and is not converted at all (above).
+- #74, #77 (2026-10-14, 2026-10-15, column move) — the line found 65 px off inside `scale(0.5)` when
+  drawn from screen boxes, and the slide's own scale; the slide was not recorded here when it
+  landed, and was added by the map's re-derivation of 2026-10-22, which read it from the code.
 
 ## Where it will recur
 

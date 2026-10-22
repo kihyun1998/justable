@@ -16,7 +16,11 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 
 ### Map
 
-Before changing code, read `docs/map/MAP.md` and the territory note for what you are touching; its `## Blast radius` and `## Cross-cutting invariants` are a checklist.
+The map is `docs/map/MAP.md`.
+
+- **Before designing a change**, read the hub and the territory note for what you are touching; its `## Blast radius` and `## Cross-cutting invariants` are a checklist.
+- **After it lands**, update every note whose rule the change altered, in the same change.
+- **At the first fix**, ask whether the fact holds at every site that shares the assumption — *does this code read a length from layout, or on screen? number rows or columns? choose what a gesture or key means?* If yes, the fix lands with an invariant note under `docs/map/invariant/`.
 
 ## Comments
 

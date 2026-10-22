@@ -36,6 +36,8 @@ guard is written differently at each site.
 - [Keyboard movement](../territory/keyboard-movement.md) — `rowsPerPage` of 0 pages by
   `FALLBACK_PAGE` (1).
 - [Auto-fit](../territory/auto-fit.md) — a ruler that measured nothing answers `null`, never 0.
+- [Column move](../territory/column-move.md) — the slide's scale is 1 while the header row's
+  `offsetWidth` is 0 (`useColumnMove`'s `update`), rather than a division by it.
 - [Marquee](../territory/marquee.md) — a zero view width or height neither marks a press as on a
   scrollbar (`pressOnScrollbar`) nor clamps the pointer (`toCanvas`); a zero `scrollWidth` or
   `scrollHeight` bounds the rectangle nowhere (`Infinity`, `marqueeFrame`); `marqueeRange` answers

@@ -91,12 +91,12 @@ nothing to a consumer itself; each drag says what its own moments mean.
   reported and the click is swallowed.
 - [Column move](column-move.md) — its drag runs on this; a change to the release moves when `onMove`
   is reported.
-- [Verification gates](verification-gates.md) — `check:example` drags both in Chrome, where `buttons`
-  is real; the jsdom tests send it by hand, and a move without it is a release.
+- [Verification gates](verification-gates.md) — `check:example` drags all three in Chrome, where
+  `buttons` is real; the jsdom tests send it by hand, and a move without it is a release.
 
 ## Known holes / open
 
-- **Mouse only**, as both drags are.
+- **Mouse only**, as all three drags are.
 - **Whether WebKit ever sends a move with `buttons` 0 while the button is held** — which these rules
   would take as the release — is not measured: Safari, WKWebView and WebKitGTK were not at hand.
   Chromium does not, measured 2026-09-30 with real OS input (Windows `SendInput`, not Puppeteer, which
