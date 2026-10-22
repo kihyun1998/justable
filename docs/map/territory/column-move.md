@@ -197,8 +197,9 @@ the layout.
     grabbed near its far end. With the leading edge it moved aside at 59 % covered from either end,
     and a ±6 px shake flipped nothing once a 10 px band was there (10 flips without it). Measured
     here in `check:example` (`?ghost`, Modified over Size): the switch came at the same chip left
-    from either end, 650 px unscaled and 450 px inside `scale(0.5)`. With the pointer it came at
-    650 and 550, and at 455 and 405.
+    from either end, 650 px unscaled and 450 px inside `scale(0.5)` — Size's on-screen centre less
+    the band, which the gate checks since #84. With the pointer it came at 650 and 550, and at 455
+    and 405.
   - **`band` is required inside `slide`**: a tolerance on a hand, like `threshold`
     ([mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md)).
   - **What the consumer is told follows the slide.** `onDrag`'s `beforeKey` and `line` and the
@@ -210,14 +211,17 @@ the layout.
     consumer's transition lives under `[data-table-sliding]`, so it goes in the same style change
     and the drop is not animated back. #76 measured that flash: the dropped column was drawn
     −430 px off in its new place.
-  - **The slide measures its own scale, on the header row's width, unsnapped.** `update` takes
-    `rowBox.width / row.current.offsetWidth` — horizontal, from one element, with no snap to 1 —
-    and 1 while the row's `offsetWidth` is 0. The shifts and widths are `offsetLeft`/`offsetWidth`,
-    layout px; the edge and the centres it is compared with are multiplied into screen px by that
-    scale. It is the third convention beside the consumer's `scale` and `longScale`
-    ([lengths are layout px](../invariant/lengths-are-layout-px.md)). Read from the code at
-    `f0b2175`; #77 asked only that the shifts hold inside `scale(0.5)`, and no call chose this
-    convention (the maintainer, 2026-10-22: not examined).
+  - **The slide converts with the header's `scale`**, the consumer's number, which the border
+    drag uses too (`useColumnMove`'s `scale`, from `TableHeader`); it is read at the press, used as
+    given, with no snap and no zero guard. The shifts and widths are `offsetLeft`/`offsetWidth`,
+    layout px; the edge and the centres it is compared with are multiplied into screen px by it.
+    The maintainer's call, 2026-10-22 (#84), over the grid's `screenScale` and over keeping the
+    slide's own `rowBox.width / offsetWidth`, which #77 had left unchosen. Shown: one header ran its
+    two drags on two numbers, and the example's gate slid inside `scale(0.5)` with no `scale` passed
+    — so the example now passes `?scale`. Theirs to reverse. A consumer that slides inside a scaled
+    copy must pass `scale`; without it the slot switches as if unscaled — measured in
+    `check:example` (`?ghost`, Modified over Size, `scale(0.5)`): at chip left 480 against Size's
+    centre less the band, 450.
   - **Without `slide`** the pointer rule is unchanged: `moveSlot` over live screen boxes.
 - **The handle's press never reaches the cell**: `startResize` stops its propagation, which is all
   that keeps a border drag from also being a move.
@@ -227,7 +231,7 @@ the layout.
 - `src/hooks/useColumnMove.ts` — `useColumnMove`, `ColumnMoveOptions`, `ColumnMoveDrag`, `ColumnMoving`, `moveSlot`, `nearestSlot`, `slideShifts`, `slideVar`, `seatVar`, `slideCellStyle`, `SLIDE_CELL`
 - `src/components/TableHeader.tsx` — `move`, `onColumnKeyDown`, `rowRef`, `data-table-move-indicator`, `data-table-moving`, the header cells' `slideCellStyle` and `SLIDE_CELL`
 - `src/components/TableRow.tsx` — the body cells' `slideCellStyle` and `SLIDE_CELL`
-- `example/FileTable.tsx` — `GHOST`, `MoveFeedback` (the `?ghost` page)
+- `example/FileTable.tsx` — `GHOST`, `MoveFeedback` (the `?ghost` page), `SCALE` (`?scale`, the header's `scale`)
 - `src/lib/tableModel.ts` — `withOrder`, `columnOrder`, `moveTargets`, `moveBy`, `moved`
 - `src/types.ts` — `ColumnLayout.order`, `ColumnSpec.movable`
 
@@ -245,9 +249,7 @@ the layout.
   `--justable-move-shift-N` is indexed by drawn column, and header and body cells read the same N.
 - [Lengths are layout px](../invariant/lengths-are-layout-px.md) — the slot is found in screen px,
   the engine's line and the shifts are layout px, `onDrag` is screen px, and the slide converts with
-  a scale of its own.
-- [Zero is no measurement](../invariant/zero-is-no-measurement.md) — the slide's scale is 1 while
-  the header row's `offsetWidth` is 0.
+  the consumer's `scale`.
 
 ## Blast radius
 
@@ -280,7 +282,5 @@ the layout.
   `onColumnKeyDown` and `moveBy`.
 - **Firefox and Safari not measured** for the focus a move keeps; the restore is React's, not the
   browser's, so it should hold, but nothing here has run there.
-- **The slide's scale is unexamined** (the maintainer, 2026-10-22). It is taken on the horizontal
-  axis with no snap, where the grid and the marquee take theirs on the vertical one snapped within a
-  px; whether a non-uniform `scale(x, y)` or a ratio within a px of 1 moves the slot was never
-  measured — only `scale(0.5)` is in `check:example`.
+- **A non-uniform transform** is not modelled: `scale` is one number, used on the horizontal axis,
+  as the border drag uses it.

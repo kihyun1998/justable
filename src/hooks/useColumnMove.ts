@@ -129,6 +129,8 @@ export function useColumnMove<K extends string>(
   row: RefObject<HTMLElement | null>,
   /** The grid's scroller, whose scroll moves the cells under a still pointer; absent outside a grid. */
   scroller: RefObject<HTMLElement | null> | undefined,
+  /** Screen px per table px, for a scaled copy of the table: the slide's, as the border drag's. */
+  scale = 1,
 ) {
   const [moving, setMoving] = useState<ColumnMoving<K> | null>(null);
   const drag = useDrag();
@@ -186,7 +188,6 @@ export function useColumnMove<K extends string>(
         let lineX: number | null = null;
         if (slide && row.current) {
           const rowBox = row.current.getBoundingClientRect();
-          const scale = row.current.offsetWidth ? rowBox.width / row.current.offsetWidth : 1;
           const widths = drawn.map((c) => c.offsetWidth);
           const planned = shifts ?? widths.map(() => 0);
           if (x !== lastX) heading = x < lastX ? -1 : 1;

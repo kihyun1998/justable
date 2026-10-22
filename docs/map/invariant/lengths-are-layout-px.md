@@ -25,11 +25,10 @@ is invisible to every layout reading and visible to every screen reading. `clien
 `getBoundingClientRect` and the pointer do not. The sites that mix the two are in territories that do
 not call each other, and each meets the transform on its own.
 
-**Three conventions: two deliberate, one unexamined.** Column resize takes the scale from the
-consumer (`scale`, #8); the grid works its scale out itself (#19), and so does the marquee (#28).
-Unifying them was left out of #19 and #28 by the maintainer, so both stand. The column move's slide
-(#77) works out a third, `rowBox.width / offsetWidth` on the header row — horizontal and unsnapped —
-which no call chose (the maintainer, 2026-10-22: not examined).
+**Two conventions, both deliberate.** The header takes the scale from the consumer (`scale`, #8):
+the border drag and, since #84, the column move's slide. The grid works its scale out itself (#19),
+and so does the marquee (#28). Unifying them was left out of #19 and #28 by the maintainer, so both
+stand.
 
 ## Territories it holds in
 
@@ -67,8 +66,8 @@ which no call chose (the maintainer, 2026-10-22: not examined).
   `offsetLeft`, layout px inside the scaled tree; drawing it from screen boxes put it 65 px off
   inside `scale(0.5)` (Chrome, 2026-10-14). `onDrag`'s report is screen px throughout, for a portal.
   With a slide, the shifts and widths are layout px and are **multiplied into screen px** by the
-  header row's own `rowBox.width / offsetWidth` before they meet the pointer's edge — the one site
-  that converts layout to screen rather than screen to layout.
+  consumer's `scale` before they meet the pointer's edge — the one site that converts layout to
+  screen rather than screen to layout.
 - [Auto-fit](../territory/auto-fit.md) — **not converted; symptom unmeasured.** `useColumnAutoFit`
   takes the widest ruler cell's `getBoundingClientRect().width`, so a fit taken inside a scaled copy
   may come out scaled.
@@ -102,6 +101,8 @@ which no call chose (the maintainer, 2026-10-22: not examined).
 - #74, #77 (2026-10-14, 2026-10-15, column move) — the line found 65 px off inside `scale(0.5)` when
   drawn from screen boxes, and the slide's own scale; the slide was not recorded here when it
   landed, and was added by the map's re-derivation of 2026-10-22, which read it from the code.
+- #84 (2026-10-22, column move) — the slide's own scale replaced by the consumer's `scale`; the
+  gate's switch point inside `scale(0.5)` came at 480 against 450 when the example passed none.
 
 ## Where it will recur
 

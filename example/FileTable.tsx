@@ -29,6 +29,9 @@ type Hideable = Exclude<Key, 'name'>;
  */
 const GHOST = new URLSearchParams(location.search).has('ghost');
 
+/** `?scale=0.5` is the screen px per table px of a scaled copy, for the page that draws one. */
+const SCALE = Number(new URLSearchParams(location.search).get('scale') ?? 1) || 1;
+
 const LABELS: Record<Key, string> = { name: 'Name', kind: 'Kind', size: 'Size', modified: 'Modified' };
 
 const SPEC: ColumnSpec<FileEntry, Key>[] = [
@@ -226,6 +229,7 @@ export function FileTable({
       onResizeDrag={onResizeDrag}
       onAutoFit={onAutoFit}
       resizeLabel="Resize column"
+      scale={SCALE}
       refusePress={(e) => e.button !== 0}
       onColumnKeyDown={(key, e) => {
         const delta = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
