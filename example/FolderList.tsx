@@ -82,7 +82,10 @@ export function FolderList({
         aria-selected={cursor === i}
         className={cursor === i ? 'list-item is-cursor' : 'list-item'}
         style={{ top: i * ROW_PX }}
-        onClick={() => moveTo(i)}
+        onClick={() => {
+          typeAhead.end();
+          moveTo(i);
+        }}
       >
         <span className="truncate">📁 {names[i]}</span>
       </div>,
