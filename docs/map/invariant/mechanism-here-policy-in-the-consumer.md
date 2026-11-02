@@ -36,9 +36,11 @@ consumer's policy that the consumer cannot see.
 - [Column resize](../territory/column-resize.md) — `refusePress` is required; the engine has no
   rule for which button starts a drag — only that the button which started it ends it
   ([drag lifetime](../territory/drag-lifetime.md)). The width is reported unclamped.
-- [Keyboard movement](../territory/keyboard-movement.md) — `step` answers where and claims the event;
-  selection, opening and a lone Space are the consumer's; a space inside a running query is the
-  table's. How long a query stays open, `windowMs`, is required on both hooks.
+- [Keyboard movement](../territory/keyboard-movement.md) — `move` answers where a movement lands
+  and `typeAhead` where a typed character does; which key asks for which movement, with which
+  modifiers (the key bindings), claiming a movement's event, selection, opening and a lone Space are
+  the consumer's; a space inside a running query is the table's. How long a query stays open,
+  `windowMs`, is required on both hooks.
 - [Column model](../territory/column-model.md) — bounds, first sort direction, comparator and
   hideability are the spec's.
 - [Colour variables](../territory/colour-variables.md) — roles, not colours; no fallback.

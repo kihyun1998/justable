@@ -54,8 +54,8 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   dropping it to `tabIndex={-1}`. Shown: the W3C APG, read at w3c/aria-practices `3f094fde1c`
   (`content/practices/keyboard-interface/keyboard-interface-practice.html`, "Focusability of
   disabled controls"), which keeps `aria-disabled` elements focusable because screen reader users
-  discover by moving focus. Keys are the consumer's: it decides whether to act on `step` while the
-  grid is disabled, and the README says so.
+  discover by moving focus. Keys are the consumer's: it decides whether to act on `move` or
+  `typeAhead` while the grid is disabled, and the README says so.
 - **`fill` chooses between taking the remaining height (`flex-1`) and shrinking to the header
   (`shrink-0`).**
 - **A floor click is a press on the scroller itself** (`target === currentTarget`), never one that
@@ -104,7 +104,8 @@ APG grid pattern and VS Code's list (one focusable container) as what this shape
 - [Row windowing](row-windowing.md) — which rows exist to be named by `aria-activedescendant`.
 - [Header lane](header-lane.md) — the first child of the grid, and a `rowgroup` it declares.
 - [Keyboard movement](keyboard-movement.md) — `focus` is the keyboard's row; the grid shows it and
-  writes the page size back; `onKeyDown` is where a consumer calls `step`.
+  writes the page size back; `onKeyDown` is where a consumer binds its keys to `move` and
+  `typeAhead`.
 - [Header row](header-row.md) — its buttons' keys go to `onColumnKeyDown` and never to `onKeyDown`.
 - [Table row](table-row.md) — receives `RowPlace` and must carry its `id` and `rowIndex`.
 - [Colour variables](colour-variables.md) — the grid root carries `data-table`, where the consumer

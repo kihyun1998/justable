@@ -1,9 +1,12 @@
 /**
- * Where a key moves the keyboard's row: movement keys and type-ahead, as pure functions. The rules
- * and their reasons: `docs/map/territory/keyboard-movement.md`.
+ * Where the keyboard's row goes: movements and type-ahead, as pure functions. The rules and their
+ * reasons: `docs/map/territory/keyboard-movement.md`.
  */
 
-/** The parts of a key event the keyboard hooks read. A React or DOM keyboard event satisfies it. */
+/** A named step of the keyboard's row. Which key asks for one is the consumer's. */
+export type TableMovement = 'up' | 'down' | 'first' | 'last' | 'pageUp' | 'pageDown';
+
+/** The parts of a key event type-ahead reads. A React or DOM keyboard event satisfies it. */
 export interface TableKeyEvent {
   key: string;
   ctrlKey: boolean;
@@ -16,10 +19,10 @@ export interface TableKeyEvent {
 const FALLBACK_PAGE = 1;
 
 export interface FocusMoveInput {
-  key: string;
+  movement: TableMovement;
   /**
    * Where focus is now. `null` before the user has moved at all. From an integer outside the list,
-   * a key counts from it and clamps where it lands; a non-integer moves as `null` does.
+   * a movement counts from it and clamps where it lands; a non-integer moves as `null` does.
    */
   focus: number | null;
   /** How many rows there are, in screen order. */
@@ -28,9 +31,9 @@ export interface FocusMoveInput {
   rowsPerPage: number;
 }
 
-/** Where this key moves focus, or `null` if it is not a movement key (←/→ included). */
+/** Where this movement takes focus, or `null` when there are no rows or it is not a movement. */
 export function nextFocusIndex({
-  key,
+  movement,
   focus: given,
   total,
   rowsPerPage,
@@ -42,18 +45,18 @@ export function nextFocusIndex({
   const clamp = (i: number) => Math.max(0, Math.min(last, i));
   const page = Math.max(FALLBACK_PAGE, Math.floor(rowsPerPage));
 
-  switch (key) {
-    case 'ArrowDown':
+  switch (movement) {
+    case 'down':
       return focus === null ? 0 : clamp(focus + 1);
-    case 'ArrowUp':
+    case 'up':
       return focus === null ? 0 : clamp(focus - 1);
-    case 'Home':
+    case 'first':
       return 0;
-    case 'End':
+    case 'last':
       return last;
-    case 'PageDown':
+    case 'pageDown':
       return focus === null ? 0 : clamp(focus + page);
-    case 'PageUp':
+    case 'pageUp':
       return focus === null ? 0 : clamp(focus - page);
     default:
       return null;

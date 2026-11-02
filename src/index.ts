@@ -22,12 +22,8 @@ export type { ColumnMoveDrag, ColumnMoveOptions } from './hooks/useColumnMove.js
 export { type ResizeDrag, useColumnResize } from './hooks/useColumnResize.js';
 export type { MarqueeOptions, MarqueePhase, MarqueeReport } from './hooks/useMarquee.js';
 export type { MarqueeRange } from './lib/marquee.js';
-export {
-  useTableKeyboard,
-  type TableKeyStep,
-  type TableKeyboardLink,
-} from './hooks/useTableKeyboard.js';
-export type { TableKeyEvent } from './lib/tableKeyboard.js';
+export { useTableKeyboard, type TableKeyboardLink } from './hooks/useTableKeyboard.js';
+export type { TableKeyEvent, TableMovement } from './lib/tableKeyboard.js';
 export {
   useTypeAhead,
   type TypeAheadAnswer,

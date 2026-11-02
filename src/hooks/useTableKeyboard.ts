@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 
-import { type TableKeyEvent, nextFocusIndex } from '../lib/tableKeyboard.js';
+import { type TableMovement, nextFocusIndex } from '../lib/tableKeyboard.js';
 import { type TypeAheadOptions, useTypeAhead } from './useTypeAhead.js';
 
 /** What the grid tells the hook: how many whole rows its viewport shows. */
@@ -9,42 +9,27 @@ export interface TableKeyboardLink {
 }
 
 /**
- * Where a key sent the keyboard's row. A type-ahead key that matched nothing answers `to: null`, so
- * the consumer can tell it from a key that was never the table's.
- */
-export type TableKeyStep = { by: 'move'; to: number } | { by: 'typeAhead'; to: number | null };
-
-/**
- * Keyboard movement for a table: the consumer calls `step` from wherever it receives keys, and
- * decides what a move means (selection, opening), and `end` whenever it moves the row by other
- * means. Pass `link` to the grid as `keyboard`. Its type-ahead is `useTypeAhead`'s, with the same
- * options, and `end` is that type-ahead's.
+ * Keyboard movement for a table. The consumer binds its own keys: it calls `move` with the movement
+ * a key asks for, `typeAhead` with a typed character, and `end` whenever it moves the row by other
+ * means; what a move means (selection, opening) is the consumer's too. Pass `link` to the grid as
+ * `keyboard`. Its type-ahead is `useTypeAhead`'s, with the same options, and `typeAhead` and `end`
+ * are that type-ahead's. Every function is one function for the hook's life.
  */
 export function useTableKeyboard(options: TypeAheadOptions) {
   const link = useRef<TableKeyboardLink>({ rowsPerPage: 0 }).current;
   const typeAhead = useTypeAhead(options);
 
-  /** Answers a key, and claims the event when it moves the row; `null` for a key not the table's. */
-  const step = (
-    event: TableKeyEvent,
-    { focus, names }: { focus: number | null; names: readonly string[] },
-  ): TableKeyStep | null => {
-    const moved = nextFocusIndex({
-      key: event.key,
-      focus,
-      total: names.length,
-      rowsPerPage: link.rowsPerPage,
-    });
-    if (moved !== null) {
+  const { end } = typeAhead;
+
+  /** Where `movement` takes the row, ending any running query; `null` when there are no rows. */
+  const move = useRef(
+    (movement: TableMovement, { focus, total }: { focus: number | null; total: number }) => {
+      const moved = nextFocusIndex({ movement, focus, total, rowsPerPage: link.rowsPerPage });
       // A move ends any running query: `docs/map/territory/keyboard-movement.md`.
-      typeAhead.end();
-      event.preventDefault();
-      return { by: 'move', to: moved };
-    }
+      if (moved !== null) end();
+      return moved;
+    },
+  ).current;
 
-    const answer = typeAhead.step(event, { focus, names });
-    return answer === null ? null : { by: 'typeAhead', to: answer.to };
-  };
-
-  return { step, link, end: typeAhead.end };
+  return { move, typeAhead: typeAhead.step, end, link };
 }
