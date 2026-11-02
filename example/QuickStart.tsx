@@ -6,6 +6,7 @@ import {
   useTableKeyboard,
   type ColumnLayout,
   type ColumnSpec,
+  type TableMovement,
   type TableSort,
 } from '@kihyun1998/justable';
 import '@kihyun1998/justable/style.css';
@@ -44,6 +45,16 @@ const COLUMNS: ColumnSpec<Person, Key>[] = [
 const LABELS: Record<Key, string> = { name: 'Name', age: 'Age' };
 
 const model = createTableModel(COLUMNS);
+
+/** Which key moves the row where: the bindings are yours. */
+const MOVES: Partial<Record<string, TableMovement>> = {
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  Home: 'first',
+  End: 'last',
+  PageUp: 'pageUp',
+  PageDown: 'pageDown',
+};
 
 export function People({ people }: { people: readonly Person[] }) {
   const [layout, setLayout] = useState<ColumnLayout<Key>>({ widths: {}, hidden: [] });
@@ -95,7 +106,15 @@ export function People({ people }: { people: readonly Person[] }) {
         rowHeightRem={2}
         keyboard={keyboard.link}
         onKeyDown={(e) => {
-          const answer = keyboard.step(e, { focus, names: rows.map((p) => p.name) });
+          const movement = e.altKey ? undefined : MOVES[e.key];
+          if (movement) {
+            const to = keyboard.move(movement, { focus, total: rows.length });
+            if (to === null) return;
+            e.preventDefault();
+            setFocus(to);
+            return;
+          }
+          const answer = keyboard.typeAhead(e, { focus, names: rows.map((p) => p.name) });
           if (answer?.to != null) setFocus(answer.to);
         }}
       />

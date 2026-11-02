@@ -12,6 +12,22 @@ anything else the patch.
   already uses, instead of a scale it measured from the header row's box. Inside a scaled copy,
   pass `scale` for the columns to make room under the pointer; without it the slide takes the header
   as unscaled. A move without `slide` uses no scale and is unchanged (#84).
+- **`useTableKeyboard` reads no key to move the row.** `step` and its type `TableKeyStep` are gone.
+  The hook returns `move(movement, { focus, total })`, which answers the row a movement lands on —
+  `TableMovement` (exported): `'up' | 'down' | 'first' | 'last' | 'pageUp' | 'pageDown'` — and
+  `typeAhead(event, { focus, names })`, which answers `{ to }` by the same type-ahead rules as
+  before. Which key, with which modifiers, asks for which movement is the consumer's: modifiers
+  used to be ignored, so Alt+↓ and Ctrl+End moved the row whether or not the consumer listed
+  them. To migrate, map your keys to movements and call `move`, calling `preventDefault` yourself,
+  and send everything else to `typeAhead`. Movement rules (clamping, the page, a `focus` naming no
+  row) are unchanged, and a move still ends a running query (#86).
+
+### Added
+
+- **`move`, `typeAhead` and `useTypeAhead`'s `step` are each one function for the hook's life**,
+  as `end` already was, so an effect can depend on one and a consumer can register one once. A
+  held `step` reads the
+  `windowMs` and `now` of the latest render (#86).
 
 ## 0.5.0 — 2026-10-15
 

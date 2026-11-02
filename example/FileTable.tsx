@@ -10,6 +10,7 @@ import {
   type ColumnMoveDrag,
   type ColumnSpec,
   type MarqueeReport,
+  type TableMovement,
   type TableSort,
 } from '@kihyun1998/justable';
 import { useMemo, useRef, useState } from 'react';
@@ -28,6 +29,16 @@ type Hideable = Exclude<Key, 'name'>;
  * through `onDrag`, instead of the engine's line.
  */
 const GHOST = new URLSearchParams(location.search).has('ghost');
+
+/** The example's key bindings: which key asks for which movement. With Alt held, none does. */
+const MOVEMENT_KEYS: Partial<Record<string, TableMovement>> = {
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  Home: 'first',
+  End: 'last',
+  PageUp: 'pageUp',
+  PageDown: 'pageDown',
+};
 
 /** `?scale=0.5` is the screen px per table px of a scaled copy, for the page that draws one. */
 const SCALE = Number(new URLSearchParams(location.search).get('scale') ?? 1) || 1;
@@ -144,7 +155,16 @@ export function FileTable({
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
-    const answer = keyboard.step(e, { focus, names });
+    const movement = e.altKey ? undefined : MOVEMENT_KEYS[e.key];
+    if (movement) {
+      const to = keyboard.move(movement, { focus, total: names.length });
+      if (to === null) return;
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) setFocus(to);
+      else pick(to, e);
+      return;
+    }
+    const answer = keyboard.typeAhead(e, { focus, names });
     if (answer === null) {
       // Not the table's key: Space is the keyboard's click, the rest is ignored here.
       if (e.key === ' ' && focus !== null) {
@@ -157,9 +177,7 @@ export function FileTable({
       onStatus('type-ahead: no match');
       return;
     }
-    if (answer.by === 'typeAhead') pick(answer.to, { shiftKey: false, ctrlKey: false, metaKey: false });
-    else if (e.ctrlKey || e.metaKey) setFocus(answer.to);
-    else pick(answer.to, e);
+    pick(answer.to, { shiftKey: false, ctrlKey: false, metaKey: false });
   };
 
   const onResizeDrag = useEdgeScroll('x');

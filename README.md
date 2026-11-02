@@ -45,6 +45,7 @@ import {
   useTableKeyboard,
   type ColumnLayout,
   type ColumnSpec,
+  type TableMovement,
   type TableSort,
 } from '@kihyun1998/justable';
 import '@kihyun1998/justable/style.css';
@@ -83,6 +84,16 @@ const COLUMNS: ColumnSpec<Person, Key>[] = [
 const LABELS: Record<Key, string> = { name: 'Name', age: 'Age' };
 
 const model = createTableModel(COLUMNS);
+
+/** Which key moves the row where: the bindings are yours. */
+const MOVES: Partial<Record<string, TableMovement>> = {
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  Home: 'first',
+  End: 'last',
+  PageUp: 'pageUp',
+  PageDown: 'pageDown',
+};
 
 export function People({ people }: { people: readonly Person[] }) {
   const [layout, setLayout] = useState<ColumnLayout<Key>>({ widths: {}, hidden: [] });
@@ -134,7 +145,15 @@ export function People({ people }: { people: readonly Person[] }) {
         rowHeightRem={2}
         keyboard={keyboard.link}
         onKeyDown={(e) => {
-          const answer = keyboard.step(e, { focus, names: rows.map((p) => p.name) });
+          const movement = e.altKey ? undefined : MOVES[e.key];
+          if (movement) {
+            const to = keyboard.move(movement, { focus, total: rows.length });
+            if (to === null) return;
+            e.preventDefault();
+            setFocus(to);
+            return;
+          }
+          const answer = keyboard.typeAhead(e, { focus, names: rows.map((p) => p.name) });
           if (answer?.to != null) setFocus(answer.to);
         }}
       />
@@ -163,7 +182,7 @@ Row colours — hover, focus, selection — are yours too: style the rows throug
 | `TableGrid` | The scrolling grid. It draws only the rows in view, and calls `renderRow(index, place)` for each. |
 | `TableHeader` | The header row: one sort button per column, a resize handle on each column's right border, and — given `move` — a drag that moves a column. |
 | `TableRow` | One row: one cell per column, from `cell(key)`. Spread `place.id`, `place.rowIndex` and `place.style` onto it. |
-| `useTableKeyboard` | Arrow keys, Home/End, Page Up/Down and type-ahead. You call its `step` from your own key handler, and its `end` when you move the row yourself. |
+| `useTableKeyboard` | Where a movement — up, down, first, last, a page — takes the row, and type-ahead. You bind the keys: call its `move` with the movement a key asks for, its `typeAhead` with a typed character, and its `end` when you move the row yourself. |
 | `TableGrid`'s `marquee` | A rectangle dragged over the rows, reporting which rows it touches. |
 
 **Rows must all be the same height.** The grid measures one drawn row and uses it for every row;
@@ -286,39 +305,50 @@ ascending order.
 ## Keyboard
 
 The grid is one tab stop. Pass the `link` from `useTableKeyboard({ windowMs })` to it as `keyboard`,
-and call `step(event, { focus, names })` from the grid's `onKeyDown` — `names` is each row's text in
-screen order, for type-ahead. `onKeyDown` hears only keys on the grid element itself, so a header's
-sort button and any control you put in a cell keep their own keys: ↓ there moves no row, and Space
-and Enter press the button. A `keydown` handler around the grid still hears every key, theirs too,
-so a key there is the rows' only when `event.target` is the grid.
+and handle keys in the grid's `onKeyDown`. `onKeyDown` hears only keys on the grid element itself,
+so a header's sort button and any control you put in a cell keep their own keys: ↓ there moves no
+row, and Space and Enter press the button. A `keydown` handler around the grid still hears every
+key, theirs too, so a key there is the rows' only when `event.target` is the grid.
+
+**Which key moves the row is yours.** The hook reads no key to move it; you map your keys, with
+whatever modifiers you choose, to a movement and pass that:
+
+- `move(movement, { focus, total })`, where `movement` is `'up'`, `'down'`, `'first'`, `'last'`,
+  `'pageUp'` or `'pageDown'` (`TableMovement`) and `total` the number of rows, answers the row it
+  lands on. Up and down step one row, a page is the rows in view (the grid writes that number into
+  `link`), first and last are the ends; it stops at the ends and never wraps, and from no `focus`
+  up, down, page up and page down land on the first row.
+  With no rows it answers `null`. A move ends any type-ahead query in progress. It takes no event,
+  so claiming the key (`preventDefault`) is yours.
+- `typeAhead(event, { focus, names })`, where `names` is each row's text in screen order, answers
+  `{ to }` for a printable key with no Ctrl, Meta or Alt: a row whose name starts with what was
+  typed, each key within `windowMs` of the last, case-insensitively, or `to: null` when none does.
+  A new query's letter, and the same letter pressed again, search after `focus`, wrapping round,
+  with the `focus` row checked last, so a letter only it matches stays on it; with no `focus` they
+  search from the top. Another letter narrows the query, searching from the `focus` row itself. A
+  space continues a query in progress. Any other key — Enter, a lone Space, an arrow — answers
+  `null`, not `{ to: null }`: it is not type-ahead's, and is yours to handle. On a hit, `typeAhead`
+  calls `preventDefault` on the event; a miss leaves the event alone and ends the query, so the
+  next letter starts a fresh one.
 
 `windowMs` is yours and has no default: how long, in ms, a query stays open after its last key. `0`
 keeps none open, so every letter starts a new query, and so does a negative or `NaN` window;
-`Infinity` lets no pause end one. `step` answers:
-
-- `{ by: 'move', to }` for ↑ ↓ Home End Page Up Page Down (a page is the rows in view);
-- `{ by: 'typeAhead', to }` for a printable key: a row whose name starts with what was typed, each
-  key within `windowMs` of the last, case-insensitively, or `to: null` when none does. A new query's
-  letter, and the same letter pressed again, search after `focus`, wrapping round, with the `focus`
-  row checked last, so a letter only it matches stays on it; with no `focus` they search from the
-  top. Another letter narrows the query, searching from the `focus` row itself. A space continues a
-  query in progress;
-- `null` for any other key — Enter, Space, ← → — which is yours to handle.
-
-On a move and on a type-ahead hit, `step` calls `preventDefault` on the event. A type-ahead miss
-ends the query, so the next letter starts a fresh one.
+`Infinity` lets no pause end one.
 
 When you move the row by other means — a click, a marquee, a list replaced by another folder's —
 call the hook's `end()`, so the next letter starts a fresh query instead of extending one typed
-against the old row or the old names. `end` is the same function for the hook's life, so an effect
-can depend on it. Calling it from `step`'s own answer would end every query after one letter.
+against the old row or the old names. Calling it from `typeAhead`'s own answer would end every
+query after one letter. `move`, `typeAhead` and `end` are each the same function for the hook's
+life, so an effect can depend on them and a consumer can register them once; a held `typeAhead`
+reads the `windowMs` and `now` (the clock, optional — see [Less common props](#less-common-props))
+of the latest render.
 
 `focus` is a row index or `null`, and keeping it pointed at the right row — after a filter, say — is
 yours. A `focus` that names no row — negative, past the end, fractional or `NaN` — is searched from
-the top by type-ahead, as `null` is. A movement key counts from an out-of-range index and clamps
-where it lands, so ↑ from past the end lands on the last row and ↓ from `-1` on the first; from a
+the top by type-ahead, as `null` is. A movement counts from an out-of-range index and clamps where
+it lands, so up from past the end lands on the last row and down from `-1` on the first; from a
 non-integer it moves as from `null`.
-Every `to` that `step` answers is a row index or `null`.
+Every row that `move` and `typeAhead` answer is a row index or `null`.
 
 What a move does — focus only, or select too — is yours: the table selects nothing. The grid
 scrolls the `focus` row into view whenever `focus` changes, and again when its height or the row
@@ -435,8 +465,8 @@ where a moved column will land, `data-table-moving` on the header cell of a colu
 - `aria-selected` on a row is yours to set. Pass `multiselectable` when several rows can be selected
   at once; it is off by default.
 - A `disabled` grid ignores the pointer and says `aria-disabled`, but stays focusable, so a screen
-  reader user can still find it. Whether keys do anything then is yours: don't act on `step`'s
-  answer while it is disabled.
+  reader user can still find it. Whether keys do anything then is yours: don't act on `move` or
+  `typeAhead` while it is disabled.
 
 ## Lists that are not a table
 
@@ -445,7 +475,7 @@ For a list with its own markup and movement — a sidebar, a tree:
 - `useTypeAhead({ windowMs })` is the table's type-ahead alone: call its
   `step(event, { focus, names })` from your key handler, and its `end()` whenever the list moves by
   other means. It answers `{ to }` by the same rules, and takes the same `windowMs` and `focus`, as
-  the grid's type-ahead above.
+  the grid's type-ahead above. `step` and `end` are each the same function for the hook's life.
 - `visibleRange({ scrollTop, viewportHeight, rowHeight, total, canvasTop })` is the window of rows to
   draw, and `scrollToReveal(index, { scrollTop, viewportHeight, rowHeight, canvasTop })` the
   `scrollTop` that brings a row into view, or `null` if it already is. Both take equal-height rows.
@@ -487,7 +517,7 @@ For a list with its own markup and movement — a sidebar, a tree:
   `RowPlace`, `TableHeaderProps`, `TableRowProps`, `TableRulerProps`.
 - **Moving**: type `ColumnMoveOptions`, `TableHeader`'s `move`.
 - **Marquee**: types `MarqueeOptions`, `MarqueeReport`, `MarqueePhase`, `MarqueeRange`.
-- **Hooks**: `useTableKeyboard` (types `TableKeyEvent`, `TableKeyStep`, `TableKeyboardLink`),
+- **Hooks**: `useTableKeyboard` (types `TableMovement`, `TableKeyEvent`, `TableKeyboardLink`),
   `useTypeAhead` (`TypeAheadAnswer`, `TypeAheadOptions`, the options of both hooks),
   `useColumnResize` (`ResizeDrag`), `useColumnAutoFit`.
 - **Windowing**: `visibleRange`, `scrollToReveal`, `BLOCK_ROWS`, `UNMEASURED_ROWS`; types

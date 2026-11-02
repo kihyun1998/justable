@@ -2,11 +2,12 @@
 
 ## What it is
 
-Where a key sends the keyboard's row: arrow, page and end keys, and type-ahead by name. The rules are
-pure functions in `tableKeyboard.ts`; `useTypeAhead` holds the type-ahead query and its clock;
-`useTableKeyboard`, built on it, claims the event when it moves the row, and exposes a `link` the grid writes its page size into. The
-consumer calls `step` from wherever it receives keys and decides what a move means, and `end` when it
-moves the row by other means.
+Where the keyboard's row goes: a movement — up, down, first, last, a page — and type-ahead by name.
+The rules are pure functions in `tableKeyboard.ts`; `useTypeAhead` holds the type-ahead query and
+its clock; `useTableKeyboard`, built on it, answers `move` and `typeAhead`, and exposes a `link` the
+grid writes its page size into. The consumer binds its own keys: it calls `move` with the movement a
+key asks for and `typeAhead` with a typed character, decides what a move means, and calls `end` when
+it moves the row by other means.
 
 ## Governing decisions
 
@@ -45,10 +46,30 @@ moves the row by other means.
   consumer's `setFocus` — ending each query after one letter. Chose both, and the example. The call
   did not cover the engine noticing a replaced list by itself (that would be policy here, against
   [mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md)),
-  nor `step`'s identity, which is still new each render. Theirs to reverse.
+  nor `step`'s identity, which #86 settled for every function the hooks return. Theirs to reverse.
 - **`step` is called from the grid's `onKeyDown`, which hears only the grid element's own keys** —
   the maintainer's call at triage, 2026-10-14, #68, recorded in [grid scaffold](grid-scaffold.md).
-  `step` itself was left unchanged: it still answers whatever key it is given.
+  `step` itself was left unchanged then; #86 removed it.
+- **The hook takes a movement, not a key; the key bindings are the consumer's** — the maintainer's
+  calls in triage, 2026-11-02, #86: eight questions in two rounds of the question tool, numbered
+  here as they were asked (the agent brief on #86 groups the same answers differently, and its
+  "a move ends the query" is #1's rule carried over, not a ninth call). (1) `move` lives on
+  `useTableKeyboard`, over re-exporting the pure function, because a move must end the query and
+  read `link` — #5's reason for making the pieces internal. (2) The movements are `up`, `down`,
+  `first`, `last`, `pageUp`, `pageDown`, exported as `TableMovement`; `move` answers a row or `null`
+  under the movement rules below, unchanged. (3) `step` is removed, over keeping it as a default
+  mapping on top: a key table is policy, and [mechanism here, policy in the
+  consumer](../invariant/mechanism-here-policy-in-the-consumer.md) allows only an identity default.
+  (4) `move` takes no event; claiming one is the consumer's. (5) Type-ahead stays key-driven, as
+  `typeAhead(event, { focus, names })`, since a typed character is input, not a binding; the
+  `TableKeyStep` union went with `step`. (6) `move(movement, { focus, total })` takes `total`, not
+  `names`. (7) The example binds today's keys minus Alt: Alt with a movement key does nothing.
+  (8) `move`, `typeAhead` and `useTypeAhead`'s `step` are each one function for the hook's life, as
+  `end` is. Shown: the issue's claim that a consumer could not rebind, corrected at triage — it could,
+  by handing `step` a synthetic `ArrowDown`, whose `preventDefault` then reached nothing; and that
+  modifiers were ignored by design ("Modifiers do not stop a movement key"), so this moves a choice
+  rather than fixing a bug. The calls did not cover a key-binding helper in the engine, nor PenTerm's
+  migration. Theirs to reverse.
 - **Earlier calls are recorded where they were written, in `## Design model`**: #1 (a movement key
   ends the query; Shift+Space inside a running query extends it) and #5 (a miss ends the query;
   type-ahead is its own hook).
@@ -60,26 +81,30 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
 - **A hook the consumer calls, not a key handler on the grid.** PenTerm's Explorer receives keys on
   its pane, which holds focus whenever the grid does not; a handler on the grid would leave arrows dead
   there (`penterm 7032eb5d0`). The grid's optional `onKeyDown` (#68) does not change that: it holds
-  no rule, only says which keys are the grid's own, and a consumer listening on a pane still calls
-  `step` from there — and then hears the header's and the cells' keys too, unless it checks that
-  the target is the grid. The grid writes `rowsPerPage` into the hook's `link`, so the consumer
+  no rule, only says which keys are the grid's own, and a consumer listening on a pane still binds
+  its keys there — and then hears the header's and the cells' keys too, unless it checks that the
+  target is the grid. The grid writes `rowsPerPage` into the hook's `link`, so the consumer
   never holds that number; `link` is one object for the hook's life so the grid can keep it.
-- **The answer is where the row goes; what that selects or opens is the consumer's.** `step` returns
-  `{ by: 'move', to }`, `{ by: 'typeAhead', to }`, or `null` for a key that is not the table's.
-- **Movement**: ↑/↓ one row, PageUp/PageDown a page, Home/End the ends. The first ↑, ↓, PageUp or
-  PageDown into an unwalked list (`focus === null`) lands on row 0 rather than nowhere. A page is at
-  least one row, because the viewport measures 0 before layout (`FALLBACK_PAGE`). Modifiers do not
-  stop a movement key — what Shift or Ctrl adds is the consumer's.
+- **The answer is where the row goes; what that selects or opens is the consumer's.** `move`
+  answers a row or `null`; `typeAhead` answers `{ to }`, or `null` for a key that is not type-ahead.
+- **The hook reads no key to move the row (#86).** Which key, with which modifiers, asks for which
+  movement is the consumer's, and so is claiming that key's event: `move` takes no event. A movement
+  arrives as a name, so a consumer that rebinds keys, or lists them for its users, has no key
+  working that it did not bind. A name outside `TableMovement`, which a keymap read at run time can
+  hold, goes nowhere (`null`) and leaves a running query alone.
+- **Movement**: up/down one row, a page the rows in view, first/last the ends. The first up, down or
+  page into an unwalked list (`focus === null`) lands on row 0 rather than nowhere. A page is at
+  least one row, because the viewport measures 0 before layout (`FALLBACK_PAGE`).
 - **Movement clamps at the ends and never wraps**, unlike type-ahead's search: a held key at the
   bottom would silently return to the top and carry an extending selection with it. An empty list
-  answers `null` for every key — the container is focusable, and keys arrive before anything has
-  loaded.
-- **←/→ do nothing, out loud.** `grid`'s APG pattern is cell-first, but no cell here is actionable on
-  its own; `grid` was chosen only because `aria-sort` exists nowhere else
+  answers `null` for every movement — the container is focusable, and keys arrive before anything
+  has loaded.
+- **There is no left or right movement, out loud.** `grid`'s APG pattern is cell-first, but no cell
+  here is actionable on its own; `grid` was chosen only because `aria-sort` exists nowhere else
   ([grid scaffold](grid-scaffold.md)), and declining the arrows is the bill that choice left.
-  `nextFocusIndex` answers `null` for both, with a test naming why.
-- **An event is claimed only when the row moves** (`preventDefault`). A type-ahead key that matches
-  nothing is answered `to: null` — distinct from a key never the table's — and its event is left
+  `TableMovement` has no member for either, with a type-level test naming why.
+- **Type-ahead claims an event only on a hit** (`preventDefault`). A type-ahead key that matches
+  nothing is answered `to: null` — distinct from a key never type-ahead's — and its event is left
   alone.
 - **Type-ahead is one printable character with no Ctrl, Meta or Alt**, so chords are never eaten
   (Shift is allowed; named keys are all longer than one character).
@@ -136,7 +161,7 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   (#55): measured in PenTerm's 탐색기 on 0.3.0 with `windowMs` 700, `d` into the folder `docs`,
   Enter, then `b` at once searched `db` in `a.md` … `d.md` and matched nothing; after 800 ms it
   landed on `b.md`. `end` is held in a ref, as `link` is, so its identity outlives renders. The
-  example calls it on a row's click and at a marquee's end, never from `step`'s answer, which would
+  example calls it on a row's click and at a marquee's end, never from `typeAhead`'s answer, which would
   end every query after one letter. react-aria also keeps type-ahead as a separate hook reused
   across collections, and keeps it off its public surface; here it is public because a consumer's
   tree needs it. The pure pieces (`typeAheadStep`, `typeAheadIndex`, `nextFocusIndex`,
@@ -151,15 +176,15 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   [row windowing](row-windowing.md)). `Infinity` needs no case: every finite pause is within it, so
   a query ends only on a miss, a move or `end()`.
 - **A `focus` names a row when it is an integer with `0 ≤ focus < names.length`** (#30). Every
-  `to` that `step` answers is such a row or `null`. Type-ahead takes any other `focus` as `null`
+  row that `move` and `typeAhead` answer is such a row or `null`. Type-ahead takes any other `focus` as `null`
   (`rowOrNull`, where `useTypeAhead.step` receives it), so a stale index searches from the top and
   never relative to a row that does not exist. Movement differs on purpose: `nextFocusIndex` counts
-  from an out-of-range integer and clamps where it lands, so in four rows ↑ from `9` lands on 3
-  (`clamp(8)`, not one above the last row) and ↓ from `-1` on 0 (`clamp(0)`, not one below the
+  from an out-of-range integer and clamps where it lands, so in four rows up from `9` lands on 3
+  (`clamp(8)`, not one above the last row) and down from `-1` on 0 (`clamp(0)`, not one below the
   first), and takes only a non-integer as `null`, since clamping cannot make `1.5` a row. #30's
-  brief worded the clamp as "as if from the nearest end"; its pinned values (↑ from `9` → 3) are the
+  brief worded the clamp as "as if from the nearest end"; its pinned values (up from `9` → 3) are the
   count-then-clamp ones, and that is what the code did before #30 and still does.
-  So `useTableKeyboard` hands the same `focus` to both paths and each applies its own rule.
+  So a consumer hands the same `focus` to `move` and `typeAhead` and each applies its own rule.
 - **The check sits on `focus`, not on the search's `from`.** `typeAheadIndex` takes a `from` of
   `-1` on purpose: narrowing searches from the row itself by passing `focus − 1`, which is `-1` from
   row 0. A rule rejecting every negative `from` would break that. Before #30, a `focus` of `-1`
@@ -172,12 +197,19 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   value that names nothing as absent, but they share no source and no code, and the other rows of
   that note (`rowsPerPage` 0) stay where they are.
 - **The clock is injectable** (`now`), which is how the tests cross the window.
+- **A held function reads the latest render** (#86). `move`, `typeAhead`, `end` and `useTypeAhead`'s
+  `step` are each made once, in a ref, so a consumer can register one and keep it. `move` closes
+  over `link` and `end`, both one object for the hook's life; `step` reads `windowMs` and `now`
+  through a ref the hook overwrites on every render, as `useMarquee` does its options. The trap is
+  a closure over the first render's options: a consumer that changes `windowMs` would keep the old
+  window with no error. Two tests pin it, one varying only the window and one only the clock,
+  because a test varying both passes with either one stale.
 
 ## Code
 
 - `src/hooks/useTypeAhead.ts` — `useTypeAhead`, `TypeAheadAnswer`, `TypeAheadOptions`
-- `src/lib/tableKeyboard.ts` — `nextFocusIndex`, `typeAheadIndex`, `typeAheadStep`, `rowOrNull`, `FALLBACK_PAGE`, `FocusMoveInput`, `TypeAheadStep`, `TableKeyEvent`
-- `src/hooks/useTableKeyboard.ts` — `useTableKeyboard`, `TableKeyboardLink`, `TableKeyStep`
+- `src/lib/tableKeyboard.ts` — `TableMovement`, `nextFocusIndex`, `typeAheadIndex`, `typeAheadStep`, `rowOrNull`, `FALLBACK_PAGE`, `FocusMoveInput`, `TypeAheadStep`, `TableKeyEvent`
+- `src/hooks/useTableKeyboard.ts` — `useTableKeyboard`, `TableKeyboardLink`
 
 ## Reference behaviour
 
@@ -214,17 +246,21 @@ unchecked.
 - [Zero is no measurement](../invariant/zero-is-no-measurement.md) — `rowsPerPage` 0 is read as
   "unmeasured" and pages by `FALLBACK_PAGE`.
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
-  the hook answers where; selection, opening, a lone Space, every modifier's meaning and the
-  type-ahead window are the consumer's.
+  the hook answers where; the key bindings, selection, opening, a lone Space, every modifier's
+  meaning and the type-ahead window are the consumer's.
 
 ## Blast radius
 
 - [Grid scaffold](grid-scaffold.md) — the consumer feeds the answer back as the grid's `focus`,
-  which drives `aria-activedescendant`; the grid's `onKeyDown` decides which keys reach `step`.
+  which drives `aria-activedescendant`; the grid's `onKeyDown` decides which keys reach the
+  consumer's bindings.
 - [Row windowing](row-windowing.md) — writes `rowsPerPage`, and reveals the row a move lands on.
 - [Verification gates](verification-gates.md) — `check:example` types through a space, moves, and
   clicks a row between two letters, so `end()` on the example's click is held in Chrome.
 
 ## Known holes / open
 
-**None.**
+- **What a browser does with a movement key the consumer leaves unbound is not measured.** The
+  example binds no movement with Alt held (#86), so Alt+Home, Alt+End and the rest reach the
+  browser; whether Chrome then acts on one was not checked. Puppeteer's keys reach the page through CDP and never the browser's own shortcuts, the
+  same blind spot as Alt+← in [column resize](column-resize.md).

@@ -6,68 +6,81 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { nextFocusIndex, typeAheadIndex, typeAheadStep } from './tableKeyboard.js';
+import {
+  type TableMovement,
+  nextFocusIndex,
+  typeAheadIndex,
+  typeAheadStep,
+} from './tableKeyboard.js';
 
 const ROWS_PER_PAGE = 7;
 
-const move = (key: string, focus: number | null, total = 10) =>
-  nextFocusIndex({ key, focus, total, rowsPerPage: ROWS_PER_PAGE });
+const MOVEMENTS: readonly TableMovement[] = ['up', 'down', 'first', 'last', 'pageUp', 'pageDown'];
+
+const move = (movement: TableMovement, focus: number | null, total = 10) =>
+  nextFocusIndex({ movement, focus, total, rowsPerPage: ROWS_PER_PAGE });
 
 describe('nextFocusIndex', () => {
   it('down and up step one row', () => {
-    expect(move('ArrowDown', 3)).toBe(4);
-    expect(move('ArrowUp', 3)).toBe(2);
+    expect(move('down', 3)).toBe(4);
+    expect(move('up', 3)).toBe(2);
   });
 
   it('stops at both ends rather than wrapping', () => {
     // Never wrapping is deliberate: `docs/map/territory/keyboard-movement.md`.
-    expect(move('ArrowDown', 9)).toBe(9);
-    expect(move('ArrowUp', 0)).toBe(0);
+    expect(move('down', 9)).toBe(9);
+    expect(move('up', 0)).toBe(0);
   });
 
-  it('the first arrow lands on the first row when nothing is focused', () => {
-    expect(move('ArrowDown', null)).toBe(0);
-    expect(move('ArrowUp', null)).toBe(0);
+  it('the first up or down lands on the first row when nothing is focused', () => {
+    expect(move('down', null)).toBe(0);
+    expect(move('up', null)).toBe(0);
   });
 
-  it('Home and End go to the ends, whatever is focused', () => {
-    expect(move('Home', 4)).toBe(0);
-    expect(move('End', 4)).toBe(9);
-    expect(move('End', null)).toBe(9);
+  it('first and last go to the ends, whatever is focused', () => {
+    expect(move('first', 4)).toBe(0);
+    expect(move('last', 4)).toBe(9);
+    expect(move('last', null)).toBe(9);
   });
 
   it('a page is a viewport, and it clamps', () => {
-    expect(move('PageDown', 0)).toBe(ROWS_PER_PAGE);
-    expect(move('PageUp', 9)).toBe(9 - ROWS_PER_PAGE);
-    expect(move('PageDown', 8)).toBe(9);
-    expect(move('PageUp', 1)).toBe(0);
+    expect(move('pageDown', 0)).toBe(ROWS_PER_PAGE);
+    expect(move('pageUp', 9)).toBe(9 - ROWS_PER_PAGE);
+    expect(move('pageDown', 8)).toBe(9);
+    expect(move('pageUp', 1)).toBe(0);
   });
 
   /**
-   * ⚠️ **←/→ are declined, and this case pins it.** The table is `role="grid"`, whose APG pattern
-   * is cell-first; why it declines: `docs/map/territory/keyboard-movement.md`.
+   * ⚠️ **Left and right are not movements, and this case pins it.** The table is `role="grid"`,
+   * whose APG pattern is cell-first; why it declines: `docs/map/territory/keyboard-movement.md`.
    *
    * Declining is a decision, so it is pinned here rather than left as an absence. If left/right are
    * ever given a meaning, this case is where the argument has to be made.
    */
-  it('left and right do nothing — cells are not the unit here', () => {
-    expect(move('ArrowLeft', 4)).toBeNull();
-    expect(move('ArrowRight', 4)).toBeNull();
+  it('left and right are not movements — cells are not the unit here', () => {
+    // Never called: `pnpm typecheck` is what runs these lines.
+    const unwritten = () => {
+      // @ts-expect-error: no movement goes left.
+      move('left', 4);
+      // @ts-expect-error: no movement goes right.
+      move('right', 4);
+    };
+    expect(unwritten).toBeTypeOf('function');
   });
 
-  it('keys it does not know are not its business', () => {
-    for (const key of ['a', 'Enter', ' ', 'Escape', 'Tab', 'F2']) {
-      expect(move(key, 4), key).toBeNull();
+  it('a name that is not a movement goes nowhere, as from a keymap read at run time', () => {
+    for (const name of ['left', 'ArrowDown', '']) {
+      expect(move(name as TableMovement, 4), name).toBeNull();
     }
   });
 
   /**
-   * An empty list still receives key presses. Every movement has to answer "nowhere".
+   * An empty list still receives movements. Every movement has to answer "nowhere".
    */
   it('an empty folder has nowhere to go', () => {
-    for (const key of ['ArrowDown', 'ArrowUp', 'Home', 'End', 'PageDown', 'PageUp']) {
-      expect(move(key, null, 0), key).toBeNull();
-      expect(move(key, 0, 0), key).toBeNull();
+    for (const movement of MOVEMENTS) {
+      expect(move(movement, null, 0), movement).toBeNull();
+      expect(move(movement, 0, 0), movement).toBeNull();
     }
   });
 
@@ -76,21 +89,21 @@ describe('nextFocusIndex', () => {
    * `docs/map/invariant/zero-is-no-measurement.md`.
    */
   it('a page never measures as zero movement', () => {
-    expect(nextFocusIndex({ key: 'PageDown', focus: 0, total: 10, rowsPerPage: 0 })).toBe(1);
-    expect(nextFocusIndex({ key: 'PageUp', focus: 5, total: 10, rowsPerPage: 0 })).toBe(4);
+    expect(nextFocusIndex({ movement: 'pageDown', focus: 0, total: 10, rowsPerPage: 0 })).toBe(1);
+    expect(nextFocusIndex({ movement: 'pageUp', focus: 5, total: 10, rowsPerPage: 0 })).toBe(4);
   });
 
   it('an integer focus outside the list moves as if from the nearest end', () => {
-    expect(move('ArrowUp', 9, 4)).toBe(3);
-    expect(move('PageDown', 9, 4)).toBe(3);
-    expect(move('ArrowDown', -1, 4)).toBe(0);
+    expect(move('up', 9, 4)).toBe(3);
+    expect(move('pageDown', 9, 4)).toBe(3);
+    expect(move('down', -1, 4)).toBe(0);
   });
 
   /** ⚠️ Clamping cannot turn 1.5 into a row, so a non-integer `focus` is no focus at all. */
   it('a non-integer focus moves as no focus does', () => {
     for (const focus of [1.5, Number.NaN]) {
-      for (const key of ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End']) {
-        expect(move(key, focus, 4), `${key} from ${focus}`).toBe(move(key, null, 4));
+      for (const movement of MOVEMENTS) {
+        expect(move(movement, focus, 4), `${movement} from ${focus}`).toBe(move(movement, null, 4));
       }
     }
   });

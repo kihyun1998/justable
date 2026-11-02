@@ -233,3 +233,39 @@ describe('a focus that names no row', () => {
     expect(typed(['c'], 9)).toEqual([1]);
   });
 });
+
+describe('step', () => {
+  it('is one function for the hook’s life, so a consumer can register it once', () => {
+    const { result, rerender } = renderHook(() => useTypeAhead({ windowMs: WINDOW }));
+    const first = result.current.step;
+    rerender();
+    expect(result.current.step).toBe(first);
+  });
+
+  it('⚠️ held across renders, it reads the window of the latest render', () => {
+    let clock = 1_000;
+    const { result, rerender } = renderHook(
+      ({ windowMs, now }: { windowMs: number; now: () => number }) => useTypeAhead({ windowMs, now }),
+      { initialProps: { windowMs: 0, now: () => 0 } },
+    );
+    const held = result.current.step;
+    rerender({ windowMs: WINDOW, now: () => clock });
+    expect(held(key('c'), { focus: null, names: NAMES })).toEqual({ to: 2 });
+    clock += WINDOW - 1;
+    // Inside the new window "ci" narrows to citrus; under the first window (0) "i" would miss.
+    expect(held(key('i'), { focus: 2, names: NAMES })).toEqual({ to: 3 });
+  });
+  it('⚠️ held across renders, it reads the clock of the latest render', () => {
+    let clock = 1_000;
+    const { result, rerender } = renderHook(
+      ({ now }: { now: () => number }) => useTypeAhead({ windowMs: WINDOW, now }),
+      { initialProps: { now: () => 0 } },
+    );
+    const held = result.current.step;
+    rerender({ now: () => clock });
+    expect(held(key('c'), { focus: null, names: NAMES })).toEqual({ to: 2 });
+    clock += WINDOW + 1;
+    // Past the window on the new clock "d" starts fresh at date; on the first clock it would be "cd".
+    expect(held(key('d'), { focus: 2, names: NAMES })).toEqual({ to: 4 });
+  });
+});

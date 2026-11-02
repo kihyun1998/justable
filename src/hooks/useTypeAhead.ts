@@ -28,41 +28,50 @@ export interface TypeAheadOptions {
  */
 export function useTypeAhead({ windowMs, now = Date.now }: TypeAheadOptions) {
   const state = useRef({ query: '', at: 0 });
+  /** The latest render's window and clock, which `step` reads. */
+  const latest = useRef({ windowMs, now });
+  latest.current = { windowMs, now };
 
   /** Ends any running query. One function for the hook's life. */
   const end = useRef(() => {
     state.current = { query: '', at: 0 };
   }).current;
 
-  /** Answers a type-ahead key and claims the event on a hit; `null` for a key that is not one. */
-  const step = (
-    event: TableKeyEvent,
-    { focus: given, names }: { focus: number | null; names: readonly string[] },
-  ): TypeAheadAnswer | null => {
-    // A `focus` that names no row is searched as none: `docs/map/territory/keyboard-movement.md`.
-    const focus = rowOrNull(given, names.length);
-    const at = now();
-    // A window not above 0 keeps no query open: `docs/map/territory/keyboard-movement.md`.
-    const running =
-      state.current.query !== '' && windowMs > 0 && at - state.current.at <= windowMs;
-    // One printable character without a chord modifier. A space only extends a running query.
-    if (
-      event.key.length !== 1 ||
-      (event.key === ' ' && !running) ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.altKey
-    ) {
-      return null;
-    }
-    const { query, after } = typeAheadStep(state.current.query, event.key, !running);
-    // A fresh letter and a walk search after the row, narrowing from the row itself.
-    const hit = typeAheadIndex(query, names, after ? focus : focus === null ? null : focus - 1);
-    // A miss ends the query: `docs/map/territory/keyboard-movement.md`.
-    state.current = hit === null ? { query: '', at: 0 } : { query, at };
-    if (hit !== null) event.preventDefault();
-    return { to: hit };
-  };
+  /**
+   * Answers a type-ahead key and claims the event on a hit; `null` for a key that is not one. One
+   * function for the hook's life.
+   */
+  const step = useRef(
+    (
+      event: TableKeyEvent,
+      { focus: given, names }: { focus: number | null; names: readonly string[] },
+    ): TypeAheadAnswer | null => {
+      const { windowMs, now } = latest.current;
+      // A `focus` that names no row is searched as none: `docs/map/territory/keyboard-movement.md`.
+      const focus = rowOrNull(given, names.length);
+      const at = now();
+      // A window not above 0 keeps no query open: `docs/map/territory/keyboard-movement.md`.
+      const running =
+        state.current.query !== '' && windowMs > 0 && at - state.current.at <= windowMs;
+      // One printable character without a chord modifier. A space only extends a running query.
+      if (
+        event.key.length !== 1 ||
+        (event.key === ' ' && !running) ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey
+      ) {
+        return null;
+      }
+      const { query, after } = typeAheadStep(state.current.query, event.key, !running);
+      // A fresh letter and a walk search after the row, narrowing from the row itself.
+      const hit = typeAheadIndex(query, names, after ? focus : focus === null ? null : focus - 1);
+      // A miss ends the query: `docs/map/territory/keyboard-movement.md`.
+      state.current = hit === null ? { query: '', at: 0 } : { query, at };
+      if (hit !== null) event.preventDefault();
+      return { to: hit };
+    },
+  ).current;
 
   return { step, end };
 }

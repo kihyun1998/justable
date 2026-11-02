@@ -24,7 +24,7 @@ view from one measured row ([row windowing](territory/row-windowing.md)) under a
 [header row](territory/header-row.md) is a sort button per column, with a border
 [column resize](territory/column-resize.md), a [column move](territory/column-move.md) drag and an
 [auto-fit](territory/auto-fit.md) on its handles; [table row](territory/table-row.md)s draw one cell
-per column. [Keyboard movement](territory/keyboard-movement.md) and type-ahead answer where a key
+per column. [Keyboard movement](territory/keyboard-movement.md) and type-ahead answer where a movement or a typed character
 goes; the [marquee](territory/marquee.md) answers which rows a rectangle touches; all three drags run
 on one [drag lifetime](territory/drag-lifetime.md). Colour comes only through
 [`--table-*` variables](territory/colour-variables.md), and every class through a
@@ -73,13 +73,13 @@ Commands, not numbers: a number stored here competes with the tree that produces
 
 ```sh
 rg -c '^export|^  [A-Za-z]' src/index.ts          # the public surface, by export line
-ls docs/adr GLOSSARY.md 2>/dev/null                 # records governing it (none, 2026-10-22)
+ls docs/adr GLOSSARY.md 2>/dev/null                 # records governing it (GLOSSARY.md since #86)
 rg -n 'docs/map/[A-Za-z/.-]+\.md' src example       # source comments citing a note by path
 gh issue list --state open                         # the open backlog
 ```
 
-- **Every public promise is ungoverned by a record in the repo.** There is no `docs/adr/` and no
-  `GLOSSARY.md` (re-checked 2026-10-22). The maintainer's calls are recorded in the notes they
+- **Every public promise is ungoverned by a record in the repo.** There is no `docs/adr/`
+  (re-checked 2026-10-22); `GLOSSARY.md`, since #86, defines terms and decides nothing. The maintainer's calls are recorded in the notes they
   govern, from #8 on, each with what was shown; `.out-of-scope/` holds the two declined requests
   (#34, #67) with their reasons. Which notes still hold no decision is the sentinel query under
   Conventions, not a list here.
