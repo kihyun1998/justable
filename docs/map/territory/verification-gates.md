@@ -121,8 +121,9 @@ be run by hand.
   widths, which it must since the name column was dragged 100 px wider just before, and then that a
   double-click on every border changes none of them — the sort
   button free of browser button styles, windowing, the sort cycle, type-ahead through a space, Space
-  after a move, a click ending the type-ahead query, the theme through the colour variables, and a
-  border held past the scroller's right edge scrolling the grid while the column keeps pace, and a
+  after a move, a click ending the type-ahead query in the file table and in the folder list, the
+  theme through the colour variables, and a border held past the scroller's right edge scrolling
+  the grid while the column keeps pace, and a
   header column move — unscaled and inside `scale(0.5)`, a press under the threshold still sorting,
   the landing line on the border it lands at with no text selected, a drop onto the pinned first
   column landing after it, and the header and rows reordered together (#61); and a column moved from
@@ -138,7 +139,15 @@ be run by hand.
   `Cherry.png`, then clicks `new folder` and types "i": it lands on an `invoice-` row, where a query
   left running narrows "ci" to `citrus.csv` — proven failing by removing the example's `end()` on a
   click (#55). It also asserts that "c" to "i" took under the example's 700 ms window, since a run
-  slow enough to let the query expire would pass with `end()` removed. The first marquee check on
+  slow enough to let the query expire would pass with `end()` removed. The folder list, which has
+  movement of its own, gets two checks (#88): "n" then "o" narrows to `notes`, and after ArrowDown,
+  "n" (landing on `new folder`), a click on `#folder-2` and "o" within the window, the cursor stays on
+  the clicked folder, since no folder starts with "o". The click check asserts the clicked folder is
+  not `new folder`, where the cursor already is, so the click moves it; and not `notes`, where a
+  query left running and a fresh one would land alike. It also asserts the status reads
+  `type-ahead: no match`, so the "o" reached the list: with focus gone, it would pass either way.
+  Proven failing: removing the folder list's `end()` on a click fails the second; moving it into
+  the shared move helper, which a type-ahead hit also calls, fails the first. The first marquee check on
   its fresh page also reads the grid's `:focus-visible` after that page's first press: false, and
   true with `focusVisible: false` removed from `useMarquee` (#58). The edge-scroll checks run on a 700 px page, so the table
   overflows before the name column reaches its maximum; they first assert that the grid scrolled, and

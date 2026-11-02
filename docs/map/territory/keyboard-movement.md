@@ -256,7 +256,8 @@ unchecked.
   consumer's bindings.
 - [Row windowing](row-windowing.md) — writes `rowsPerPage`, and reveals the row a move lands on.
 - [Verification gates](verification-gates.md) — `check:example` types through a space, moves, and
-  clicks a row between two letters, so `end()` on the example's click is held in Chrome.
+  clicks a row between two letters in the file table and in the folder list, so `end()` on each
+  of the example's clicks is held in Chrome.
 
 ## Known holes / open
 

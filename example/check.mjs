@@ -207,6 +207,41 @@ try {
     { onC, afterClick, elapsed },
   );
 
+  // The folder list has movement of its own, so it ends the query itself. Without a click, "n" lands
+  // on "new folder" and "o" narrows to "notes"; "o" alone matches no folder.
+  const folderCursor = () =>
+    page.evaluate(() => {
+      const id = document.querySelector('[role="listbox"]').getAttribute('aria-activedescendant');
+      return (id && document.getElementById(id)?.textContent) || null;
+    });
+  await page.focus('[role="listbox"]');
+  await page.keyboard.type('no', { delay: 40 });
+  const onNo = await folderCursor();
+  check('in the folder list, "n" then "o" narrows to "notes"', onNo?.includes('notes') === true, onNo);
+
+  // After ArrowDown, "n" starts a fresh query and wraps to "new folder"; a click on the third folder
+  // ends it, so "o" matches nothing and the cursor stays there.
+  await page.keyboard.press('ArrowDown');
+  const folderTypedAt = Date.now();
+  await page.keyboard.type('n');
+  const onN = await folderCursor();
+  const clickedName = await page.$eval('#folder-2', (o) => o.textContent);
+  await page.click('#folder-2');
+  await page.keyboard.type('o');
+  const folderElapsed = Date.now() - folderTypedAt;
+  const afterFolderClick = await folderCursor();
+  const folderStatus = await page.$eval('.status', (s) => s.textContent);
+  check(
+    'in the folder list, a click ends the type-ahead query, so the next letter starts a new one',
+    folderElapsed < 700 &&
+      onN?.includes('new folder') === true &&
+      !clickedName.includes('new folder') &&
+      !clickedName.includes('notes') &&
+      afterFolderClick === clickedName &&
+      folderStatus === 'type-ahead: no match',
+    { onN, clickedName, afterFolderClick, folderStatus, folderElapsed },
+  );
+
   const kind = await page.$('[data-table-resize="kind"]');
   const kb = await kind.boundingBox();
   await page.mouse.click(kb.x + kb.width / 2, kb.y + kb.height / 2, { clickCount: 2 });
