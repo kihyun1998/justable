@@ -59,10 +59,12 @@ const MOVES: Partial<Record<string, TableMovement>> = {
 export function People({ people }: { people: readonly Person[] }) {
   const [layout, setLayout] = useState<ColumnLayout<Key>>({ widths: {}, hidden: [] });
   const [sort, setSort] = useState<TableSort<Key>>();
-  const [focus, setFocus] = useState<number | null>(null);
+  const [focused, setFocused] = useState<string | null>(null);
   const keyboard = useTableKeyboard({ windowMs: 700 });
 
   const rows = useMemo(() => model.sortRows(people, sort), [people, sort]);
+  const index = rows.findIndex((p) => p.name === focused);
+  const focus = index === -1 ? null : index;
   const columns = model.visibleColumns(layout);
   const gridStyle = { gridTemplateColumns: model.gridTemplate(layout) };
 
@@ -96,7 +98,10 @@ export function People({ people }: { people: readonly Person[] }) {
             columns={columns}
             gridStyle={gridStyle}
             className={place.focused ? 'row-focused' : undefined}
-            onClick={() => setFocus(i)}
+            onClick={() => {
+              keyboard.end();
+              setFocused(rows[i]!.name);
+            }}
             cell={(key) => (key === 'name' ? rows[i]!.name : rows[i]!.age)}
           />
         )}
@@ -111,11 +116,11 @@ export function People({ people }: { people: readonly Person[] }) {
             const to = keyboard.move(movement, { focus, total: rows.length });
             if (to === null) return;
             e.preventDefault();
-            setFocus(to);
+            setFocused(rows[to]!.name);
             return;
           }
           const answer = keyboard.typeAhead(e, { focus, names: rows.map((p) => p.name) });
-          if (answer?.to != null) setFocus(answer.to);
+          if (answer?.to != null) setFocused(rows[answer.to]!.name);
         }}
       />
     </div>

@@ -98,10 +98,12 @@ const MOVES: Partial<Record<string, TableMovement>> = {
 export function People({ people }: { people: readonly Person[] }) {
   const [layout, setLayout] = useState<ColumnLayout<Key>>({ widths: {}, hidden: [] });
   const [sort, setSort] = useState<TableSort<Key>>();
-  const [focus, setFocus] = useState<number | null>(null);
+  const [focused, setFocused] = useState<string | null>(null);
   const keyboard = useTableKeyboard({ windowMs: 700 });
 
   const rows = useMemo(() => model.sortRows(people, sort), [people, sort]);
+  const index = rows.findIndex((p) => p.name === focused);
+  const focus = index === -1 ? null : index;
   const columns = model.visibleColumns(layout);
   const gridStyle = { gridTemplateColumns: model.gridTemplate(layout) };
 
@@ -135,7 +137,10 @@ export function People({ people }: { people: readonly Person[] }) {
             columns={columns}
             gridStyle={gridStyle}
             className={place.focused ? 'row-focused' : undefined}
-            onClick={() => setFocus(i)}
+            onClick={() => {
+              keyboard.end();
+              setFocused(rows[i]!.name);
+            }}
             cell={(key) => (key === 'name' ? rows[i]!.name : rows[i]!.age)}
           />
         )}
@@ -150,11 +155,11 @@ export function People({ people }: { people: readonly Person[] }) {
             const to = keyboard.move(movement, { focus, total: rows.length });
             if (to === null) return;
             e.preventDefault();
-            setFocus(to);
+            setFocused(rows[to]!.name);
             return;
           }
           const answer = keyboard.typeAhead(e, { focus, names: rows.map((p) => p.name) });
-          if (answer?.to != null) setFocus(answer.to);
+          if (answer?.to != null) setFocused(rows[answer.to]!.name);
         }}
       />
     </div>
@@ -164,9 +169,9 @@ export function People({ people }: { people: readonly Person[] }) {
 
 Three things to notice:
 
-- **The state is yours.** `layout` (widths and hidden columns), `sort` and `focus` live in your
-  component; the table reports what the user did and you decide what changes. Persist `layout` if
-  you want widths to survive a reload.
+- **The state is yours.** `layout` (widths and hidden columns), `sort` and the keyboard row
+  (`focused`, held by name) live in your component; the table reports what the user did and you
+  decide what changes. Persist `layout` if you want widths to survive a reload.
 - **Header and rows share one `gridStyle`.** It is the column template from `model.gridTemplate`;
   pass the same one to `TableHeader` and every `TableRow`, and the columns line up.
 - **Give the grid a height.** `fill` makes it take the rest of a flex column; without a bounded

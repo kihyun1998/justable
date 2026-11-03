@@ -5,11 +5,14 @@
 import fs from 'node:fs';
 
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { People } from './QuickStart.js';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const read = (file: string) =>
   fs.readFileSync(new URL(file, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -52,5 +55,47 @@ describe('the README quick start', () => {
       fireEvent.keyDown(grid, { key: 'ArrowDown' });
     });
     expect(grid.getAttribute('aria-activedescendant')).toBe('people-row-0');
+  });
+
+  /** The name in the keyboard row, read through the grid's `aria-activedescendant`. */
+  const keyboardRow = (grid: HTMLElement) => {
+    const id = grid.getAttribute('aria-activedescendant');
+    return id ? document.getElementById(id)!.querySelector('[role="gridcell"]')!.textContent : null;
+  };
+
+  it('keeps the keyboard row on the same person across a sort', () => {
+    const { container } = render(<People people={PEOPLE} />);
+    const grid = container.querySelector('[role="grid"]') as HTMLElement;
+    act(() => {
+      fireEvent.keyDown(grid, { key: 'ArrowDown' });
+    });
+    expect(keyboardRow(grid)).toBe('Ada');
+
+    fireEvent.click(grid.querySelectorAll('[role="columnheader"] button')[1]!);
+    expect(grid.getAttribute('aria-activedescendant')).toBe('people-row-2');
+    expect(keyboardRow(grid)).toBe('Ada');
+  });
+
+  it('ends the type-ahead query on a row click, so the next letter starts a new one', () => {
+    let at = 1_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => at);
+    const { container } = render(<People people={PEOPLE} />);
+    const grid = container.querySelector('[role="grid"]') as HTMLElement;
+    act(() => {
+      fireEvent.keyDown(grid, { key: 'g' });
+    });
+    expect(keyboardRow(grid)).toBe('Grace');
+
+    at += 100;
+    const ada = [...grid.querySelectorAll('[role="row"]')].find((r) => r.textContent?.includes('Ada'))!;
+    fireEvent.click(ada);
+    expect(keyboardRow(grid)).toBe('Ada');
+
+    // Inside the 700 ms window.
+    at += 100;
+    act(() => {
+      fireEvent.keyDown(grid, { key: 'a' });
+    });
+    expect(keyboardRow(grid)).toBe('Alan');
   });
 });
