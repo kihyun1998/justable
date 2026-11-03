@@ -129,8 +129,9 @@ be run by hand.
   column landing after it, and the header and rows reordered together (#61); and a column moved from
   the keyboard — Shift+→ twice and Shift+← once, focus still on its button, and a step past the
   pinned first column refused and said (#63); and keys on a header button staying the button's —
-  ↓ moving no row, `n e w` Space sorting, and Space sorting with a row focused (#68). It **exits 1
-  when no browser is found**, since a run that inspected nothing is not a pass. Proven failing:
+  ↓ moving no row, `n e w` Space sorting, and Space sorting with a row focused, the row left on
+  its file (#68, #89). It **exits 1 when no browser is found**, since a run that inspected nothing
+  is not a pass. Proven failing:
   removing the button reset, dropping a placed row's `right: 0`, and refusing the space mid-query
   each fail it; so does drawing the move's landing line from screen boxes rather than `offsetLeft`,
   inside `scale(0.5)`; so does putting the example's row key handler back around the grid, which
@@ -147,8 +148,22 @@ be run by hand.
   query left running and a fresh one would land alike. It also asserts the status reads
   `type-ahead: no match`, so the "o" reached the list: with focus gone, it would pass either way.
   Proven failing: removing the folder list's `end()` on a click fails the second; moving it into
-  the shared move helper, which a type-ahead hit also calls, fails the first. The first marquee check on
-  its fresh page also reads the grid's `:focus-visible` after that page's first press: false, and
+  the shared move helper, which a type-ahead hit also calls, fails the first. A sort gets three
+  checks (#89): "c", a sort and "i" within the window lands on `citrus.csv`, the only name starting
+  "ci", as without the sort, with the Name column's `aria-sort` changed by the click; the next sort
+  leaves the keyboard row on `citrus.csv` at another `aria-rowindex`; and Shift+↓ then selects
+  exactly `citrus.csv` and the row after it. Each reads after two animation frames, since the
+  focused row is drawn only once the grid has scrolled to it; the #68 Space check waits the same,
+  since a sort now moves its row's index too. The checks end by clicking Name until its `aria-sort`
+  is gone and pressing Home, for the checks after them. Proven failing: dropping the re-pointing
+  fails the last two and the #68 Space check, which compares the row's file rather than its index;
+  re-pointing `focus` alone fails the anchor check; an `end()` in the sort fails the first, landing
+  on `invoice-0019.png` inside the window; and the first check without its sort click fails on
+  `aria-sort` alone. "c" to "i" mostly took 220–550 ms, but a sort of 5,000 rows sometimes outlasted
+  the 700 ms window (861, 886 and 1229 ms seen), and the query then expired on its own and the check
+  failed on a green tree. So the query is tried up to three times and judged on the first try inside
+  the window, each try advancing the Name sort by one step; a run where all three outlast it fails
+  on its timing assertion rather than passing. The first marquee check on its fresh page also reads the grid's `:focus-visible` after that page's first press: false, and
   true with `focusVisible: false` removed from `useMarquee` (#58). The edge-scroll checks run on a 700 px page, so the table
   overflows before the name column reaches its maximum; they first assert that the grid scrolled, and
   read width and scroll after the release, once the loop has stopped. Proven failing: removing the
@@ -340,6 +355,8 @@ be run by hand.
 
 ## Cross-cutting invariants
 
+- [A row index names a place](../invariant/a-row-index-names-a-place.md) — the example's
+  `FileTable` re-points its indices after a sort, and `check:example` holds it (#89).
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
   the import rule is its mechanical half: the engine can name no consumer module.
 

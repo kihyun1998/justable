@@ -218,6 +218,8 @@ this imitates; neither was read or measured.
 
 ## Cross-cutting invariants
 
+- [A row index names a place](../invariant/a-row-index-names-a-place.md) — `range.anchor` and
+  `range.head` are indices the consumer stores.
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
   `refusePress`, `threshold` and every meaning of a range are the consumer's; the engine holds no
   default for any.

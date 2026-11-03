@@ -91,6 +91,8 @@ APG grid pattern and VS Code's list (one focusable container) as what this shape
 
 ## Cross-cutting invariants
 
+- [A row index names a place](../invariant/a-row-index-names-a-place.md) — `focus` becomes
+  `aria-activedescendant` and the revealed row, whatever row now sits at that index.
 - [Row one is the header](../invariant/row-one-is-the-header.md) — `firstDataRow`,
   `aria-rowcount` and the leading rows' indices are computed here.
 - [Drawn columns are tracks are cells](../invariant/drawn-columns-are-tracks-are-cells.md) —
