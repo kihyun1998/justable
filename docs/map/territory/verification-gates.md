@@ -42,11 +42,13 @@ be run by hand.
   (`0a76ff1`); apart from that line it was identical on 2026-09-29. It gains nothing when the
   original gains a rule — re-copy it, and diff before assuming they match.
 - **The README's quick start is a file under test.** `example/QuickStart.tsx` is typechecked with the
-  example, `example/QuickStart.test.tsx` renders it (header, rows, a sort, a keyboard move), and the
-  same test requires the README's `tsx` block under `## Quick start` to equal the file. Vitest maps
-  `@kihyun1998/justable` and its `style.css` to `src/` (`vitest.config.ts`), as the example's Vite
-  config does. Proven failing: an edited README block, and the quick start without its key handler or
-  its sort. The README's other snippets are not checked.
+  example, `example/QuickStart.test.tsx` renders it (header, rows, a sort, a keyboard move, the
+  keyboard row kept on its person across a sort, and a row click ending the type-ahead query with
+  `Date.now` stubbed), and the same test requires the README's `tsx` block under `## Quick start` to
+  equal the file. Vitest maps `@kihyun1998/justable` and its `style.css` to `src/`
+  (`vitest.config.ts`), as the example's Vite config does. Proven failing: an edited README block,
+  and the quick start without its key handler or its sort; holding the keyboard row as an index
+  fails the sort check, and dropping the click's `end()` fails the click check (#91). The README's other snippets are not checked.
 - **Node 24 and pnpm 10.28.0 in CI.** pnpm is pinned by `packageManager` in `package.json`;
   `pnpm/action-setup` v6 reads it. Its successor, `pnpm/setup`, requires pnpm 11, so moving to it
   moves pnpm too. Node 24 is the LTS; the maintainer develops on 26 (26.10.0 from 2026-10-01, past

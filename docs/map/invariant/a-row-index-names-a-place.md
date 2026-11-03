@@ -5,13 +5,13 @@
 A row index — `focus`, a Shift anchor, a marquee's `anchor` and `head`, every row `move` and
 `typeAhead` answer — names **a place in the rows as they are now drawn**, never a row. When the rows
 reorder or are replaced, the same index names whatever row now sits there. Keeping an index on its
-row across a reorder is the consumer's, done by re-pointing it through something that names the row
-(the example uses the file name, as its selection already does); the engine holds no row identity
-for it.
+row across a reorder is the consumer's, done through something that names the row: the example's
+file table re-points its indices by file name after a sort, and the quick start holds its keyboard
+row as a name and derives the index at render. The engine holds no row identity for it.
 
-Checkable: every `useState<number | null>` in a consumer that holds a row, and every handler that
-changes the order or the list (`onSort`, a filter, a replaced list), is paired with a re-pointing or
-is written down as not needing one.
+Checkable: every row a consumer holds is held by a name, or held as an index (`useState<number |
+null>`) with every handler that changes the order or the list (`onSort`, a filter, a replaced list)
+paired with a re-pointing or written down as not needing one.
 
 ## Why it is cross-cutting
 
@@ -32,9 +32,9 @@ consumer's `rows`, so each consumer site that holds an index has to re-point it 
 - [Marquee](../territory/marquee.md) — a drag reports `range.anchor` and `range.head` as indices; the
   example stores them as its anchor and `focus` at the drag's end.
 - [Verification gates](../territory/verification-gates.md) — the example's sites: `FileTable`
-  re-points `focus` and `anchor` after a sort (#89); `People` (the quick start) keeps the index
-  across a sort, left so by the maintainer at #89; `FolderList` holds its cursor as an index over
-  names that never reorder.
+  re-points `focus` and `anchor` after a sort (#89); `People` (the quick start) holds the keyboard
+  row by name and passes `rows.findIndex` of it as `focus` (#91); `FolderList` holds its cursor as
+  an index over names that never reorder.
 
 ## What a violation looks like
 
@@ -48,8 +48,11 @@ consumer's `rows`, so each consumer site that holds an index has to re-point it 
 - #89 (2026-11-03, example) — found by the completeness read on #88: `c`, a Name sort, `i` within
   700 ms landed on `citrus.csv` by the old query while the keyboard row had become `gamma-4996.md`.
   The maintainer chose to keep the index on its file and keep the query.
+- #91 (2026-11-03, quick start) — `People` kept the index: in jsdom, the keyboard row on `Ada` and
+  an Age sort left `people-row-0`, now `Grace`. The maintainer chose to hold the row by name there
+  and end the query on a click, over ending the query on a click only with a sentence about sorting,
+  and over leaving it.
 
 ## Where it will recur
 
 - A filter, a search box or a replaced list in a consumer: every index it holds names a new row.
-- `People`, the quick start, the day it is brought in line.

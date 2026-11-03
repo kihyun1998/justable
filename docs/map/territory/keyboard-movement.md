@@ -176,8 +176,9 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   Re-pointing inside `onSort` would sort the 5,000 rows a second time: a Name click measured
   190–222 ms in Chrome without re-pointing, 268–341 ms re-pointing there, and 172–240 ms with the
   effect (9 clicks each, 2026-11-03). The query is kept because the keyboard row has not moved:
-  `c`, a sort, `i` lands where `c`, `i` does. The engine is unchanged. The quick start (`People`)
-  still keeps the index across a sort, left out of #89 by the same call; see
+  `c`, a sort, `i` lands where `c`, `i` does. The engine is unchanged. The quick start (`People`),
+  left out of #89, holds its keyboard row by name instead and ends the query on a row click — the
+  maintainer's call, 2026-11-03, #91; see
   [a row index names a place](../invariant/a-row-index-names-a-place.md).
 - **A window not above 0 keeps no query open; `Infinity` lets no pause end one.** A derivation, not
   #27's call. `running` asks `windowMs > 0` before it compares the pause, so `0`, a negative window
