@@ -242,6 +242,70 @@ try {
     { onN, clickedName, afterFolderClick, folderStatus, folderElapsed },
   );
 
+  // A sort keeps the type-ahead query, the keyboard row and the Shift anchor on their files. The query
+  // is tried up to three times and judged on the first try inside the 700 ms window.
+  const settled = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const focusedRow = async () => {
+    await settled();
+    return page.evaluate(() => {
+      const id = document.querySelector('[role="grid"]').getAttribute('aria-activedescendant');
+      const row = id && document.getElementById(id);
+      return row ? { text: row.textContent, rowIndex: row.getAttribute('aria-rowindex') } : null;
+    });
+  };
+  const nameSort = '[role="columnheader"][aria-colindex="1"] button';
+  const nameOrder = () => page.$eval('[role="columnheader"][aria-colindex="1"]', (h) => h.getAttribute('aria-sort'));
+  let sortTry = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    await page.focus('[role="grid"]');
+    await page.keyboard.press('Home');
+    const onHome = await focusedRow();
+    const orderBefore = await nameOrder();
+    const typedAt = Date.now();
+    await page.keyboard.type('c');
+    await page.click(nameSort);
+    await page.focus('[role="grid"]');
+    await page.keyboard.type('i');
+    const elapsed = Date.now() - typedAt;
+    sortTry = { attempt, onHome, orderBefore, orderAfter: await nameOrder(), landed: await focusedRow(), elapsed };
+    if (elapsed < 700) break;
+  }
+  check(
+    'a sort keeps the type-ahead query: "c", a sort, "i" narrows to "citrus.csv"',
+    sortTry.elapsed < 700 &&
+      sortTry.orderAfter !== sortTry.orderBefore &&
+      sortTry.landed?.text.includes('citrus.csv') === true &&
+      sortTry.landed.rowIndex !== sortTry.onHome?.rowIndex,
+    sortTry,
+  );
+
+  // The keyboard row and the anchor are now on "citrus.csv"; the next sort moves it.
+  const beforeSort = await focusedRow();
+  await page.click(nameSort);
+  const afterSort = await focusedRow();
+  check(
+    'a sort keeps the keyboard row on its file',
+    beforeSort?.text.includes('citrus.csv') === true &&
+      afterSort?.text === beforeSort.text &&
+      afterSort.rowIndex !== beforeSort.rowIndex,
+    { beforeSort, afterSort },
+  );
+  await page.focus('[role="grid"]');
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.up('Shift');
+  await settled();
+  const ranged = await page.$$eval('[role="row"][aria-selected="true"]', (rs) => rs.map((r) => r.textContent));
+  check(
+    'a sort keeps the Shift anchor on its file: Shift+↓ ranges from it to the next row',
+    ranged.length === 2 && ranged.some((t) => t.includes('citrus.csv')),
+    { ranged },
+  );
+  // Back to the given order and the top row for the checks after these.
+  for (let i = 0; i < 3 && (await nameOrder()) !== null; i += 1) await page.click(nameSort);
+  await page.focus('[role="grid"]');
+  await page.keyboard.press('Home');
+
   const kind = await page.$('[data-table-resize="kind"]');
   const kb = await kind.boundingBox();
   await page.mouse.click(kb.x + kb.width / 2, kb.y + kb.height / 2, { clickCount: 2 });
@@ -1263,10 +1327,13 @@ try {
     await headed.waitForSelector('[role="grid"] [data-table-header]');
     const size = '[data-table-header] [role="columnheader"][aria-colindex="3"]';
     const state = () =>
-      headed.evaluate((size) => {
+      headed.evaluate(async (size) => {
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         const grid = document.querySelector('[role="grid"]');
+        const row = grid.getAttribute('aria-activedescendant');
         return {
-          row: grid.getAttribute('aria-activedescendant'),
+          row,
+          file: (row && document.getElementById(row)?.querySelector('[data-name]')?.textContent) || null,
           sort: document.querySelector(size).getAttribute('aria-sort'),
           onButton: document.activeElement === document.querySelector(`${size} button`),
         };
@@ -1298,8 +1365,8 @@ try {
     await headed.keyboard.press('Space');
     const spaced = await state();
     check(
-      'with a row focused, Space on a header button sorts and leaves the row',
-      rowFocused.row !== null && spaced.sort !== rowFocused.sort && spaced.row === rowFocused.row,
+      'with a row focused, Space on a header button sorts and leaves the row on its file',
+      rowFocused.file !== null && spaced.sort !== rowFocused.sort && spaced.file === rowFocused.file,
       { rowFocused, spaced },
     );
     await headed.close();

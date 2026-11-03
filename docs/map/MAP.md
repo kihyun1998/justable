@@ -157,7 +157,8 @@ The invariants: [drawn columns are tracks are cells](invariant/drawn-columns-are
 [zero is no measurement](invariant/zero-is-no-measurement.md) ·
 [lengths are layout px](invariant/lengths-are-layout-px.md) ·
 [row one is the header](invariant/row-one-is-the-header.md) ·
-[mechanism here, policy in the consumer](invariant/mechanism-here-policy-in-the-consumer.md).
+[mechanism here, policy in the consumer](invariant/mechanism-here-policy-in-the-consumer.md) ·
+[a row index names a place](invariant/a-row-index-names-a-place.md).
 
 **Out of scope, with the reason**: `logo/` (brand artwork, shipped by no export and read by no
 code; the README links its PNGs by URL), `dist/` and `node_modules/` (ignored build output and

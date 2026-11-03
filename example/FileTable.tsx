@@ -13,7 +13,7 @@ import {
   type TableMovement,
   type TableSort,
 } from '@kihyun1998/justable';
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -129,6 +129,19 @@ export function FileTable({
 
   const rows = useMemo(() => model.sortRows(files, sort), [files, sort]);
   const names = useMemo(() => rows.map((r) => r.name), [rows]);
+
+  /** The files the keyboard row and the Shift anchor were on when a sort began. */
+  const following = useRef<{ focus: string | undefined; anchor: string | undefined } | null>(null);
+  const nameAt = (index: number | null) => (index === null ? undefined : names[index]);
+  /** A sort keeps the keyboard row and the Shift anchor on their files. */
+  useLayoutEffect(() => {
+    const from = following.current;
+    if (from === null) return;
+    following.current = null;
+    if (from.focus !== undefined) setFocus(names.indexOf(from.focus));
+    if (from.anchor !== undefined) setAnchor(names.indexOf(from.anchor));
+  }, [names]);
+
   const columns = model.visibleColumns(layout);
   const gridStyle = { gridTemplateColumns: model.gridTemplate(layout) };
 
@@ -242,7 +255,10 @@ export function FileTable({
       columns={columns.map((key) => ({ key, label: LABELS[key], width: model.columnWidth(layout, key) }))}
       sort={sort}
       gridStyle={gridStyle}
-      onSort={(key) => setSort((s) => model.nextSort(s, key))}
+      onSort={(key) => {
+        following.current = { focus: nameAt(focus), anchor: nameAt(anchor) };
+        setSort((s) => model.nextSort(s, key));
+      }}
       onResize={(key, px) => setLayout((l) => model.withWidth(l, key, px))}
       onResizeDrag={onResizeDrag}
       onAutoFit={onAutoFit}

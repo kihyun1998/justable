@@ -166,6 +166,19 @@ Read from the code, led by PenTerm's note ([provenance](../MAP.md#penterm-proven
   across collections, and keeps it off its public surface; here it is public because a consumer's
   tree needs it. The pure pieces (`typeAheadStep`, `typeAheadIndex`, `nextFocusIndex`,
   `rowOrNull`) are internal.
+- **A sort in the example keeps the keyboard row and the Shift anchor on their files, and keeps
+  the query** — the maintainer's call, 2026-11-03, #89, over following the file and also ending the
+  query, keeping the index and ending the query, and leaving it. `focus` is a row index, so a sort
+  left it in place and the keyboard row became another file, while the selection, held by name,
+  stayed on its files; a letter inside the window then narrowed from the other file. README already
+  makes keeping `focus` on the right row the consumer's, so the example's `onSort` notes the files
+  `focus` and `anchor` are on, and a layout effect on the sorted names re-points both before paint.
+  Re-pointing inside `onSort` would sort the 5,000 rows a second time: a Name click measured
+  190–222 ms in Chrome without re-pointing, 268–341 ms re-pointing there, and 172–240 ms with the
+  effect (9 clicks each, 2026-11-03). The query is kept because the keyboard row has not moved:
+  `c`, a sort, `i` lands where `c`, `i` does. The engine is unchanged. The quick start (`People`)
+  still keeps the index across a sort, left out of #89 by the same call; see
+  [a row index names a place](../invariant/a-row-index-names-a-place.md).
 - **A window not above 0 keeps no query open; `Infinity` lets no pause end one.** A derivation, not
   #27's call. `running` asks `windowMs > 0` before it compares the pause, so `0`, a negative window
   and `NaN` answer alike: every letter starts a fresh query and a space is always the consumer's.
@@ -243,6 +256,8 @@ unchecked.
 
 ## Cross-cutting invariants
 
+- [A row index names a place](../invariant/a-row-index-names-a-place.md) — `move` and
+  `typeAhead` answer the index the consumer holds as `focus`; nothing here sees a sort.
 - [Zero is no measurement](../invariant/zero-is-no-measurement.md) — `rowsPerPage` 0 is read as
   "unmeasured" and pages by `FALLBACK_PAGE`.
 - [Mechanism here, policy in the consumer](../invariant/mechanism-here-policy-in-the-consumer.md) —
@@ -257,7 +272,8 @@ unchecked.
 - [Row windowing](row-windowing.md) — writes `rowsPerPage`, and reveals the row a move lands on.
 - [Verification gates](verification-gates.md) — `check:example` types through a space, moves, and
   clicks a row between two letters in the file table and in the folder list, so `end()` on each
-  of the example's clicks is held in Chrome.
+  of the example's clicks is held in Chrome. It also sorts between two letters and checks the
+  keyboard row and the anchor after a sort (#89).
 
 ## Known holes / open
 
